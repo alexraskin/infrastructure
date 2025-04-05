@@ -1,5 +1,6 @@
+# docker stack deploy --compose-file docker-compose.lastfm.yml lastfm
 services:
-  lastfm:
+  api:
     image: ghcr.io/alexraskin/lastfm-now-playing:${GIT_COMMIT_HASH:-latest}
     networks:
       - proxy

@@ -1,6 +1,6 @@
 # docker stack deploy -c docker-compose.twizy.yml twizy --with-registry-auth
 services:
-  twizy-web:
+  web:
     image: ghcr.io/alexraskin/twizy-web:${GIT_COMMIT_HASH:-latest}
     networks:
       - proxy

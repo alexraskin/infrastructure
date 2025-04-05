@@ -1,8 +1,20 @@
-# docker stack deploy --compose-file docker-compose.gopaste.yml gopaste --with-registry-auth
+# docker stack deploy --compose-file docker-compose.swarmctl.yml swarmctl --with-registry-auth
 services:
-  web:
-    image: ghcr.io/alexraskin/gopaste:latest
+  server:
+    image: ghcr.io/alexraskin/swarmctl:${GIT_COMMIT_HASH:-latest}
+    networks:
+      - net
+      - proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    secrets:
+      - auth-token
+    environment:
+      - AUTH_TOKEN=/run/secrets/auth-token
     deploy:
+      placement:
+        constraints:
+          - node.role == manager
       update_config:
         order: start-first
         parallelism: 1
@@ -22,13 +34,6 @@ services:
         reservations:
           cpus: '0.1'
           memory: 128M
-    volumes:
-      - type: bind
-        source: /mnt/gopaste
-        target: /db
-    networks:
-      - net
-      - proxy
 
 networks:
   net:
@@ -37,3 +42,7 @@ networks:
   proxy:
     external: true
     name: proxy
+
+secrets:
+  auth-token:
+    external: true

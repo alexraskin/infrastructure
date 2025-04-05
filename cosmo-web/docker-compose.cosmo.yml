@@ -1,5 +1,6 @@
+# docker stack deploy --compose-file docker-compose.cosmo.yml cosmo
 services:
-  cosmo-web:
+  web:
     image: ghcr.io/alexraskin/cosmo-web:${GIT_COMMIT_HASH:-latest}
     networks:
       - net
