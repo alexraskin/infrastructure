@@ -1,0 +1,38 @@
+services:
+  gopaste:
+    image: ghcr.io/alexraskin/gopaste:latest
+    deploy:
+      update_config:
+        order: start-first
+        parallelism: 1
+        failure_action: rollback
+        monitor: 10s
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    volumes:
+      - type: bind
+        source: /mnt/gopaste
+        target: /db
+    networks:
+      - net
+      - proxy
+
+networks:
+  net:
+    driver: overlay
+    attachable: true
+  proxy:
+    external: true
+    name: proxy
