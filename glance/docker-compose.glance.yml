@@ -10,7 +10,6 @@ services:
         source: /mnt/glance/assets
         target: /app/assets
     networks:
-      - net
       - proxy
     deploy:
       update_config:
@@ -34,9 +33,6 @@ services:
           memory: 128M
 
 networks:
-  net:
-    driver: overlay
-    attachable: true
   proxy:
     external: true
     name: proxy

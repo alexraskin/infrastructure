@@ -4,7 +4,6 @@ services:
     image: ghcr.io/alexraskin/lastfm-now-playing:${GIT_COMMIT_HASH:-latest}
     networks:
       - proxy
-      - net
     secrets:
       - lastfm-api-key
     environment:
@@ -31,9 +30,6 @@ services:
           memory: 128M
 
 networks:
-  net:
-    driver: overlay
-    attachable: true
   proxy:
     external: true
     name: proxy

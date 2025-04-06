@@ -27,13 +27,9 @@ services:
         source: /mnt/gopaste
         target: /db
     networks:
-      - net
       - proxy
 
 networks:
-  net:
-    driver: overlay
-    attachable: true
   proxy:
     external: true
     name: proxy
