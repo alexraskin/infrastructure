@@ -8,9 +8,9 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     secrets:
-      - auth-token
+      - swarmctl-auth-token
     environment:
-      - AUTH_TOKEN=/run/secrets/auth-token
+      - AUTH_TOKEN=/run/secrets/swarmctl-auth-token
     deploy:
       placement:
         constraints:
@@ -44,5 +44,5 @@ networks:
     name: proxy
 
 secrets:
-  auth-token:
+  swarmctl-auth-token:
     external: true

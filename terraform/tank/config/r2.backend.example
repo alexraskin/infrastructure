@@ -1,0 +1,12 @@
+bucket                      = "terraform"
+key                         = "<yourKey>/terraform.tfstate"
+region                      = "auto"
+skip_credentials_validation = true
+skip_metadata_api_check     = true
+skip_region_validation      = true
+skip_requesting_account_id  = true
+skip_s3_checksum            = true
+use_path_style              = true
+access_key                  = "YOUR_ACCESS_KEY"
+secret_key                  = "YOUR_SECRET_KEY"
+endpoints                   = { s3 = "https://YOUR_ENDPOINT" }
