@@ -2,6 +2,16 @@
 services:
   web:
     image: ghcr.io/alexraskin/twizy-web:${GIT_COMMIT_HASH:-latest}
+    secrets:
+      - r2_access_key
+      - r2_secret_key
+      - r2_endpoint
+      - r2_bucket
+    environment:
+      - R2_ACCESS_KEY=/run/secrets/r2_access_key
+      - R2_SECRET_KEY=/run/secrets/r2_secret_key
+      - R2_ENDPOINT=/run/secrets/r2_endpoint
+      - R2_BUCKET=/run/secrets/r2_bucket
     networks:
       - proxy
     deploy:
@@ -29,3 +39,13 @@ networks:
   proxy:
     external: true
     name: proxy
+
+secrets:
+  r2_access_key:
+    external: true
+  r2_secret_key:
+    external: true
+  r2_endpoint:
+    external: true
+  r2_bucket:
+    external: true
