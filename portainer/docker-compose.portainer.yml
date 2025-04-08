@@ -1,3 +1,4 @@
+# docker stack deploy --compose-file docker-compose.portainer.yml portainer
 services:
   agent:
     image: portainer/agent:2.19.4
@@ -16,8 +17,8 @@ services:
     command: -H tcp://tasks.agent:9001 --tlsskipverify
     ports:
       - "9443:9443"
-      - "9000:9000"
       - "8000:8000"
+      - "9000:9000"
     volumes:
       - type: bind
         source: /mnt/Portainer
