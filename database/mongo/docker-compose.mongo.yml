@@ -1,0 +1,22 @@
+# docker stack deploy --compose-file docker-compose.mongo.yml mongo
+services:
+  db:
+    image: mongo:8.0
+    networks:
+      - database
+    volumes:
+      - type: bind
+        source: /mnt/mongodb/data
+        target: /data/db
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+
+networks:
+  database:
+    external: true
