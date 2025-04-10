@@ -15,6 +15,14 @@ services:
           - node.role == manager
       restart_policy:
         condition: any
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
 networks:
   proxy:
     external: true

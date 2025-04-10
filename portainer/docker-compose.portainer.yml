@@ -9,6 +9,13 @@ services:
       - agent_network
     deploy:
       mode: global
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
       placement:
         constraints: [node.platform.os == linux]
 
@@ -29,6 +36,13 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
       placement:
         constraints: [node.role == manager]
 
