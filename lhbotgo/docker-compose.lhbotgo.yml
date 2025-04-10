@@ -1,4 +1,4 @@
-# docker stack deploy --compose-file docker-compose.lhbotgo.yml lhbotgo --with-registry-auth
+# docker stack deploy --compose-file docker-compose.lhbotgo.yml lhbotgo
 services:
   app:
     image: ghcr.io/alexraskin/lhbotgo:${GIT_COMMIT_HASH:-latest}
