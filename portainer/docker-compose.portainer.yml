@@ -34,6 +34,9 @@ services:
       - agent_network
       - proxy
     deploy:
+      labels:
+        - "tunnel.port=9000"
+        - "tunnel.hostname=portainer.alexraskin.com"
       mode: replicated
       replicas: 1
       resources:

@@ -5,6 +5,9 @@ services:
     networks:
       - proxy
     deploy:
+      labels:
+        - "tunnel.port=8000"
+        - "tunnel.hostname=alexraskin.com,www.alexraskin.com"
       update_config:
         order: start-first
         parallelism: 1

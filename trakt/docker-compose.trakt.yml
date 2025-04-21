@@ -9,6 +9,9 @@ services:
     environment:
       - TRAKT_API_KEY=/run/secrets/trakt-api-key
     deploy:
+      labels:
+        - "tunnel.port=4000"
+        - "tunnel.hostname=trakt.alexraskin.com,trakt.twizy.sh"
       update_config:
         parallelism: 1
         order: start-first

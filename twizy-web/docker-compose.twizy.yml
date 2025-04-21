@@ -15,6 +15,9 @@ services:
     networks:
       - proxy
     deploy:
+      labels:
+        - "tunnel.port=8080"
+        - "tunnel.hostname=twizy.sh,www.twizy.sh"
       update_config:
         order: start-first
         parallelism: 1

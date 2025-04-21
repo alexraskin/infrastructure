@@ -8,9 +8,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     secrets:
       - swarmctl-auth-token
+      - cloudflare-email
+      - cloudflare-account-id
+      - cloudflare-api-key
+      - cloudflare-tunnel-id
     environment:
       - AUTH_TOKEN=/run/secrets/swarmctl-auth-token
+      - CLOUDFLARE_API_EMAIL=/run/secrets/cloudflare-email
+      - CLOUDFLARE_API_KEY=/run/secrets/cloudflare-api-key
+      - CLOUDFLARE_ACCOUNT_ID=/run/secrets/cloudflare-account-id
+      - CLOUDFLARE_TUNNEL_ID=/run/secrets/cloudflare-tunnel-id
     deploy:
+      labels:
+        - "tunnel.port=9000"
+        - "tunnel.hostname=swarmctl.alexraskin.com"
       placement:
         constraints:
           - node.role == manager
@@ -41,4 +52,12 @@ networks:
 
 secrets:
   swarmctl-auth-token:
+    external: true
+  cloudflare-email:
+    external: true
+  cloudflare-account-id:
+    external: true
+  cloudflare-api-key:
+    external: true
+  cloudflare-tunnel-id:
     external: true

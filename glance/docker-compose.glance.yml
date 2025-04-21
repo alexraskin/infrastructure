@@ -12,6 +12,9 @@ services:
     networks:
       - proxy
     deploy:
+      labels:
+        - "tunnel.port=8080"
+        - "tunnel.hostname=glance.twizy.sh"
       update_config:
         order: start-first
         parallelism: 1

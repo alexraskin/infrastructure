@@ -9,6 +9,9 @@ services:
     environment:
       - LASTFM_API_KEY=/run/secrets/lastfm-api-key
     deploy:
+      labels:
+        - "tunnel.port=3000"
+        - "tunnel.hostname=lastfm.alexraskin.com,lastfm.twizy.sh"
       update_config:
         parallelism: 1
         order: start-first
