@@ -6,7 +6,7 @@ services:
       - proxy
     deploy:
       labels:
-        - "tunnel.port=8000"
+        - "tunnel.port=5000"
         - "tunnel.hostname=cosmothecat.net,www.cosmothecat.net"
       update_config:
         order: start-first
