@@ -1,0 +1,11 @@
+- name: Check Docker Swarm status
+  hosts: swarm_cluster
+  become: yes
+  tasks:
+    - name: Check if node is part of a swarm
+      shell: docker info --format '{{ "{{.Swarm.LocalNodeState}}" }}'
+      register: swarm_status
+
+    - name: Show swarm status
+      debug:
+        msg: "Node is in swarm mode: {{ swarm_status.stdout }}"
