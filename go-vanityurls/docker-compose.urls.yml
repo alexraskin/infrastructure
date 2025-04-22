@@ -1,7 +1,7 @@
 # docker stack deploy --compose-file docker-compose.urls.yml vanityurls
 services:
   web:
-    image: ghcr.io/alexraskin/go-vanityurls:de03d3e9b417b1e3f7bbae3ab663f8050bc0a7fa
+    image: ghcr.io/alexraskin/go-vanityurls:${GIT_COMMIT_HASH:-latest}
     networks:
       - proxy
     deploy:
