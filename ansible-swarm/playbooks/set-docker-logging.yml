@@ -1,0 +1,36 @@
+- name: Global Docker log rotation
+  hosts: swarm_nodes
+  become: yes
+  tasks:
+
+    - name: Ensure Docker config directory exists
+      file:
+        path: /etc/docker
+        state: directory
+        mode: '0755'
+
+    - name: Backup existing daemon.json if it exists
+      copy:
+        src: /etc/docker/daemon.json
+        dest: /etc/docker/daemon.json.bak
+        remote_src: yes
+      ignore_errors: yes
+
+    - name: Set Docker logging options globally
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "3"
+            }
+          }
+        mode: '0644'
+
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
+        enabled: yes
