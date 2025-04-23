@@ -4,7 +4,7 @@ services:
     image: ghcr.io/alexraskin/gopaste:latest
     deploy:
       labels:
-        - "tunnel.port=8080"
+        - "tunnel.port=7000"
         - "tunnel.hostname=paste.alexraskin.com"
       update_config:
         order: start-first
