@@ -1,3 +1,4 @@
+# ansible-playbook -i inventory.ini playbooks/update-nodes.yml
 - name: Update of Docker Swarm nodes
   hosts: swarm_cluster
   become: yes

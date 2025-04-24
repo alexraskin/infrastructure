@@ -1,7 +1,7 @@
 # docker stack deploy --compose-file docker-compose.swarmctl.yml swarmctl
 services:
   server:
-    image: ghcr.io/alexraskin/swarmctl:${GIT_COMMIT_HASH:-latest}
+    image: ghcr.io/alexraskin/swarmctl:3c0416f6bff2f9df41a269e45d278ed9c660630c
     networks:
       - proxy
     volumes:
@@ -12,12 +12,16 @@ services:
       - cloudflare-account-id
       - cloudflare-api-key
       - cloudflare-tunnel-id
+      - pushover-api-key
+      - pushover-recipient
     environment:
       - AUTH_TOKEN=/run/secrets/swarmctl-auth-token
       - CLOUDFLARE_API_EMAIL=/run/secrets/cloudflare-email
       - CLOUDFLARE_API_KEY=/run/secrets/cloudflare-api-key
       - CLOUDFLARE_ACCOUNT_ID=/run/secrets/cloudflare-account-id
       - CLOUDFLARE_TUNNEL_ID=/run/secrets/cloudflare-tunnel-id
+      - PUSHOVER_API_KEY=/run/secrets/pushover-api-key
+      - PUSHOVER_RECIPIENT=/run/secrets/pushover-recipient
     deploy:
       labels:
         - "tunnel.port=9000"
@@ -60,4 +64,8 @@ secrets:
   cloudflare-api-key:
     external: true
   cloudflare-tunnel-id:
+    external: true
+  pushover-api-key:
+    external: true
+  pushover-recipient:
     external: true
