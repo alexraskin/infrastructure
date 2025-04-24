@@ -1,7 +1,7 @@
 # docker stack deploy --compose-file docker-compose.gopaste.yml gopaste --with-registry-auth
 services:
   web:
-    image: ghcr.io/alexraskin/gopaste:latest
+    image: ghcr.io/alexraskin/gopaste:${GIT_COMMIT_HASH:-latest}
     deploy:
       labels:
         - "tunnel.port=7000"
