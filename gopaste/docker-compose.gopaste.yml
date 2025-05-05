@@ -4,6 +4,7 @@ services:
     image: ghcr.io/alexraskin/gopaste:${GIT_COMMIT_HASH:-latest}
     deploy:
       labels:
+        - "tunnel.enabled=true"
         - "tunnel.port=7000"
         - "tunnel.hostname=paste.alexraskin.com"
       update_config:

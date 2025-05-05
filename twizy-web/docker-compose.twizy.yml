@@ -16,6 +16,7 @@ services:
       - proxy
     deploy:
       labels:
+        - "tunnel.enabled=true"
         - "tunnel.port=8080"
         - "tunnel.hostname=twizy.sh,www.twizy.sh"
       update_config:

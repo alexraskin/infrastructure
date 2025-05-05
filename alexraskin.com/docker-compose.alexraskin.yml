@@ -6,6 +6,7 @@ services:
       - proxy
     deploy:
       labels:
+        - "tunnel.enabled=true"
         - "tunnel.port=8000"
         - "tunnel.hostname=alexraskin.com,www.alexraskin.com"
       update_config:

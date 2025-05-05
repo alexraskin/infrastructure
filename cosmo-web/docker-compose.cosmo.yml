@@ -4,8 +4,13 @@ services:
     image: ghcr.io/alexraskin/cosmo-web:${GIT_COMMIT_HASH:-latest}
     networks:
       - proxy
+    volumes:
+      - type: bind
+        source: /mnt/cosmo-web
+        target: /var/lib/config.yaml
     deploy:
       labels:
+        - "tunnel.enabled=true"
         - "tunnel.port=5000"
         - "tunnel.hostname=cosmothecat.net,www.cosmothecat.net"
       update_config:

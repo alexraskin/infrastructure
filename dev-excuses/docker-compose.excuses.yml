@@ -1,14 +1,14 @@
-# docker stack deploy --compose-file docker-compose.urls.yml vanityurls
+# docker stack deploy --compose-file docker-compose.excuses.yml excuses --with-registry-auth
 services:
-  web:
-    image: ghcr.io/alexraskin/go-vanityurls:${GIT_COMMIT_HASH:-latest}
+  app:
+    image: ghcr.io/alexraskin/dev-excuses:${GIT_COMMIT_HASH:-latest}
     networks:
       - proxy
     deploy:
       labels:
         - "tunnel.enabled=true"
-        - "tunnel.port=8080"
-        - "tunnel.hostname=go.alexraskin.com"
+        - "tunnel.port=8000"
+        - "tunnel.hostname=sorry.alexraskin.com"
       update_config:
         order: start-first
         parallelism: 1

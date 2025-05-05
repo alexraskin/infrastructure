@@ -35,6 +35,7 @@ services:
       - proxy
     deploy:
       labels:
+        - "tunnel.enabled=true"
         - "tunnel.port=9000"
         - "tunnel.hostname=portainer.alexraskin.com"
       mode: replicated

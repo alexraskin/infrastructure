@@ -24,6 +24,7 @@ services:
       - PUSHOVER_RECIPIENT=/run/secrets/pushover-recipient
     deploy:
       labels:
+        - "tunnel.enabled=true"
         - "tunnel.port=9000"
         - "tunnel.hostname=swarmctl.alexraskin.com"
       placement:
