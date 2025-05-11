@@ -1,0 +1,29 @@
+# docker stack deploy --compose-file docker-compose.minio.yml minio
+
+services:
+  storage:
+    image: minio/minio:latest
+    env_file:
+      - .env
+    command: server /data --console-address ":9001"
+    volumes:
+      - type: bind
+        source: /mnt/minio/data
+        target: /data
+      - type: bind
+        source: /mnt/minio/config
+        target: /root/.minio
+    networks:
+      - storage
+    deploy:
+      replicas: 1
+      placement:
+        max_replicas_per_node: 1
+        constraints:
+          - node.labels.minio == true
+        preferences:
+          - spread: "node.labels.minio"
+
+networks:
+  storage:
+    external: true

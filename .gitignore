@@ -2,3 +2,8 @@ tunnel.env
 terraform.tfvars
 r2.backend.tfbackend
 .terraform*
+terraform/rein/docker/Caddyfile
+terraform/rein/docker/.env
+terraform/rein/docker/*.conf
+wireguard/config/*
+.env

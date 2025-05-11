@@ -10,9 +10,10 @@ services:
       - LASTFM_API_KEY=/run/secrets/lastfm-api-key
     deploy:
       labels:
-        - "tunnel.enabled=true"
-        - "tunnel.port=3000"
-        - "tunnel.hostname=lastfm.alexraskin.com,lastfm.twizy.sh"
+        - "cloudflared.tunnel.enabled=true"
+        - "cloudflared.tunnel.port=3000"
+        - "cloudflared.tunnel.0.hostname=lastfm.alexraskin.com"
+        - "cloudflared.tunnel.1.hostname=lastfm.twizy.sh"
       update_config:
         parallelism: 1
         order: start-first

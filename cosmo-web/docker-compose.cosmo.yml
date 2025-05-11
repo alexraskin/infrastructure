@@ -10,9 +10,10 @@ services:
         target: /var/lib/config.yaml
     deploy:
       labels:
-        - "tunnel.enabled=true"
-        - "tunnel.port=5000"
-        - "tunnel.hostname=cosmothecat.net,www.cosmothecat.net"
+        - "cloudflared.tunnel.enabled=true"
+        - "cloudflared.tunnel.port=5000"
+        - "cloudflared.tunnel.0.hostname=cosmothecat.net"
+        - "cloudflared.tunnel.1.hostname=www.cosmothecat.net"
       update_config:
         order: start-first
         parallelism: 1

@@ -16,9 +16,10 @@ services:
       - proxy
     deploy:
       labels:
-        - "tunnel.enabled=true"
-        - "tunnel.port=8080"
-        - "tunnel.hostname=twizy.sh,www.twizy.sh"
+        - "cloudflared.tunnel.enabled=true"
+        - "cloudflared.tunnel.port=8080"
+        - "cloudflared.tunnel.0.hostname=twizy.sh"
+        - "cloudflared.tunnel.1.hostname=www.twizy.sh"
       update_config:
         order: start-first
         parallelism: 1

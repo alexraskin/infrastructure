@@ -1,0 +1,36 @@
+services:
+  wireguard:
+    image: linuxserver/wireguard
+    container_name: wireguard
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Phoenix
+      - PEERDNS=false
+    volumes:
+      - ./wg-config/wg0.conf:/config/wg0.conf:ro
+    restart: unless-stopped
+
+  caddy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: caddy
+    network_mode: service:wireguard
+    depends_on:
+      - wireguard
+    env_file:
+      - .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

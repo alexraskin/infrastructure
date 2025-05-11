@@ -1,22 +1,22 @@
-# docker stack deploy --compose-file docker-compose.trakt.yml trakt
+# docker stack deploy --compose-file docker-compose.filego.yml filego --with-registry-auth
 services:
-  api:
-    image: ghcr.io/alexraskin/trakt-tv-now-playing:${GIT_COMMIT_HASH:-latest}
+  app:
+    image: ghcr.io/alexraskin/filego:${GIT_COMMIT_HASH:-latest}
     networks:
       - proxy
-    secrets:
-      - trakt-api-key
-    environment:
-      - TRAKT_API_KEY=/run/secrets/trakt-api-key
+      - storage
+    volumes:
+      - type: bind
+        source: /mnt/filego/config.toml
+        target: /var/lib/filego/config.toml
     deploy:
       labels:
         - "cloudflared.tunnel.enabled=true"
-        - "cloudflared.tunnel.port=4000"
-        - "cloudflared.tunnel.0.hostname=trakt.alexraskin.com"
-        - "cloudflared.tunnel.1.hostname=trakt.twizy.sh"
+        - "cloudflared.tunnel.port=8080"
+        - "cloudflared.tunnel.hostname=filego.alexraskin.com"
       update_config:
-        parallelism: 1
         order: start-first
+        parallelism: 1
         failure_action: rollback
         monitor: 10s
         delay: 10s
@@ -38,7 +38,5 @@ networks:
   proxy:
     external: true
     name: proxy
-
-secrets:
-  trakt-api-key:
+  storage:
     external: true
