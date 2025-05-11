@@ -6,9 +6,9 @@ services:
       - proxy
     deploy:
       labels:
-        - "tunnel.enabled=true"
-        - "tunnel.port=8000"
-        - "tunnel.hostname=sorry.alexraskin.com"
+        - "cloudflared.tunnel.enabled=true"
+        - "cloudflared.tunnel.port=8000"
+        - "cloudflared.tunnel.hostname=sorry.alexraskin.com"
       update_config:
         order: start-first
         parallelism: 1
