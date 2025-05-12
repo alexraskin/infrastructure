@@ -13,7 +13,9 @@ services:
       labels:
         - "cloudflared.tunnel.enabled=true"
         - "cloudflared.tunnel.port=8080"
-        - "cloudflared.tunnel.hostname=filego.alexraskin.com"
+        - "cloudflared.tunnel.0.hostname=filego.alexraskin.com"
+        - "cloudflared.tunnel.1.hostname=elx.sh"
+        - "cloudflared.tunnel.2.hostname=www.elx.sh"
       update_config:
         order: start-first
         parallelism: 1
