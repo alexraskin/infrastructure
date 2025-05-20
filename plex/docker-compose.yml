@@ -1,0 +1,19 @@
+services:
+  plex:
+    image: plexinc/pms-docker:latest
+    container_name: plex
+    network_mode: host
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Phoenix
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/lib/plexmediaserver:/config
+      - type: bind
+        source: /mnt/media/Media
+        target: /media
+        read_only: true
+    restart: unless-stopped
