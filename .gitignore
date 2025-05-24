@@ -7,3 +7,4 @@ terraform/rein/docker/.env
 terraform/rein/docker/*.conf
 wireguard/config/*
 .env
+conf.env
