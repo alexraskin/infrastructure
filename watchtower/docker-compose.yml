@@ -6,12 +6,8 @@ services:
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
             - /root/.docker/config.json:/config.json
-        command: --http-api-update --http-api-metrics --cleanup
+        command: --http-api-metrics --cleanup 
         env_file:
             - conf.env
-        networks:
-            - proxy
-
-networks:
-    proxy:
-        external: true
+        ports:
+            - 9000:8080
