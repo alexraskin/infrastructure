@@ -1,9 +1,7 @@
 # docker stack deploy --compose-file docker-compose.goping.yml goping
 services:
-  goping:
+  server:
     image: ghcr.io/alexraskin/goping:${GIT_COMMIT_HASH:-latest}
-    networks:
-      - proxy
     deploy:
       update_config:
         order: start-first
@@ -24,3 +22,11 @@ services:
         reservations:
           cpus: '0.1'
           memory: 128M
+    secrets:
+      - webhook_url
+    environment:
+      - WEBHOOK_URL=/run/secrets/webhook_url
+
+secrets:
+  webhook_url:
+    external: true
