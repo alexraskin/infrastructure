@@ -1,0 +1,5 @@
+services:
+  telegraf:
+    image: telegraf:1.25-alpine
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
