@@ -4,6 +4,7 @@ services:
     image: ghcr.io/alexraskin/swarmctl:${GIT_COMMIT_HASH:-latest}
     networks:
       - proxy
+      - metrics
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     secrets:
@@ -54,6 +55,10 @@ networks:
   proxy:
     external: true
     name: proxy
+  metrics:
+    external: true
+    name: metrics
+    driver: overlay
 
 secrets:
   swarmctl-auth-token:

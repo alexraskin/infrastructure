@@ -8,3 +8,4 @@ terraform/rein/docker/*.conf
 wireguard/config/*
 .env
 conf.env
+telegraf.conf

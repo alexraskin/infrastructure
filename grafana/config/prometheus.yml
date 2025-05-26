@@ -27,3 +27,12 @@ scrape_configs:
     static_configs:
       - targets:
         - '10.0.200.87:9000'
+  
+  - job_name: 'swarmctl'
+    metrics_path: /metrics
+    bearer_token: ${SWARMCTL_TOKEN}
+    dns_sd_configs:
+      - names:
+          - 'tasks.swarmctl_server'
+        type: 'A'
+        port: 9000

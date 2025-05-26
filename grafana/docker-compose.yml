@@ -125,6 +125,8 @@ services:
 
 networks:
   metrics:
+    external: true
+    name: metrics
     driver: overlay
   proxy:
     external: true
