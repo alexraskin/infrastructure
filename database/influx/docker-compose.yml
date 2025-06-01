@@ -1,0 +1,18 @@
+services:
+  db:
+    image: influxdb
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+      - "8089:8089/udp"
+    networks:
+      - metrics
+    volumes:
+      - /{PWD}/influxdb:/var/lib/influxdb2
+    mem_limit: 128m
+    cpus: 0.1
+    restart: always
+
+networks:
+  metrics:
+    external: true

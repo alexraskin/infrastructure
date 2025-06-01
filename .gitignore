@@ -9,3 +9,5 @@ wireguard/config/*
 .env
 conf.env
 telegraf.conf
+token.txt
+dashboard.json
