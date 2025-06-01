@@ -1,13 +1,34 @@
 services:
-    watchtower:
-        image: containrrr/watchtower
-        container_name: watchtower
-        restart: unless-stopped
-        volumes:
-            - /var/run/docker.sock:/var/run/docker.sock
-            - /root/.docker/config.json:/config.json
-        command: --http-api-metrics --cleanup 
-        env_file:
-            - conf.env
-        ports:
-            - 9000:8080
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --http-api-metrics --cleanup --interval 21600
+    ports:
+      - 9000:8080
+    env_file:
+      - conf.env
+    environment:
+      WATCHTOWER_NOTIFICATION_REPORT: "true"
+      WATCHTOWER_NOTIFICATION_TEMPLATE: |
+        {{- if .Report -}}
+        {{- with .Report -}}
+        {{len .Scanned}} Scanned, {{len .Updated}} Updated, {{len .Failed}} Failed
+        {{- range .Updated}}
+        - {{.Name}} ({{.ImageName}}): {{.CurrentImageID.ShortID}} updated to {{.LatestImageID.ShortID}}
+        {{- end -}}
+        {{- range .Fresh}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}
+        {{- end -}}
+        {{- range .Skipped}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
+        {{- end -}}
+        {{- range .Failed}}
+        - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
+        {{- end -}}
+        {{- end -}}
+        {{- else -}}
+        {{range .Entries -}}{{.Message}}{{"\n"}}{{- end -}}
+        {{- end -}}
