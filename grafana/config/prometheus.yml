@@ -10,14 +10,14 @@ scrape_configs:
   - job_name: 'cadvisor'
     dns_sd_configs:
     - names:
-      - 'tasks.cadvisor'
+      - 'tasks.metrics_cadvisor'
       type: 'A'
       port: 8080
 
   - job_name: 'node-exporter'
     dns_sd_configs:
     - names:
-      - 'tasks.node-exporter'
+      - 'tasks.metrics_node-exporter'
       type: 'A'
       port: 9100
 
@@ -38,6 +38,7 @@ scrape_configs:
         port: 9000
 
   - job_name: 'goping'
+    metrics_path: /metrics
     dns_sd_configs:
       - names:
         - 'tasks.goping_server'
