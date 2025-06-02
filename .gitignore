@@ -11,3 +11,4 @@ conf.env
 telegraf.conf
 token.txt
 dashboard.json
+database/influx/influxdb/*

@@ -36,3 +36,10 @@ scrape_configs:
           - 'tasks.swarmctl_server'
         type: 'A'
         port: 9000
+
+  - job_name: 'goping'
+    dns_sd_configs:
+      - names:
+        - 'tasks.goping_server'
+        type: 'A'
+        port: 8080

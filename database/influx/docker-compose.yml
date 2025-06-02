@@ -8,10 +8,12 @@ services:
     networks:
       - metrics
     volumes:
-      - /{PWD}/influxdb:/var/lib/influxdb2
+      - "${PWD}/influxdb:/var/lib/influxdb2"  
     mem_limit: 128m
     cpus: 0.1
     restart: always
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
 networks:
   metrics:
