@@ -2,6 +2,8 @@
 services:
   server:
     image: ghcr.io/alexraskin/goping:${GIT_COMMIT_HASH:-latest}
+    networks:
+      - metrics
     deploy:
       update_config:
         order: start-first
@@ -30,3 +32,9 @@ services:
 secrets:
   webhook_url:
     external: true
+
+networks:
+  metrics:
+    external: true
+    name: metrics
+    driver: overlay
