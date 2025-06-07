@@ -3,7 +3,10 @@ services:
   tunnel:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate run
-    env_file: tunnel.env
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/cloudflare_token
+    secrets:
+      - cloudflare_token
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -22,6 +25,10 @@ services:
         reservations:
           cpus: '0.1'
           memory: 128M
+
+secrets:
+  cloudflare_token:
+    external: true
 
 networks:
   proxy:
