@@ -37,15 +37,6 @@ resource "hcloud_firewall" "firewall" {
   name = "${var.server_name}-firewall-${var.location}"
   rule {
     direction = "in"
-    protocol  = "udp"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-    port = "443"
-  }
-  rule {
-    direction = "in"
     protocol  = "tcp"
     source_ips = [
       "0.0.0.0/0",
@@ -61,15 +52,6 @@ resource "hcloud_firewall" "firewall" {
       "::/0"
     ]
     port = "443"
-  }
-  rule {
-    direction = "in"
-    protocol  = "udp"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0"
-    ]
-    port = "51820"
   }
   rule {
     direction = "in"
