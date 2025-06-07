@@ -1,0 +1,20 @@
+services:
+  gotify:
+    image: gotify/server:latest
+    container_name: gotify
+    networks:
+      - 'proxy'
+    restart: always
+    labels:
+      'traefik.enable': 'true'
+      'traefik.http.routers.gotify.rule': 'Host(`gotify.phx.alexraskin.com`)'
+      'traefik.http.routers.gotify.entrypoints': 'websecure'
+      'traefik.http.routers.gotify.tls.certresolver': 'letsencrypt'
+    volumes:
+      - './gotify_data:/app/data'
+    env_file:
+      - .env
+
+networks:
+  proxy:
+    external: true

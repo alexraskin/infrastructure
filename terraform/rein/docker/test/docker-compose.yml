@@ -1,0 +1,28 @@
+services:
+  test:
+    image: golang:latest
+    container_name: test
+    restart: unless-stopped
+    entrypoint: go run src/main.go
+    volumes:
+        - ./main.go:/go/src/main.go
+    networks:
+        - proxy
+    expose:
+        - 80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.test.entrypoints=http"
+      - "traefik.http.routers.test.rule=Host(`test.alexraskin.dev`)"
+      - "traefik.http.middlewares.test-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.test.middlewares=test-https-redirect"
+      - "traefik.http.routers.test-secure.entrypoints=https"
+      - "traefik.http.routers.test-secure.rule=Host(`test.alexraskin.dev`)"
+      - "traefik.http.routers.test-secure.tls=true"
+      - "traefik.http.routers.test-secure.tls.certresolver=cloudflare"
+      - "traefik.http.services.test.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+
+networks:
+    proxy:
+        external: true
