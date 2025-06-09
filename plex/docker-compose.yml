@@ -19,3 +19,14 @@ services:
     restart: unless-stopped
     labels:
       - com.centurylinklabs.watchtower.enable=true
+  prom-plex-exporter:
+    container_name: prom-plex-exporter
+    image: ghcr.io/jsclayton/prometheus-plex-exporter
+    ports:
+      - 9001:9000/tcp
+    environment:
+      PLEX_SERVER: ${PLEX_SERVER}
+      PLEX_TOKEN: ${PLEX_TOKEN}
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
