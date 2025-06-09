@@ -44,3 +44,9 @@ scrape_configs:
         - 'tasks.goping_server'
         type: 'A'
         port: 8080
+
+  - job_name: 'plex-exporter'
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+        - '10.0.200.87:9001'
