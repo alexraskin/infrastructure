@@ -12,3 +12,6 @@ telegraf.conf
 token.txt
 dashboard.json
 database/influx/influxdb/*
+minecraft/data/*
+minecraft/modpacks/*
+minecraft/data/*.env
