@@ -5,17 +5,20 @@ services:
     tty: true
     image: itzg/minecraft-server
     volumes:
-    - ./modpacks:/modpacks:ro
-    - ./data:/data
+      - ./modpacks:/modpacks:ro
+      - ./data:/data
     environment:
       EULA: "true"
       TYPE: CURSEFORGE
       CF_SERVER_MOD: /modpacks/ServerFiles-3.2.zip
     ports:
       - "25565:25565"
+    mem_limit: 12g
+    cpus: 2.0
   playit:
+    container_name: playit
     image: ghcr.io/playit-cloud/playit-agent:0.15
     network_mode: host
-    environment:
-      SECRET_KEY: <>
+    env_file:
+      - .env
     restart: unless-stopped
