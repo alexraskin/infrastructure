@@ -8,6 +8,10 @@ services:
       - type: bind
         source: /mnt/lhbotgo/config.toml
         target: /var/lib/config.toml
+        read_only: true
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
     deploy:
       update_config:
         order: start-first
