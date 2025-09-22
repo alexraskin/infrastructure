@@ -1,4 +1,4 @@
-# docker stack deploy --compose-file docker-compose.swarmctl.yml swarmctl
+# docker stack deploy --compose-file docker-compose.swarmctl.yml swarmctl --with-registry-auth
 services:
   server:
     image: ghcr.io/alexraskin/swarmctl:${GIT_COMMIT_HASH:-latest}
@@ -15,6 +15,8 @@ services:
       - cloudflare-tunnel-id
       - pushover-api-key
       - pushover-recipient
+      - environment
+      - webhook-url
     environment:
       - AUTH_TOKEN=/run/secrets/swarmctl-auth-token
       - CLOUDFLARE_API_EMAIL=/run/secrets/cloudflare-email
@@ -23,6 +25,8 @@ services:
       - CLOUDFLARE_TUNNEL_ID=/run/secrets/cloudflare-tunnel-id
       - PUSHOVER_API_KEY=/run/secrets/pushover-api-key
       - PUSHOVER_RECIPIENT=/run/secrets/pushover-recipient
+      - ENVIROMENT=/run/secrets/environment
+      - WEBHOOK_URL=/run/secrets/webhook-url
     deploy:
       labels:
         - "cloudflared.tunnel.enabled=true"
@@ -74,4 +78,8 @@ secrets:
   pushover-api-key:
     external: true
   pushover-recipient:
+    external: true
+  environment:
+    external: true
+  webhook-url:
     external: true
