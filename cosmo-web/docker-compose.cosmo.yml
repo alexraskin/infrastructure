@@ -6,7 +6,7 @@ services:
       - proxy
     volumes:
       - type: bind
-        source: /mnt/cosmo-web
+        source: /mnt/cosmo-web/config.yaml
         target: /var/lib/config.yaml
     deploy:
       labels:
