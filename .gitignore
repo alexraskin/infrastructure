@@ -15,3 +15,7 @@ database/influx/influxdb/*
 minecraft/data/*
 minecraft/modpacks/*
 minecraft/data/*.env
+plex/subtrace-config/*
+minecraft/backups/minecraft-backup-*
+it-tools/config
+it-tools/ts

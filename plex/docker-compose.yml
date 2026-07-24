@@ -16,9 +16,9 @@ services:
         source: /mnt/media/Media
         target: /media
         read_only: true
-    restart: unless-stopped
+    restart: always
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      didar.enabled: "true"
   prom-plex-exporter:
     container_name: prom-plex-exporter
     image: ghcr.io/jsclayton/prometheus-plex-exporter
@@ -27,6 +27,21 @@ services:
     environment:
       PLEX_SERVER: ${PLEX_SERVER}
       PLEX_TOKEN: ${PLEX_TOKEN}
-    restart: unless-stopped
+    restart: always
     labels:
-      - com.centurylinklabs.watchtower.enable=true
+      didar.enabled: "true"
+  subtrace:
+    image: ghcr.io/alexraskin/subtrace:latest
+    container_name: subtrace
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Phoenix
+    volumes:
+      - ./subtrace-config:/config          # subtrace.toml + subtrace.db
+      - type: bind
+        source: /mnt/media/Media
+        target: /media                     # read-write: subtrace writes .srt sidecars
+    restart: always
+    labels:
+      didar.enabled: "true"
