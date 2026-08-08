@@ -30,15 +30,15 @@ spec:
           ports:
             - name: http
               containerPort: 8000
-          # TCP rather than HTTP: the app has no documented health endpoint.
-          # Swap for an httpGet once there is one.
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /ping
               port: http
             initialDelaySeconds: 3
             periodSeconds: 10
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /ping
               port: http
             initialDelaySeconds: 10
             periodSeconds: 20
@@ -52,5 +52,7 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
             capabilities:
               drop: ["ALL"]
