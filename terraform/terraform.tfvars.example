@@ -1,0 +1,23 @@
+pve_endpoint  = "https://proxmox:8006/"
+pve_api_token = "root@pam!terraform=0000000000000000000000000"
+pve_node      = "bunker"
+
+# Datastore with 'iso' content enabled — this is where the NixOS image lands.
+image_datastore = "local"
+
+# Datastore for VM disks + cloud-init drives.
+vm_datastore = "local-lvm"
+disk_format  = "raw"
+
+network_bridge = "vmbr0"
+# vlan_id      = 200
+
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+
+# The image goes through the PVE HTTP API, which is slow and unresumable over a
+# WAN link. Flip this off and use `mise run push-image` (rsync, resumable) instead.
+upload_image = true
+
+# Seconds allowed for that API upload. The 1800s provider default is not enough
+# for a multi-GB image on a slow link.
+image_upload_timeout = 7200

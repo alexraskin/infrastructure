@@ -1,0 +1,39 @@
+# What Flux reconciles on this cluster. flux bootstrap writes flux-system/ next
+# to this file; everything else the cluster runs is listed here.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cloudflared
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/cloudflared
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  wait: true
+  timeout: 3m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: alexraskin-com
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/alexraskin-com
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  # The site is only reachable through the tunnel, so there is no point bringing
+  # it up before cloudflared is healthy.
+  dependsOn:
+    - name: cloudflared
+  wait: true
+  timeout: 3m

@@ -1,0 +1,67 @@
+{
+  "cluster": {
+    "name": "k3s",
+    "domain": "lan",
+    "vip": "10.0.200.40",
+    "gateway": "10.0.200.1",
+    "prefix": 24,
+    "nameservers": [
+      "10.0.200.1",
+      "1.1.1.1"
+    ],
+    "bootstrap": "k3s-server-1",
+    "interface": "eth0",
+    "kube_vip_version": "v0.8.9",
+    "disk_device": "/dev/sda"
+  },
+  "nodes": {
+    "k3s-server-1": {
+      "role": "server",
+      "ip": "10.0.200.41",
+      "vmid": 141,
+      "cores": 2,
+      "memory": 4096,
+      "disk": 40
+    },
+    "k3s-server-2": {
+      "role": "server",
+      "ip": "10.0.200.42",
+      "vmid": 142,
+      "cores": 2,
+      "memory": 4096,
+      "disk": 40
+    },
+    "k3s-server-3": {
+      "role": "server",
+      "ip": "10.0.200.43",
+      "vmid": 143,
+      "cores": 2,
+      "memory": 4096,
+      "disk": 40
+    },
+    "k3s-agent-1": {
+      "role": "agent",
+      "ip": "10.0.200.51",
+      "vmid": 151,
+      "cores": 4,
+      "memory": 8192,
+      "disk": 80
+    },
+    "k3s-agent-2": {
+      "role": "agent",
+      "ip": "10.0.200.52",
+      "vmid": 152,
+      "cores": 4,
+      "memory": 8192,
+      "disk": 80
+    },
+    "k3s-agent-3": {
+      "role": "agent",
+      "ip": "10.0.200.53",
+      "vmid": 153,
+      "cores": 4,
+      "memory": 8192,
+      "disk": 80
+    }
+  }
+}

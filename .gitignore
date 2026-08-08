@@ -1,14 +1,27 @@
-tunnel.env
+# Proxmox API token lives here
 terraform.tfvars
-r2.backend.tfbackend
+*.tfstate
+*.tfstate.*
+crash.log
 .terraform*
-terraform/rein/docker/Caddyfile
-terraform/rein/docker/.env
-terraform/rein/docker/*.conf
-wireguard/config/*
+!.terraform.lock.hcl
+
+# k3s join token, age private key for SOPS
+secrets/
+age.key
+*.plain.yaml
+
+# cluster admin credentials
+kubeconfig
+
+# built images (GBs) and nix build symlinks
+build/
+result
+result-*
+*.qcow2
+*.img
+
+# leftovers from the old compose services still sitting on disk
 .env
-conf.env
-telegraf.conf
-token.txt
-dashboard.json
-database/influx/influxdb/*
+it-tools/
+plex/

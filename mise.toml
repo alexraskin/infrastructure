@@ -1,0 +1,223 @@
+[tools]
+terraform = "1.9"
+jq = "latest"
+kubectl = "latest"
+
+[env]
+TOKEN_FILE = "secrets/k3s-token"
+IMAGE_OUT = "build/nixos.qcow2"
+KUBECONFIG = "{{config_root}}/kubeconfig"
+NIX_SSHOPTS = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
+
+# ---------------------------------------------------------------- image ----
+
+[tasks.image]
+description = "Build the golden NixOS qcow2 (host nix, or the nixos/nix container)"
+shell = "bash -c"
+run = """
+set -euo pipefail
+mkdir -p "$(dirname "$IMAGE_OUT")"
+scripts/nix.sh '
+  set -eu
+  out=$(nix build ".#image" --no-link --print-out-paths)
+  # Compressed qcow2: roughly a third of the bytes to push to Proxmox, and
+  # qemu-img decompresses transparently when the disk is imported.
+  nix shell nixpkgs#qemu -c \
+    qemu-img convert -c -O qcow2 "$out"/*.qcow2 /tmp/nixos.qcow2 >&2
+  cat /tmp/nixos.qcow2
+  rm -f /tmp/nixos.qcow2
+' > "$IMAGE_OUT"
+ls -lh "$IMAGE_OUT"
+"""
+
+[tasks.preflight]
+description = "Check API token, privileges, node, datastores, VM IDs, IPs, SSH"
+run = "scripts/preflight.sh"
+
+[tasks."push-image"]
+description = "rsync the image straight to the PVE node, bypassing the HTTP API"
+shell = "bash -c"
+run = """
+set -euo pipefail
+tfvars=terraform/terraform.tfvars
+host=$(sed -n 's|^pve_endpoint *= *"https\\?://\\([^:/]*\\).*|\\1|p' "$tfvars")
+store=$(sed -n 's/^image_datastore *= *"\\([^"]*\\)".*/\\1/p' "$tfvars")
+store=${store:-local}
+user=$(sed -n 's/^pve_ssh_username *= *"\\([^"]*\\)".*/\\1/p' "$tfvars")
+user=${user:-root}
+dest="/var/lib/vz/template/iso/nixos-k3s-base.img"
+
+if [ -z "$host" ]; then
+  echo "could not read pve_endpoint from $tfvars" >&2
+  exit 1
+fi
+
+echo "==> $user@$host:$dest (datastore $store)"
+if command -v rsync >/dev/null 2>&1; then
+  # --partial so an interrupted 2GB transfer resumes instead of restarting
+  rsync --partial --progress --sparse "$IMAGE_OUT" "$user@$host:$dest"
+else
+  scp "$IMAGE_OUT" "$user@$host:$dest"
+fi
+
+echo
+echo "now run terraform with upload_image = false, e.g."
+echo "  echo 'upload_image = false' >> $tfvars"
+"""
+
+# ------------------------------------------------------------ terraform ----
+
+[tasks."tf:init"]
+description = "terraform init"
+dir = "terraform"
+run = "terraform init -upgrade"
+
+[tasks."tf:plan"]
+description = "terraform plan"
+dir = "terraform"
+depends = ["tf:init"]
+run = "terraform plan"
+
+[tasks."tf:apply"]
+description = "Create/update the six Proxmox VMs"
+dir = "terraform"
+depends = ["tf:init"]
+run = "terraform apply"
+
+[tasks."tf:destroy"]
+description = "Destroy the cluster VMs"
+dir = "terraform"
+run = "terraform destroy"
+
+# --------------------------------------------------------------- secret ----
+
+[tasks.token]
+description = "Generate the shared k3s join token (once, never commit it)"
+shell = "bash -c"
+run = """
+set -euo pipefail
+if [ -s "$TOKEN_FILE" ]; then
+  echo "$TOKEN_FILE already exists, leaving it alone"
+  exit 0
+fi
+mkdir -p "$(dirname "$TOKEN_FILE")"
+openssl rand -hex 32 > "$TOKEN_FILE"
+chmod 600 "$TOKEN_FILE"
+echo "wrote $TOKEN_FILE"
+"""
+
+[tasks."push-token"]
+description = "Copy the join token to every node before the first deploy"
+depends = ["token"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+for ip in $(jq -r '.nodes[].ip' hosts.json); do
+  echo "==> $ip"
+  scp $NIX_SSHOPTS "$TOKEN_FILE" "root@$ip:/var/lib/k3s-token"
+  ssh $NIX_SSHOPTS "root@$ip" 'chmod 600 /var/lib/k3s-token'
+done
+"""
+
+# --------------------------------------------------------------- deploy ----
+
+[tasks."deploy-node"]
+description = "Build+switch a single node: mise run deploy-node k3s-agent-2"
+run = "scripts/deploy-node.sh"
+
+[tasks.deploy]
+description = "Deploy the whole cluster in order: bootstrap server, servers, agents"
+depends = ["push-token"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+bootstrap=$(jq -r '.cluster.bootstrap' hosts.json)
+vip=$(jq -r '.cluster.vip' hosts.json)
+bip=$(jq -r --arg h "$bootstrap" '.nodes[$h].ip' hosts.json)
+
+# Bounded, so a component that never comes up fails the run instead of hanging
+# in an until-loop forever.
+wait_for() {
+  local what=$1 deadline=$(( SECONDS + $2 )); shift 2
+  echo "waiting for $what ..."
+  until "$@" >/dev/null 2>&1; do
+    if [ $SECONDS -ge $deadline ]; then
+      echo "timed out waiting for $what" >&2
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+scripts/deploy-node.sh "$bootstrap"
+
+wait_for "the API server on $bootstrap" 300 \
+  ssh $NIX_SSHOPTS "root@$bip" 'k3s kubectl get --raw /readyz'
+
+for host in $(jq -r --arg b "$bootstrap" '.nodes | to_entries[] | select(.value.role=="server" and .key != $b) | .key' hosts.json); do
+  scripts/deploy-node.sh "$host"
+done
+
+wait_for "the kube-vip VIP $vip" 300 ping -c1 -W1 "$vip"
+
+for host in $(jq -r '.nodes | to_entries[] | select(.value.role=="agent") | .key' hosts.json); do
+  scripts/deploy-node.sh "$host"
+done
+"""
+
+[tasks.reset]
+description = "DESTRUCTIVE: stop k3s everywhere and wipe cluster state (etcd, certs, workloads)"
+shell = "bash -c"
+run = """
+set -euo pipefail
+echo "This erases all k3s state on every node: etcd, certificates, workloads."
+read -r -p "type the cluster name to confirm: " answer
+[ "$answer" = "$(jq -r '.cluster.name' hosts.json)" ] || { echo "aborted"; exit 1; }
+
+for ip in $(jq -r '.nodes[].ip' hosts.json); do
+  echo "==> $ip"
+  ssh $NIX_SSHOPTS "root@$ip" '
+    systemctl stop k3s k3s-agent 2>/dev/null || true
+    rm -rf /var/lib/rancher/k3s /etc/rancher/k3s /var/lib/kubelet
+  ' || true
+done
+echo "state wiped — run 'mise run deploy' to rebuild the cluster"
+"""
+
+# ----------------------------------------------------------------- kube ----
+
+[tasks.kubeconfig]
+description = "Fetch kubeconfig from the bootstrap server, pointed at the VIP"
+shell = "bash -c"
+run = """
+set -euo pipefail
+bootstrap=$(jq -r '.cluster.bootstrap' hosts.json)
+bip=$(jq -r --arg h "$bootstrap" '.nodes[$h].ip' hosts.json)
+vip=$(jq -r '.cluster.vip' hosts.json)
+ssh $NIX_SSHOPTS "root@$bip" 'cat /etc/rancher/k3s/k3s.yaml' \
+  | sed "s#https://127.0.0.1:6443#https://$vip:6443#" > kubeconfig
+chmod 600 kubeconfig
+echo "wrote kubeconfig (KUBECONFIG is already set by mise in this dir)"
+"""
+
+[tasks.status]
+description = "Show nodes and control-plane pods"
+shell = "bash -c"
+run = """
+kubectl get nodes -o wide
+echo
+kubectl -n kube-system get pods
+"""
+
+# ------------------------------------------------------------- one-shot ----
+
+[tasks.bootstrap]
+description = "Full path: image -> VMs -> config -> kubeconfig"
+shell = "bash -c"
+run = """
+mise run image
+mise run tf:apply
+mise run deploy
+mise run kubeconfig
+mise run status
+"""

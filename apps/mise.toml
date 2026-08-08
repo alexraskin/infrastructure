@@ -1,0 +1,105 @@
+[tools]
+flux2 = "latest"
+sops = "latest"
+age = "latest"
+kubectl = "latest"
+kustomize = "latest"
+
+[env]
+KUBECONFIG = "{{config_root}}/../kubeconfig"
+AGE_KEY_FILE = "{{config_root}}/../secrets/age.key"
+SOPS_AGE_KEY_FILE = "{{config_root}}/../secrets/age.key"
+GITHUB_REPO = "alexraskin/infrastructure"
+
+# ---------------------------------------------------------------- secrets ----
+
+[tasks.age-key]
+description = "Generate the age key Flux decrypts with (once — back this up)"
+shell = "bash -c"
+run = """
+set -euo pipefail
+if [ -s "$AGE_KEY_FILE" ]; then
+  echo "$AGE_KEY_FILE already exists, leaving it alone"
+else
+  mkdir -p "$(dirname "$AGE_KEY_FILE")"
+  age-keygen -o "$AGE_KEY_FILE" 2>/dev/null
+  chmod 600 "$AGE_KEY_FILE"
+  echo "wrote $AGE_KEY_FILE — back it up, it is the only way to read the secrets"
+fi
+pub=$(age-keygen -y "$AGE_KEY_FILE")
+echo "public key: $pub"
+echo "putting it in .sops.yaml"
+sed -i "s|age: .*|age: $pub|" .sops.yaml
+"""
+
+[tasks."age-key-to-cluster"]
+description = "Load the age private key into the cluster so Flux can decrypt"
+depends = ["age-key"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+kubectl create namespace flux-system --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n flux-system create secret generic sops-age \
+  --from-file=age.agekey="$AGE_KEY_FILE" \
+  --dry-run=client -o yaml | kubectl apply -f -
+echo "secret/sops-age is in place"
+"""
+
+[tasks.sops-encrypt]
+description = "Encrypt a secret file in place: mise run sops-encrypt base/cloudflared/token.sops.yaml"
+shell = "bash -c"
+run = """
+set -euo pipefail
+f=${1:?usage: mise run sops-encrypt <file>}
+grep -q '^sops:' "$f" && { echo "$f is already encrypted"; exit 0; }
+sops --encrypt --in-place "$f"
+echo "encrypted $f — safe to commit"
+"""
+
+[tasks.sops-edit]
+description = "Edit an encrypted secret: mise run sops-edit base/cloudflared/token.sops.yaml"
+shell = "bash -c"
+run = """
+set -euo pipefail
+sops "${1:?usage: mise run sops-edit <file>}"
+"""
+
+# --------------------------------------------------------------- bootstrap ----
+
+[tasks.bootstrap]
+description = "Install Flux on the cluster and point it at this repo"
+shell = "bash -c"
+run = """
+set -euo pipefail
+: "${GITHUB_TOKEN:?export GITHUB_TOKEN with a PAT that has repo scope}"
+
+flux bootstrap github \
+  --owner="${GITHUB_REPO%%/*}" \
+  --repository="${GITHUB_REPO##*/}" \
+  --branch="$(git rev-parse --abbrev-ref HEAD)" \
+  --path=apps/clusters/k3s \
+  --personal \
+  --components-extra=image-reflector-controller,image-automation-controller
+
+echo
+echo "Flux is installed. It now reconciles apps/clusters/k3s from git."
+"""
+
+[tasks.status]
+description = "Show what Flux thinks the cluster should look like, and whether it agrees"
+shell = "bash -c"
+run = """
+flux get all -A
+echo
+kubectl get pods -A -o wide | grep -vE 'kube-system|Completed' || true
+"""
+
+[tasks.sync]
+description = "Stop waiting for the interval — reconcile from git right now"
+shell = "bash -c"
+run = """
+set -euo pipefail
+flux reconcile source git flux-system
+flux reconcile kustomization cloudflared --with-source || true
+flux reconcile kustomization alexraskin-com --with-source || true
+"""
