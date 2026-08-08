@@ -1,0 +1,4 @@
+# Plaintext secrets: only the *.sops.yaml (encrypted) form belongs in git.
+token.plain.yaml
+*.plain.yaml
+age.key

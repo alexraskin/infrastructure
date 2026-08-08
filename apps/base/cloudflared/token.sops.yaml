@@ -1,0 +1,33 @@
+# Template only. Fill in the tunnel token from the Cloudflare dashboard
+# (Zero Trust -> Networks -> Tunnels -> your tunnel -> Install connector),
+# then encrypt it in place:
+#
+#   cp token.example.yaml token.sops.yaml
+#   $EDITOR token.sops.yaml
+#   mise run sops-encrypt apps/base/cloudflared/token.sops.yaml
+#
+# token.sops.yaml is safe to commit *after* encryption. The plaintext form is
+# gitignored so an unencrypted one cannot be committed by accident.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: cloudflared-token
+    namespace: cloudflared
+type: Opaque
+stringData:
+    token: ENC[AES256_GCM,data:TV20HEct0l2VuUuvHON7AoPICi/NSSM1isDw1SaCziS0yXgPMRHeZwn/oaUHgm4eF9IX1be019I8qC8+wpgnbxUdNK+u1sMPwiQDS3TZ2p4Aq0ehQaum8jHfZc0/LS/9bP7lscLNAzbq3xa3PE8Zk6Mk+3+1an8Pl/8J2eSmDIobClcKu04qMQcwa6uQh3fC4ndNwMnXFOSoIej9KGXfMEPxen8E8b9KB+vQE7tJ52vYOH/5b4NDuw==,iv:AjxOL6HbuBW0aA2PNPHRTdRKsmElXe4S/3P1FrBgLu0=,tag:ww51hit1JEbYzJ1wo+DurA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBlMjFVelVIWHpZeWpVSDMy
+            blY4QTNCdXRlT2JUOEI2QjF2d1RQTjhDU3dvCkx2NVV2Zjg3c21ydDVUOE4zSkph
+            SGVnMURpdGt5VGpUQzlkSjFiMlZrRmMKLS0tIFVJTVlYSFFLNEhWWXQxN1lSd3RK
+            bWo2VW5EcEVXUDFMc2l3Q1prY2xTT0EKt32c7uNLXhJZokL7ztUN7JyPDHmisKgh
+            TIu/yPRZX1KFjhspSla/yKJ/T+GckiAcdudXnQIrt6yc9d1jW2n2Bw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-08T22:28:39Z"
+    mac: ENC[AES256_GCM,data:9d7x9SRXn1tH1C0lnhq2ee9bFLuNO7LEgBa0KTmJP6C53EpeSJ63/k6M2tobrj79svpfkTmNHlGsqKWd1aeeQrAjV/WEECivXFvSjfzNThV3TuPx3PcgllqiS2743Ty33jb8L9lehBNuopMswgpm4ONMLxyaEMv00gS1A53Atkg=,iv:qF7bwWJMA8RU+h1Sl6bzBEbLhx0a+wXe27I0mqi6J2c=,tag:hn3zYw2R+YprS9C6LTOdIQ==,type:str]
+    version: 3.13.3

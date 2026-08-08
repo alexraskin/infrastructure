@@ -1,0 +1,7 @@
+# Every *.sops.yaml under apps/ is encrypted to this age key. Only the data and
+# stringData values are encrypted — kind, metadata and namespace stay readable so
+# Flux and kubectl can still tell what the file is.
+creation_rules:
+  - path_regex: .*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw

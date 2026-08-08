@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alexraskin-com
+  namespace: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: alexraskin-com
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: alexraskin-com
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: alexraskin-com
+      containers:
+        - name: web
+          image: ghcr.io/alexraskin/alexraskin.com:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          # TCP rather than HTTP: the app has no documented health endpoint.
+          # Swap for an httpGet once there is one.
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]

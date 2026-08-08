@@ -1,0 +1,18 @@
+# Template only. Fill in the tunnel token from the Cloudflare dashboard
+# (Zero Trust -> Networks -> Tunnels -> your tunnel -> Install connector),
+# then encrypt it in place:
+#
+#   cp token.example.yaml token.sops.yaml
+#   $EDITOR token.sops.yaml
+#   mise run sops-encrypt apps/base/cloudflared/token.sops.yaml
+#
+# token.sops.yaml is safe to commit *after* encryption. The plaintext form is
+# gitignored so an unencrypted one cannot be committed by accident.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflared-token
+  namespace: cloudflared
+type: Opaque
+stringData:
+  token: PASTE_TUNNEL_TOKEN_HERE
