@@ -9,7 +9,6 @@ kustomize = "latest"
 KUBECONFIG = "{{config_root}}/../kubeconfig"
 AGE_KEY_FILE = "{{config_root}}/../secrets/age.key"
 SOPS_AGE_KEY_FILE = "{{config_root}}/../secrets/age.key"
-GITHUB_REPO = "alexraskin/infrastructure"
 
 # ---------------------------------------------------------------- secrets ----
 
@@ -66,23 +65,23 @@ sops "${1:?usage: mise run sops-edit <file>}"
 
 # --------------------------------------------------------------- bootstrap ----
 
-[tasks.bootstrap]
-description = "Install Flux on the cluster and point it at this repo"
+[tasks.install]
+description = "Install Flux and point it at this repo (no GitHub token needed)"
 shell = "bash -c"
 run = """
 set -euo pipefail
-: "${GITHUB_TOKEN:?export GITHUB_TOKEN with a PAT that has repo scope}"
 
-flux bootstrap github \
-  --owner="${GITHUB_REPO%%/*}" \
-  --repository="${GITHUB_REPO##*/}" \
-  --branch="$(git rev-parse --abbrev-ref HEAD)" \
-  --path=apps/clusters/k3s \
-  --personal \
-  --components-extra=image-reflector-controller,image-automation-controller
+# Controllers only. `flux bootstrap` would commit these manifests to the repo and
+# create a deploy key, which needs a GitHub PAT with write access — unnecessary
+# here because clusters/k3s/flux-system.yaml is committed by hand and the repo is
+# public, so Flux reads it anonymously.
+flux install
+
+kubectl apply -f clusters/k3s/flux-system.yaml
+flux reconcile source git flux-system
 
 echo
-echo "Flux is installed. It now reconciles apps/clusters/k3s from git."
+echo "Flux is installed and syncing apps/clusters/k3s from main."
 """
 
 [tasks.status]
