@@ -4,7 +4,7 @@ metadata:
   name: lastfm-now-playing
   namespace: lastfm
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: lastfm-now-playing
@@ -29,9 +29,6 @@ spec:
           imagePullPolicy: Always
           args: ["-port", "3000"]
           env:
-            # The app reads LASTFM_API_KEY as a path when it starts with "/"
-            # (that is what the compose file did with a docker secret) and as
-            # the key itself otherwise. Here it is the key itself.
             - name: LASTFM_API_KEY
               valueFrom:
                 secretKeyRef:
