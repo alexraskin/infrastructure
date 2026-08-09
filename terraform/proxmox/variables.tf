@@ -47,7 +47,7 @@ variable "vm_datastore" {
 variable "nixos_image_path" {
   description = "Path to the qcow2 built by `mise run image`"
   type        = string
-  default     = "../build/nixos.qcow2"
+  default     = "../../build/nixos.qcow2"
 }
 
 variable "upload_image" {

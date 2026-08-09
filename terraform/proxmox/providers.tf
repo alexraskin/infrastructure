@@ -1,0 +1,41 @@
+terraform {
+  required_version = ">= 1.6"
+
+  # Partial config: bucket and key are not secret, credentials and the endpoint
+  # are. The rest comes from secrets/r2.tfbackend via -backend-config, which the
+  # mise init tasks pass. R2 speaks S3, but is not AWS — hence the skips.
+  backend "s3" {
+    bucket                      = "terraform"
+    key                         = "promox-k3-nix/terraform.tfstate"
+    region                      = "auto"
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    skip_s3_checksum            = true
+    use_path_style              = true
+  }
+
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "~> 0.111"
+    }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5"
+    }
+  }
+}
+
+provider "proxmox" {
+  endpoint  = var.pve_endpoint
+  api_token = var.pve_api_token
+  insecure  = var.pve_insecure
+
+  ssh {
+    username    = var.pve_ssh_username
+    agent       = var.pve_ssh_private_key_path == ""
+    private_key = var.pve_ssh_private_key_path == "" ? null : file(pathexpand(var.pve_ssh_private_key_path))
+  }
+}
