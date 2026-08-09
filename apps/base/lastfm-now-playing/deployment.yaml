@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lastfm-now-playing
+  namespace: lastfm
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lastfm-now-playing
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: lastfm-now-playing
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: lastfm-now-playing
+      containers:
+        - name: api
+          image: ghcr.io/alexraskin/lastfm-now-playing:latest
+          imagePullPolicy: Always
+          args: ["-port", "3000"]
+          env:
+            # The app reads LASTFM_API_KEY as a path when it starts with "/"
+            # (that is what the compose file did with a docker secret) and as
+            # the key itself otherwise. Here it is the key itself.
+            - name: LASTFM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lastfm-api-key
+                  key: api-key
+          ports:
+            - name: http
+              containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop: ["ALL"]

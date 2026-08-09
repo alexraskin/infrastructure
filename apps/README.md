@@ -7,6 +7,7 @@ repo and reconciles it; nothing is deployed by hand.
 clusters/k3s/         what Flux reconciles: the sync config plus the app Kustomizations
 base/cloudflared/     the tunnel — the only way traffic enters the cluster
 base/alexraskin-com/  the website
+base/lastfm-now-playing/  the Last.fm now-playing API
 .sops.yaml            age recipient; encrypts data/stringData in *.sops.yaml
 ```
 
@@ -19,7 +20,8 @@ port. Routing lives in the Cloudflare dashboard (Zero Trust → Networks →
 Tunnels); point the hostname at:
 
 ```
-http://alexraskin-com.web.svc.cluster.local:80
+alexraskin.com                             -> http://alexraskin-com.web.svc.cluster.local:80
+lastfm.alexraskin.com, lastfm.twizy.sh     -> http://lastfm-now-playing.lastfm.svc.cluster.local:80
 ```
 
 ## Secrets
@@ -32,6 +34,7 @@ and is the only way to read any of it — **back it up**.
 mise run age-key             # generate once, fills the recipient into .sops.yaml
 mise run age-key-to-cluster  # hand the private key to Flux
 mise run sops-edit base/cloudflared/token.sops.yaml
+mise run sops-edit base/lastfm-now-playing/api-key.sops.yaml
 ```
 
 ## Bootstrap
@@ -59,7 +62,11 @@ immediately instead of waiting for the 10m interval.
 
 ## Notes
 
-- `ghcr.io/alexraskin/alexraskin.com` is public, so no imagePullSecret.
+- `ghcr.io/alexraskin/alexraskin.com` and `ghcr.io/alexraskin/lastfm-now-playing`
+  are public, so no imagePullSecret.
+- lastfm-now-playing takes its key from the `lastfm-api-key` secret as a plain
+  env var. The app also accepts a *path* in `LASTFM_API_KEY` (that is how it read
+  a docker swarm secret); the k8s form passes the key itself.
 - The image tag is `latest` with `imagePullPolicy: Always`, so a new push is only
   picked up on pod restart — `kubectl -n web rollout restart deploy/alexraskin-com`.
   Automating that means Flux writing back to git, which *does* need a token; having

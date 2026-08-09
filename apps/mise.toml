@@ -101,4 +101,5 @@ set -euo pipefail
 flux reconcile source git flux-system
 flux reconcile kustomization cloudflared --with-source || true
 flux reconcile kustomization alexraskin-com --with-source || true
+flux reconcile kustomization lastfm-now-playing --with-source || true
 """
