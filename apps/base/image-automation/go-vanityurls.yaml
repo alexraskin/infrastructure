@@ -1,0 +1,23 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: go-vanityurls
+  namespace: flux-system
+spec:
+  image: ghcr.io/alexraskin/go-vanityurls
+  interval: 72h
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: go-vanityurls
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: go-vanityurls
+  filterTags:
+    pattern: '^v?(?P<version>\d+\.\d+\.\d+)$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>=0.1.0'
