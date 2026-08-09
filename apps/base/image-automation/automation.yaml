@@ -11,7 +11,7 @@ metadata:
   name: apps
   namespace: flux-system
 spec:
-  interval: 5m
+  interval: 72h
   sourceRef:
     kind: GitRepository
     name: flux-system
