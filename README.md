@@ -23,6 +23,103 @@ that generic system with the real per-node config, in order: bootstrap server �
 remaining servers → agents. Agents join the VIP, so any one control-plane node
 can die.
 
+### Build and deploy
+
+Everything below reads `hosts.json`. Terraform makes the VMs exist; NixOS makes
+them into cluster nodes; Flux fills the cluster with workloads.
+
+```mermaid
+flowchart LR
+    HJ["hosts.json<br/>IPs, VM IDs, sizes, VIP"]
+
+    subgraph build["mise run image"]
+        FLAKE["flake.nix + nix/modules<br/>base + image"]
+        QCOW["build/nixos.qcow2<br/>golden image, no identity"]
+    end
+
+    subgraph tf["mise run tf:apply"]
+        TFP["terraform/proxmox"]
+        VMS["6 Proxmox VMs<br/>+ cloud-init drive<br/>hostname, IP, SSH key"]
+    end
+
+    subgraph dep["mise run deploy"]
+        SEC["push-token<br/>push-tailscale-key"]
+        DN["scripts/deploy-node.sh<br/>nix copy + switch-to-configuration"]
+        ORDER["bootstrap server -> /readyz<br/>-> servers 2,3 -> VIP<br/>-> agents"]
+    end
+
+    subgraph gitops["Flux"]
+        REPO["GitHub repo (SSH deploy key)"]
+        KS["apps/clusters/k3s/apps.yaml<br/>Kustomizations"]
+        IAC["image-automation<br/>scans GHCR, commits new tags"]
+    end
+
+    R2S[("R2 bucket<br/>terraform state")]
+
+    HJ --> FLAKE
+    HJ --> TFP
+    FLAKE --> QCOW --> TFP --> VMS
+    TFP <-.-> R2S
+    VMS --> SEC --> DN --> ORDER
+    HJ --> DN
+    ORDER --> REPO
+    REPO --> KS
+    IAC --> REPO
+```
+
+### Runtime
+
+Two independent tailscale mechanisms: the nodes are a **subnet router** for
+`10.0.200.0/24`; the operator gives individual Services their **own** tailnet
+device. Public traffic never touches either — it arrives through an outbound
+cloudflared tunnel, so no port is open to the internet.
+
+```mermaid
+flowchart TB
+    USER["Public visitor"]
+    ADMIN["You, off-LAN"]
+
+    subgraph cf["Cloudflare"]
+        DNS["CNAMEs -> tunnel<br/>terraform/cloudflare"]
+        TUN["Tunnel ingress rules<br/>hostname -> Service DNS"]
+    end
+
+    subgraph ts["Tailnet"]
+        SR["subnet router<br/>10.0.200.0/24"]
+        TSD["grafana.tailnet.ts.net<br/>operator-managed device"]
+    end
+
+    subgraph pve["Proxmox host"]
+        subgraph cp["control plane - 3 NixOS VMs, .41-.43"]
+            VIP["kube-vip VIP 10.0.200.40:6443"]
+            ETCD["k3s server + embedded etcd"]
+        end
+        subgraph ag["workloads - 3 NixOS VMs, .51-.53"]
+            CFD["cloudflared<br/>dials out"]
+            APPS["alexraskin-com, go-vanityurls,<br/>lastfm-now-playing, lhbotgo"]
+            MON["kube-prometheus-stack<br/>Prometheus + Grafana"]
+            LOG["Loki (SingleBinary) + Alloy DaemonSet"]
+            TSO["tailscale-operator<br/>IngressClass tailscale"]
+        end
+    end
+
+    R2L[("R2 bucket<br/>loki chunks")]
+    PLEX["10.0.200.87:9001<br/>plex-exporter"]
+
+    USER --> DNS --> TUN
+    TUN -. "outbound tunnel" .- CFD
+    CFD --> APPS
+
+    ADMIN -- kubectl --> SR --> VIP --> ETCD
+    ADMIN -- https --> TSD --> MON
+    TSO --> TSD
+
+    APPS -.-> LOG
+    LOG --> R2L
+    MON --> PLEX
+    MON -. "node-exporter :9100" .-> cp
+```
+
 ## Setup
 
 Needs Nix **or** Docker (`scripts/nix.sh` falls back to the `nixos/nix`
