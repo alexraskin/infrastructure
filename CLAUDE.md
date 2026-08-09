@@ -424,6 +424,15 @@ The Grafana datasource is a ConfigMap in `logging` labelled
   quietly ran 1.82.5 until the admin console flagged them. Docs describing a fix
   are not the fix. The check is an eval, not a grep:
   `./scripts/nix.sh 'nix eval --raw ".#nixosConfigurations.k3s-server-1.config.services.tailscale.package.version"'`
+- **Renaming the Grafana admin in the UI silently breaks provisioning reloads.**
+  The sidecars write dashboards and datasources into an emptyDir and then POST
+  `/api/admin/provisioning/*/reload`, authenticating as `admin-user` from
+  `grafana-admin.sops.yaml`. Grafana reads `GF_SECURITY_ADMIN_USER` only when it
+  first creates its DB, so a rename in the UI leaves the Secret stale and every
+  reload 401s with `no user found: user not found` — visible only in the Grafana
+  container log, never in Flux, and the symptom is "my new datasource never
+  shows up" until something restarts the pod. Fix by changing `admin-user` in
+  the secret, not by renaming the user back.
 - **Loki's `retention_period` does nothing without `compactor.retention_enabled`.**
   Set one without the other and chunks are never deleted: logs look like they are
   being aged out because queries stop returning them, while the R2 bucket grows
