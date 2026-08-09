@@ -140,9 +140,8 @@ shell = "bash -c"
 run = """
 set -euo pipefail
 flux reconcile source git flux-system
-flux reconcile kustomization image-automation --with-source || true
-flux reconcile kustomization cloudflared --with-source || true
-flux reconcile kustomization alexraskin-com --with-source || true
-flux reconcile kustomization lastfm-now-playing --with-source || true
-flux reconcile kustomization lhbotgo --with-source || true
+# Whatever is in the cluster, so adding an app here is not a second edit.
+for k in $(flux get kustomizations -n flux-system --no-header | awk '{print $1}'); do
+  flux reconcile kustomization "$k" || true
+done
 """

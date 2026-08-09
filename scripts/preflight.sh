@@ -2,12 +2,12 @@
 # Check everything Terraform is about to depend on: API token, permissions,
 # node, datastores, free VM IDs, free IPs, SSH to the node, local image.
 #
-# Reads terraform/terraform.tfvars. Never prints the token.
+# Reads terraform/proxmox/terraform.tfvars. Never prints the token.
 set -uo pipefail
 
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo"
-tfvars=terraform/terraform.tfvars
+tfvars=terraform/proxmox/terraform.tfvars
 
 fail=0
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$*"; }

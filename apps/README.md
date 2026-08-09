@@ -22,9 +22,7 @@ and is the only way to read any of it — **back it up**.
 ```bash
 mise run age-key             # generate once, fills the recipient into .sops.yaml
 mise run age-key-to-cluster  # hand the private key to Flux
-mise run sops-edit base/cloudflared/token.sops.yaml
-mise run sops-edit base/lastfm-now-playing/api-key.sops.yaml
-mise run sops-edit base/lhbotgo/config.sops.yaml
+mise run sops-edit base/<app>/<file>.sops.yaml
 ```
 
 ## Bootstrap
@@ -85,12 +83,10 @@ Two consequences worth knowing:
 - lastfm-now-playing takes its key from the `lastfm-api-key` secret as a plain
   env var. The app also accepts a *path* in `LASTFM_API_KEY` (that is how it read
   a docker swarm secret); the k8s form passes the key itself.
-- lhbotgo has no Service and no ingress — it is a Discord gateway client that
-  dials out. It also has no config file: the `config.toml` the docker deploy
-  bind-mounted is replaced by env overrides from the `lhbotgo-config` secret,
-  which the binary applies on top of (an absent) `/var/lib/config.toml`. Its
-  Deployment is `Recreate`, because two pods means two gateway sessions and
-  every command handled twice.
+- lhbotgo has no Service and no ingress — it dials Discord out. Its config comes
+  from env vars in the `lhbotgo-config` secret, not a file, and it deploys with
+  `Recreate`: two pods would mean two gateway sessions handling every command
+  twice.
 - Third-party images (`cloudflared`) are still pinned by hand — image automation
   covers our own images only.
 - **Flux syncs from the remote.** Uncommitted or unpushed changes do nothing.

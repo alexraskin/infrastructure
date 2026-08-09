@@ -36,59 +36,87 @@ description = "Check API token, privileges, node, datastores, VM IDs, IPs, SSH"
 run = "scripts/preflight.sh"
 
 [tasks."push-image"]
-description = "rsync the image straight to the PVE node, bypassing the HTTP API"
+description = "rsync the image to the PVE node, bypassing the HTTP API: mise run push-image root@pve"
 shell = "bash -c"
 run = """
 set -euo pipefail
-tfvars=terraform/terraform.tfvars
-host=$(sed -n 's|^pve_endpoint *= *"https\\?://\\([^:/]*\\).*|\\1|p' "$tfvars")
-store=$(sed -n 's/^image_datastore *= *"\\([^"]*\\)".*/\\1/p' "$tfvars")
-store=${store:-local}
-user=$(sed -n 's/^pve_ssh_username *= *"\\([^"]*\\)".*/\\1/p' "$tfvars")
-user=${user:-root}
-dest="/var/lib/vz/template/iso/nixos-k3s-base.img"
-
-if [ -z "$host" ]; then
-  echo "could not read pve_endpoint from $tfvars" >&2
-  exit 1
-fi
-
-echo "==> $user@$host:$dest (datastore $store)"
-if command -v rsync >/dev/null 2>&1; then
-  # --partial so an interrupted 2GB transfer resumes instead of restarting
-  rsync --partial --progress --sparse "$IMAGE_OUT" "$user@$host:$dest"
-else
-  scp "$IMAGE_OUT" "$user@$host:$dest"
-fi
-
-echo
-echo "now run terraform with upload_image = false, e.g."
-echo "  echo 'upload_image = false' >> $tfvars"
+target=${1:?usage: mise run push-image root@pve-host}
+# --partial so an interrupted multi-GB transfer resumes instead of restarting
+rsync --partial --progress --sparse "$IMAGE_OUT" "$target:/var/lib/vz/template/iso/nixos-k3s-base.img"
+echo "now set upload_image = false in terraform/proxmox/terraform.tfvars"
 """
 
 # ------------------------------------------------------------ terraform ----
 
 [tasks."tf:init"]
-description = "terraform init"
-dir = "terraform"
-run = "terraform init -upgrade"
+description = "terraform init (state lives in R2)"
+dir = "terraform/proxmox"
+shell = "bash -c"
+run = """
+set -euo pipefail
+[ -s ../../secrets/r2.tfbackend ] || {
+  echo "missing secrets/r2.tfbackend — copy terraform/r2.tfbackend.example" >&2
+  exit 1
+}
+terraform init -upgrade -backend-config=../../secrets/r2.tfbackend
+"""
 
 [tasks."tf:plan"]
 description = "terraform plan"
-dir = "terraform"
+dir = "terraform/proxmox"
 depends = ["tf:init"]
 run = "terraform plan"
 
 [tasks."tf:apply"]
 description = "Create/update the six Proxmox VMs"
-dir = "terraform"
+dir = "terraform/proxmox"
 depends = ["tf:init"]
 run = "terraform apply"
 
 [tasks."tf:destroy"]
 description = "Destroy the cluster VMs"
-dir = "terraform"
+dir = "terraform/proxmox"
 run = "terraform destroy"
+
+# ------------------------------------------------------------ cloudflare ----
+#
+# terraform/cloudflare/ — the tunnel, its ingress rules and the DNS records.
+# Token in secrets/cloudflare-api-token: a custom token with
+# Account/Cloudflare Tunnel/Edit, Zone/DNS/Edit, Zone/Zone/Read.
+
+[tasks."cf:init"]
+description = "terraform init for the Cloudflare root"
+dir = "terraform/cloudflare"
+shell = "bash -c"
+run = """
+set -euo pipefail
+for f in cloudflare-api-token r2.tfbackend; do
+  [ -s "../../secrets/$f" ] || { echo "missing secrets/$f — see README" >&2; exit 1; }
+done
+terraform init -upgrade -backend-config=../../secrets/r2.tfbackend
+"""
+
+[tasks."cf:plan"]
+description = "Plan the tunnel, ingress rules and DNS records"
+dir = "terraform/cloudflare"
+depends = ["cf:init"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
+terraform plan
+"""
+
+[tasks."cf:apply"]
+description = "Apply the tunnel, ingress rules and DNS records"
+dir = "terraform/cloudflare"
+depends = ["cf:init"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
+terraform apply
+"""
 
 # --------------------------------------------------------------- secret ----
 

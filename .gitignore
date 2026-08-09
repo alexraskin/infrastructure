@@ -21,7 +21,10 @@ result-*
 *.qcow2
 *.img
 
-# leftovers from the old compose services still sitting on disk
+# terraform state backend credentials
+*.tfbackend
+!*.tfbackend.example
+
+imports.tf
+
 .env
-it-tools/
-plex/
