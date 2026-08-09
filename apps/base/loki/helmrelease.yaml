@@ -68,9 +68,12 @@ spec:
 
       schemaConfig:
         configs:
-          # `from` must not be in the future when Loki starts, or it ignores the
-          # period and refuses to index. tsdb/v13 is the current schema.
-          - from: "2026-08-10"
+          # `from` is a UTC day boundary and must already have passed when Loki
+          # starts, or it exits with "no schema config found for time <epoch>"
+          # and CrashLoops — a date one day ahead is enough to do it. Backdated
+          # deliberately; the bucket is empty, so there is nothing before this
+          # for the period to mis-describe.
+          - from: "2026-08-01"
             store: tsdb
             object_store: s3
             schema: v13
