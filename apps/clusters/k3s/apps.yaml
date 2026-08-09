@@ -113,6 +113,27 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: tailscale-operator
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/tailscale-operator
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  # Owns the `tailscale` IngressClass and the proxies that back it. monitoring
+  # depends on this; nothing here depends on cloudflared.
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: monitoring
   namespace: flux-system
 spec:
@@ -126,8 +147,11 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
-  # No dependsOn cloudflared: Grafana is reached over the tailnet on a NodePort,
-  # nothing enters through the tunnel.
+  # No dependsOn cloudflared: Grafana is reached over the tailnet, nothing
+  # enters through the tunnel. It does need the operator, which owns the
+  # `tailscale` IngressClass its Ingress names.
+  dependsOn:
+    - name: tailscale-operator
   wait: true
   # The chart installs CRDs and five workloads on first run, and Prometheus
   # waits on a local-path PVC — 3m is not enough here.

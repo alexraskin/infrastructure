@@ -12,7 +12,7 @@
     9100
   ];
 
-  # Grafana's NodePort (30300) is deliberately *not* opened. Access is over the
-  # tailnet, where traffic arrives on tailscale0 — a trusted interface, see
-  # tailscale.nix. Add 30300 here only to also reach it from the LAN.
+  # Nothing else is needed for Grafana: it is a ClusterIP behind a tailscale
+  # operator Ingress, so the proxy pod dials out to the tailnet from inside the
+  # cluster and no node port is involved at all.
 }

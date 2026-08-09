@@ -37,6 +37,8 @@ terraform -chdir=terraform/proxmox validate && terraform fmt -recursive terrafor
 terraform -chdir=terraform/cloudflare validate
 ./scripts/nix.sh 'nix eval ".#nixosConfigurations.k3s-server-1.config.networking.hostName"'
 cd apps && mise exec -- kustomize build base/alexraskin-com
+cd apps && mise exec -- kustomize build base/monitoring
+cd apps && mise exec -- kustomize build base/tailscale-operator
 ```
 
 There is no test suite. "Does it work" means `mise run preflight`, a `terraform
@@ -222,6 +224,96 @@ git-deploy-key`, needs write access on GitHub) rather than anonymous HTTPS, and
 why `install` passes `--components-extra=image-reflector-controller,image-automation-controller`.
 Only our own images are automated; `cloudflared` is still pinned by hand.
 
+### apps/base/monitoring/ — Prometheus + Grafana
+
+The only Helm in the repo: a `HelmRepository` plus a `HelmRelease` for
+`kube-prometheus-stack`, pinned by hand (image automation only tracks our own
+GHCR images). helm-controller is already there — it is a default component of
+`flux install`, so nothing extra had to be added to `--components-extra`.
+
+Every setting lives in `spec.values` in `helmrelease.yaml`, and four of them are
+load-bearing:
+
+- **The k3s control-plane scrapes are off.** `kubeControllerManager`,
+  `kubeScheduler`, `kubeProxy` and `kubeEtcd` are `enabled: false`, because k3s
+  runs all of them inside one process bound to `127.0.0.1`; the chart's
+  ServiceMonitors for them would sit permanently DOWN. Turning them on is a
+  `k3s-server.nix` change (`--kube-controller-manager-arg=bind-address=0.0.0.0`
+  and friends, `--etcd-expose-metrics=true`) plus firewall ports, not a values
+  edit.
+- **`*SelectorNilUsesHelmValues: false`** on all four selectors. Left at the
+  default, Prometheus only picks up ServiceMonitors labelled with this release's
+  name, and a monitor written anywhere else in the repo is ignored *silently* —
+  no error, the target simply never appears.
+- **Alertmanager is disabled.** Nothing routes alerts yet; the rules still
+  evaluate and fire in the Prometheus and Grafana UIs.
+- **Storage is `local-path`**, the k3s default StorageClass, which is node-local:
+  Prometheus is pinned to whichever node its PVC landed on and the history dies
+  with that node. Dashboards, rules and datasources come from git, so a rebuild
+  costs history and nothing else.
+
+The Grafana admin login is `grafana-admin.sops.yaml`, not the chart's generated
+password — the generated one is rewritten on every reconcile. Grafana reads it
+only when it initialises its own DB, so changing the secret afterwards does
+nothing; change it in the UI, or delete the grafana PVC.
+
+Dashboards are `.json` files under `dashboards/`, turned into ConfigMaps by
+`configMapGenerator` with `disableNameSuffixHash: true` and the label
+`grafana_dashboard: "1"`, which is what the Grafana sidecar selects on
+(cluster-wide, `searchNamespace: ALL`). They load within ~30s, with no restart
+and no UI import. Without `disableNameSuffixHash` every edit writes a
+differently-named ConfigMap and leaves the old one behind for the sidecar to
+load as a second copy.
+
+Off-cluster targets go in `prometheus.prometheusSpec.additionalScrapeConfigs` as
+plain `scrape_config` syntax — currently the `plex-exporter` job at
+`10.0.200.87:9001`. Prometheus dials it straight from its pod, so the source
+address is in the flannel range and reachability is the exporter host's
+firewall's business, not this repo's.
+
+Access is over the tailnet only, at `https://grafana.<tailnet>.ts.net`, served by
+the tailscale operator (below) — Grafana itself is a plain ClusterIP and no node
+port is involved. **The tailnet name is not in this repo**: it would otherwise
+be the one piece of the setup a public repo hands out, so it lives in
+`grafana-tailnet.sops.yaml` and reaches Grafana as `GF_SERVER_DOMAIN` /
+`GF_SERVER_ROOT_URL` through `grafana.envValueFrom`, where env beats the ini
+file. They have to match the name the operator actually serves on: wrong values
+and the page still loads while login redirects and static assets break, which
+reads like a Grafana bug rather than a config one. Nothing
+goes through the cloudflared tunnel, which is why the monitoring Kustomization
+has no `dependsOn: cloudflared` — it depends on `tailscale-operator` instead, for
+the IngressClass. Its `timeout` is 15m, not the 3m the other apps use: first
+install lays down CRDs, five workloads and a PVC.
+
+### apps/base/tailscale-operator/ — the tailnet IngressClass
+
+Puts Services on the tailnet from inside the cluster, which is a different
+mechanism from `nix/modules/tailscale.nix`: the nodes are a **subnet router**
+advertising `10.0.200.0/24`, the operator gives an individual Service its **own
+tailnet device** with a real LetsEncrypt cert. Both are in use; neither replaces
+the other.
+
+An Ingress opts in with `ingressClassName: tailscale`, and the device name comes
+from `tls.hosts[0]` — *not* from a rule host, which is left unset. The operator
+spawns a proxy StatefulSet per Ingress; because that is a pod, losing a node
+reschedules it, where a NodePort would have been pinned to node IPs.
+
+Credentials are an **OAuth client** (`operator-oauth`, keys `client_id` and
+`client_secret`), not the pre-auth key the nodes use in
+`secrets/tailscale-authkey`. Unrelated things; neither works in place of the
+other. The client needs the Devices Core and Auth Keys write scopes and the
+`tag:k8s-operator` tag, and the ACL needs `tag:k8s-operator` plus a `tag:k8s`
+owned by it — the operator tags every proxy it creates with the latter, and
+device creation is rejected outright if it does not own the tag.
+
+`oauth.clientId`/`clientSecret` are left empty in the HelmRelease on purpose:
+empty means the chart mounts the pre-existing `operator-oauth` Secret, so the
+credentials stay in SOPS rather than in a values block in a public repo.
+
+The API-server proxy (`apiServerProxyConfig.mode`) is off. kubectl already
+reaches the VIP through the subnet router, and enabling it means ACL grants that
+map tailnet identities onto cluster RBAC.
+
 ## Gotchas discovered the hard way
 
 - **The NIC is `eth0`**, not `ens18`. `network.nix` matches `"en* eth*"`; getting
@@ -247,3 +339,23 @@ Only our own images are automated; `cloudflared` is still pinned by hand.
   `upload_image = false`.
 - `disk[0].file_id` is in `lifecycle.ignore_changes`, so rebuilding the image does
   not recreate running VMs. Node changes ship via `deploy`, never Terraform.
+- **node-exporter needs TCP 9100 open on every node.** It runs with
+  `hostNetwork`, so Prometheus scrapes it at `<node-ip>:9100` and the packet
+  arrives over flannel, not loopback — the NixOS firewall drops it and *every*
+  node target goes DOWN at once. `nix/modules/monitoring.nix` opens it, which
+  means adding monitoring to a node is a `deploy`, not just a Flux reconcile.
+  The symptom reads like a broken exporter; it is the host firewall.
+- **MagicDNS and HTTPS Certificates must be on in the tailnet admin console**
+  (DNS page) or the operator has no cert to fetch and the Ingress never goes
+  ready. Same class of one-time manual step as approving the subnet route —
+  nothing in this repo can do it.
+- **`apps/base/tailscale-operator/oauth.sops.yaml` ships with placeholders.**
+  It is encrypted, so the placeholder is not visible in a diff; the operator
+  simply fails to authenticate until it is filled in with
+  `mise exec -- sops base/tailscale-operator/oauth.sops.yaml`.
+- **`mise run sops-encrypt <file>` does not receive its argument** — it fails with
+  `bash: line 2: 1: usage: mise run sops-encrypt <file>`, and `--` does not help.
+  Same shape in `sops-edit`. Until the tasks are fixed, encrypt with
+  `cd apps && mise exec -- sops --encrypt --in-place <file>`; `SOPS_AGE_KEY_FILE`
+  is already exported by `apps/mise.toml`, and encryption only needs the public
+  key in `.sops.yaml` anyway.

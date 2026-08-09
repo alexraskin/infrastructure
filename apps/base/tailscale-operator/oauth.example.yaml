@@ -1,0 +1,31 @@
+# Template only. The operator authenticates to the tailnet with an OAuth client,
+# not with the pre-auth key the *nodes* use (secrets/tailscale-authkey) — the two
+# are unrelated and neither works in place of the other.
+#
+# Mint it at login.tailscale.com -> Settings -> OAuth clients:
+#   scopes: Devices Core (write) and Auth Keys (write)
+#   tags:   tag:k8s-operator
+#
+# The tags must already exist in the tailnet ACL, with the operator as an owner,
+# or the client cannot be created:
+#
+#   "tagOwners": {
+#     "tag:k8s-operator": [],
+#     "tag:k8s":          ["tag:k8s-operator"],
+#   }
+#
+# The secret name and the two key names are what the chart's Deployment mounts —
+# do not rename them.
+#
+#   cp oauth.example.yaml oauth.sops.yaml
+#   $EDITOR oauth.sops.yaml
+#   cd apps && mise exec -- sops --encrypt --in-place base/tailscale-operator/oauth.sops.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: operator-oauth
+  namespace: tailscale
+type: Opaque
+stringData:
+  client_id: KEY
+  client_secret: SECRET

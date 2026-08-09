@@ -1,0 +1,46 @@
+# Template only. The operator authenticates to the tailnet with an OAuth client,
+# not with the pre-auth key the *nodes* use (secrets/tailscale-authkey) — the two
+# are unrelated and neither works in place of the other.
+#
+# Mint it at login.tailscale.com -> Settings -> OAuth clients:
+#   scopes: Devices Core (write) and Auth Keys (write)
+#   tags:   tag:k8s-operator
+#
+# The tags must already exist in the tailnet ACL, with the operator as an owner,
+# or the client cannot be created:
+#
+#   "tagOwners": {
+#     "tag:k8s-operator": [],
+#     "tag:k8s":          ["tag:k8s-operator"],
+#   }
+#
+# The secret name and the two key names are what the chart's Deployment mounts —
+# do not rename them.
+#
+#   cp oauth.example.yaml oauth.sops.yaml
+#   $EDITOR oauth.sops.yaml
+#   cd apps && mise exec -- sops --encrypt --in-place base/tailscale-operator/oauth.sops.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+    name: operator-oauth
+    namespace: tailscale
+type: Opaque
+stringData:
+    client_id: ENC[AES256_GCM,data:USBwVMPqpwYJdAulnqHAPtI=,iv:IWeTagA8LG9n27OMIn2M8dwXSkQkhcAL635NfZZsUkM=,tag:6hqdhA4ax1N7tLp/T47oTg==,type:str]
+    client_secret: ENC[AES256_GCM,data:FlOP4BCX26Bx0wkjcF3fklYzNm5OobynVG+GXWDTwHD4GRcjE3TkGlV5PIkrXHO9ptGrTIGSc8UhfmnGAlWhbg==,iv:MsZTQXS6m8FWdh43Y3Ey4RWOw9uk1xS8EF+3W7P/AqU=,tag:vfHhlWAdV14nSlZwY+fsOw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSArQ2lTbGpidHczRFJpZlhB
+            dm1ZeUtTcFk2SXQ4QStSQ0g5bFMvcWR5Skh3CklDOWxkVWg5dWg1dko0cEFWRjUv
+            NmlsL3dWSkYwblY3STFVREFFTjhQdFUKLS0tIEZpanYrcG1aa1JUbzd3czVoUmUv
+            M2duUFFvY0NVSWg1MHFBb2xRbUJRMlkK07bwCw9I4+Kc8QZzjzzObewMGCgG4dpO
+            f4H8RJt9h6/t2DUcm76c8dAVvsUUwkmjn3eY8YNFe3AxIEW3v1tu3w==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-09T18:10:03Z"
+    mac: ENC[AES256_GCM,data:cNQ/OTTzHYZMveZvKvYR/ulT0pX4wgv7sWeU1OByuq2SJoJACLvHNkoEe9q2nKMl+hsVQDEGZxDwyih+lWyM9yHkgAQVIUlTBjZHRhSE2KSg6fzj3P+YgixnvReYBI2sebxClHxWng+9+vfISexbOAiO1vAGPaMaLWhQCwPaS5Y=,iv:+z/WE/IppzvlBf8QHWJSOKA0QMyUo1jLqpfyBBXHMpY=,tag:pkuyek6kHcMP+vSRhS/FrA==,type:str]
+    version: 3.13.3

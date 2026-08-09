@@ -123,13 +123,33 @@ spec:
         userKey: admin-user
         passwordKey: admin-password
 
-      # Reached over the tailnet at http://<any-node-ip>:30300. The subnet
-      # router advertises 10.0.200.0/24, so traffic arrives on tailscale0,
-      # which is a trusted interface — nothing has to be opened in the
-      # firewall, and nothing is reachable from the LAN or the internet.
+      # ClusterIP only. Nothing on the node listens for Grafana — the tailscale
+      # operator puts it on the tailnet instead, see the Ingress below.
       service:
-        type: NodePort
-        nodePort: 30300
+        type: ClusterIP
+
+      # Handled by the tailscale operator (apps/base/tailscale-operator/). It
+      # watches for this ingressClassName, spawns a proxy StatefulSet that joins
+      # the tailnet as its own device named after tls.hosts[0], fetches a
+      # LetsEncrypt cert for it and terminates TLS there.
+      #
+      #   https://grafana.<tailnet>.ts.net
+      #
+      # No host in the rules and exactly one entry in tls.hosts: that is the
+      # shape the operator expects — the hostname comes from tls.hosts[0], not
+      # from a rule. The proxy is a pod, so losing a node reschedules it; a
+      # NodePort would have been pinned to node IPs instead.
+      #
+      # Needs MagicDNS and HTTPS Certificates enabled in the tailnet admin
+      # console. Without them there is no cert to issue and the Ingress never
+      # becomes ready.
+      ingress:
+        enabled: true
+        ingressClassName: tailscale
+        hosts: []
+        tls:
+          - hosts:
+              - grafana
 
       # Dashboards from any ConfigMap in the cluster labelled
       # grafana_dashboard: "1" — that is how the Plex dashboard gets in.
@@ -154,9 +174,25 @@ spec:
         limits:
           memory: 512Mi
 
+      # The tailnet name is kept out of this public repo, so the two settings
+      # that need it come in as env vars from grafana-tailnet.sops.yaml rather
+      # than from grafana.ini below. Grafana reads GF_<SECTION>_<KEY>, and env
+      # wins over the ini file.
+      #
+      # They must match the name the operator serves Grafana on. Wrong values
+      # and the page still loads while login redirects and static assets break
+      # — a half-working state that reads like a Grafana bug.
+      envValueFrom:
+        GF_SERVER_DOMAIN:
+          secretKeyRef:
+            name: grafana-tailnet
+            key: domain
+        GF_SERVER_ROOT_URL:
+          secretKeyRef:
+            name: grafana-tailnet
+            key: root-url
+
       grafana.ini:
-        server:
-          root_url: http://%(domain)s:30300/
         analytics:
           reporting_enabled: false
           check_for_updates: false
