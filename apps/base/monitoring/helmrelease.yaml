@@ -84,16 +84,15 @@ spec:
         # Off-cluster targets. The chart writes this into a Secret and mounts
         # it; it is plain Prometheus scrape_config syntax.
         additionalScrapeConfigs:
-          - job_name: plex
-            # TODO: replace with the real host:port of the Plex /metrics
-            # endpoint on the LAN. Nodes reach it directly — it does not go
-            # through the cluster network.
+          - job_name: plex-exporter
+            metrics_path: /metrics
+            # On the LAN, not in the cluster. Prometheus dials it directly from
+            # its pod, so this depends on the exporter host allowing 9001 from
+            # the pod network — not on anything in this repo.
             static_configs:
-              - targets: ["10.0.200.10:9000"]
+              - targets: ["10.0.200.87:9001"]
                 labels:
                   instance: plex
-            # Uncomment if the endpoint is not at /metrics:
-            # metrics_path: /metrics
 
         resources:
           requests:
