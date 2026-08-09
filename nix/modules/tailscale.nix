@@ -11,6 +11,7 @@
   lib,
   cluster,
   node,
+  unstable,
   ...
 }:
 let
@@ -26,6 +27,14 @@ in
 lib.mkIf enabled {
   services.tailscale = {
     enable = true;
+
+    # 25.05 ships 1.82.5, which the admin console flags as vulnerable. Tailscale
+    # expects clients to track its own release train, not a distro's stable
+    # branch, so the package — and only the package — comes from the pinned
+    # nixpkgs-unstable rev in flake.lock. This is the sole consumer of that
+    # input; without this line the `unstable` in specialArgs does nothing and
+    # the nodes silently run 25.05's version.
+    package = unstable.tailscale;
 
     # UDP 41641, so peers connect directly instead of relaying through DERP.
     openFirewall = true;

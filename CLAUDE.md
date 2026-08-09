@@ -112,11 +112,23 @@ the VIP → agents (joining the VIP). Waits are bounded; they fail rather than h
   the golden image — the image has no identity to log in with, and the closure
   would be pushed to Proxmox for nothing. `useRoutingFeatures = "server"` on
   servers only (it enables IP forwarding); routes go in both `extraUpFlags` and
-  `extraSetFlags` or they vanish after the first `tailscale up`. The pre-auth
+  `extraSetFlags` or they vanish after the first `tailscale up`. The module sets
+  `package = unstable.tailscale`, and that line is **the only consumer of the
+  `nixpkgs-unstable` input** in the whole repo — 25.05 ships 1.82.5, which the
+  admin console flags as vulnerable. Only the package comes from unstable;
+  everything else on the node stays on 25.05. The pre-auth
   key follows the k3s-token pattern: `secrets/tailscale-authkey` →
   `/var/lib/tailscale-authkey`, pushed before `deploy` because
-  `tailscaled-autoconnect` runs during activation. The route needs one-time
-  approval in the Tailscale admin console, and clients need `--accept-routes`.
+  `tailscaled-autoconnect` runs during activation. **That key must be a tagged
+  one** (`tag:k3s`): the tag is what the ACL's `autoApprovers` matches to approve
+  `10.0.200.0/24` on its own, and — more importantly — tagged devices have no key
+  expiry, where user-owned ones expire together ~180 days after they were
+  enrolled and take the subnet route with them. Tags come from the auth key or
+  from the admin console, never from the module: `tailscale set` has no
+  `--advertise-tags`, so the flag cannot be handled the way routes are. Clients
+  still need `--accept-routes`, and `--accept-dns` too if they want MagicDNS
+  names like the Grafana Ingress below. The ACL itself lives in
+  `alexraskin/tailscale` (`policy.hujson`), applied by a GitHub Action on push.
 - traefik and servicelb are disabled. Traffic enters only through the cloudflared
   tunnel in `apps/`, which dials out and forwards to Services by cluster DNS.
   The tunnel itself — its ingress rules and the CNAMEs pointing at it — is a
@@ -314,6 +326,16 @@ The API-server proxy (`apiServerProxyConfig.mode`) is off. kubectl already
 reaches the VIP through the subnet router, and enabling it means ACL grants that
 map tailnet identities onto cluster RBAC.
 
+Versions here are **not** the ones on the nodes — the operator and its proxies
+run tailscaled from container images, so `nix/modules/tailscale.nix` has no
+effect on them. The stable chart's appVersion is 1.98.9, which the admin console
+flags as vulnerable, so `proxyConfig.image.tag` is pinned ahead of the chart at
+`v1.102.2`. The operator cannot follow: `tailscale/k8s-operator` has no stable
+tag past `v1.98.9` (only `unstable-v1.10x`), so the `k3s-operator` device stays
+flagged until upstream ships one. Remove the pin when a stable chart carries
+1.102.x or later, or it starts holding proxies back instead of pushing them
+forward.
+
 ## Gotchas discovered the hard way
 
 - **The NIC is `eth0`**, not `ens18`. `network.nix` matches `"en* eth*"`; getting
@@ -345,6 +367,13 @@ map tailnet identities onto cluster RBAC.
   node target goes DOWN at once. `nix/modules/monitoring.nix` opens it, which
   means adding monitoring to a node is a `deploy`, not just a Flux reconcile.
   The symptom reads like a broken exporter; it is the host firewall.
+- **Plumbing a package set into `specialArgs` changes nothing on its own.**
+  `flake.nix` passed `unstable` to every node, with a comment explaining that
+  tailscale comes from it because 25.05's 1.82.5 is vulnerable — but no module
+  ever took the argument or set `services.tailscale.package`, so all six nodes
+  quietly ran 1.82.5 until the admin console flagged them. Docs describing a fix
+  are not the fix. The check is an eval, not a grep:
+  `./scripts/nix.sh 'nix eval --raw ".#nixosConfigurations.k3s-server-1.config.services.tailscale.package.version"'`
 - **MagicDNS and HTTPS Certificates must be on in the tailnet admin console**
   (DNS page) or the operator has no cert to fetch and the Ingress never goes
   ready. Same class of one-time manual step as approving the subnet route —
