@@ -1,0 +1,23 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: lastfm-now-playing
+  namespace: flux-system
+spec:
+  image: ghcr.io/alexraskin/lastfm-now-playing
+  interval: 5m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: lastfm-now-playing
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: lastfm-now-playing
+  filterTags:
+    pattern: '^v?(?P<version>\d+\.\d+\.\d+)$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>=0.1.0'

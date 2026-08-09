@@ -25,8 +25,10 @@ spec:
               app: alexraskin-com
       containers:
         - name: web
-          image: ghcr.io/alexraskin/alexraskin.com:latest
-          imagePullPolicy: Always
+          # Tag is maintained by Flux image automation — see
+          # base/image-automation/. Do not edit it by hand; a manual change is
+          # reverted on the next scan.
+          image: ghcr.io/alexraskin/alexraskin.com:v2.0.1 # {"$imagepolicy": "flux-system:alexraskin-com"}
           ports:
             - name: http
               containerPort: 8000
