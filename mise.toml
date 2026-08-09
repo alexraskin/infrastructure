@@ -5,6 +5,7 @@ kubectl = "latest"
 
 [env]
 TOKEN_FILE = "secrets/k3s-token"
+TS_KEY_FILE = "secrets/tailscale-authkey"
 IMAGE_OUT = "build/nixos.qcow2"
 KUBECONFIG = "{{config_root}}/kubeconfig"
 NIX_SSHOPTS = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
@@ -119,6 +120,24 @@ for ip in $(jq -r '.nodes[].ip' hosts.json); do
 done
 """
 
+[tasks."push-tailscale-key"]
+description = "Copy the tailnet pre-auth key to every node (no-op if there is none)"
+shell = "bash -c"
+run = """
+set -euo pipefail
+if [ ! -s "$TS_KEY_FILE" ]; then
+  echo "no $TS_KEY_FILE — skipping."
+  echo "create a reusable pre-auth key at https://login.tailscale.com/admin/settings/keys"
+  echo "then: umask 077 && echo tskey-auth-... > $TS_KEY_FILE && mise run push-tailscale-key"
+  exit 0
+fi
+for ip in $(jq -r '.nodes[].ip' hosts.json); do
+  echo "==> $ip"
+  scp $NIX_SSHOPTS "$TS_KEY_FILE" "root@$ip:/var/lib/tailscale-authkey"
+  ssh $NIX_SSHOPTS "root@$ip" 'chmod 600 /var/lib/tailscale-authkey'
+done
+"""
+
 # --------------------------------------------------------------- deploy ----
 
 [tasks."deploy-node"]
@@ -127,7 +146,9 @@ run = "scripts/deploy-node.sh"
 
 [tasks.deploy]
 description = "Deploy the whole cluster in order: bootstrap server, servers, agents"
-depends = ["push-token"]
+# Both secrets have to be on disk before the switch: k3s will not start without
+# its token, and tailscaled-autoconnect runs during activation.
+depends = ["push-token", "push-tailscale-key"]
 shell = "bash -c"
 run = """
 set -euo pipefail
@@ -198,6 +219,19 @@ ssh $NIX_SSHOPTS "root@$bip" 'cat /etc/rancher/k3s/k3s.yaml' \
   | sed "s#https://127.0.0.1:6443#https://$vip:6443#" > kubeconfig
 chmod 600 kubeconfig
 echo "wrote kubeconfig (KUBECONFIG is already set by mise in this dir)"
+"""
+
+[tasks."ts:status"]
+description = "Tailnet address and advertised routes, per node"
+shell = "bash -c"
+run = """
+set -euo pipefail
+for ip in $(jq -r '.nodes[].ip' hosts.json); do
+  printf '%-14s ' "$ip"
+  ssh $NIX_SSHOPTS "root@$ip" \
+    'tailscale status --json 2>/dev/null | jq -r "[.Self.DNSName, (.Self.TailscaleIPs//[]|join(\\",\\")), (.Self.PrimaryRoutes//[]|join(\\",\\"))] | @tsv"' \
+    || echo "unreachable / not logged in"
+done
 """
 
 [tasks.status]

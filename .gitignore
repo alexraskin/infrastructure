@@ -6,7 +6,7 @@ crash.log
 .terraform*
 !.terraform.lock.hcl
 
-# k3s join token, age private key for SOPS
+# k3s join token, tailscale pre-auth key, age private key for SOPS
 secrets/
 age.key
 *.plain.yaml

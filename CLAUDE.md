@@ -19,10 +19,12 @@ mise run image          # build the golden NixOS qcow2 into build/
 mise run tf:plan        # terraform, from terraform/
 mise run tf:apply       # create the six VMs
 mise run push-token     # generate secrets/k3s-token and scp it to every node
+mise run push-tailscale-key   # scp secrets/tailscale-authkey to every node (no-op without one)
 mise run deploy         # nixos-rebuild every node in the right order
 mise run deploy-node k3s-agent-2   # one node
 mise run kubeconfig     # fetch ./kubeconfig, rewritten to point at the VIP
 mise run status         # kubectl get nodes + kube-system pods
+mise run ts:status      # tailnet name/address/primary routes per node
 mise run reset          # DESTRUCTIVE: wipe k3s state cluster-wide (typed confirmation)
 ```
 
@@ -98,6 +100,18 @@ the VIP → agents (joining the VIP). Waits are bounded; they fail rather than h
   `services.k3s.manifests` on the bootstrap server only. Do not use
   systemd-tmpfiles for this — `/var/lib/rancher/k3s/server/manifests` does not
   exist yet when tmpfiles runs on a fresh node, so the rule silently no-ops.
+- Remote access is Tailscale as a **subnet router**, not per-node tailnet
+  addresses: the three servers advertise `cluster.tailscale.advertise_routes`
+  (`10.0.200.0/24`), so an off-LAN kubectl still targets the VIP and stays HA.
+  `nix/modules/tailscale.nix` is in the node configs but deliberately *not* in
+  the golden image — the image has no identity to log in with, and the closure
+  would be pushed to Proxmox for nothing. `useRoutingFeatures = "server"` on
+  servers only (it enables IP forwarding); routes go in both `extraUpFlags` and
+  `extraSetFlags` or they vanish after the first `tailscale up`. The pre-auth
+  key follows the k3s-token pattern: `secrets/tailscale-authkey` →
+  `/var/lib/tailscale-authkey`, pushed before `deploy` because
+  `tailscaled-autoconnect` runs during activation. The route needs one-time
+  approval in the Tailscale admin console, and clients need `--accept-routes`.
 - traefik and servicelb are disabled. Traffic enters only through the cloudflared
   tunnel in `apps/`, which dials out and forwards to Services by cluster DNS.
 

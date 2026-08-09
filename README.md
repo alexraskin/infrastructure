@@ -9,7 +9,7 @@ into the cluster by Flux.
 ```
 hosts.json            single source of truth (IPs, VM IDs, sizes, VIP) — read by both nix and terraform
 flake.nix             golden image + one nixosConfiguration per node
-nix/modules/          base, hardware, network, k3s-server, k3s-agent, image (cloud-init)
+nix/modules/          base, hardware, network, tailscale, k3s-server, k3s-agent, image (cloud-init)
 nix/kube-vip.yaml.in  control-plane VIP DaemonSet, templated with the VIP/interface
 terraform/            bpg/proxmox: uploads the image, creates the six VMs
 apps/                 GitOps: what Flux deploys into the cluster (see apps/README.md)
@@ -101,6 +101,7 @@ mise run image            # build the qcow2
 mise run tf:plan
 mise run tf:apply         # six VMs, booted with cloud-init identity
 mise run push-token       # generates secrets/k3s-token and scps it to all nodes
+mise run push-tailscale-key   # optional, see below
 mise run deploy           # nixos-rebuild every node, in the right order
 mise run kubeconfig       # ./kubeconfig, pointed at the VIP
 mise run status
@@ -133,6 +134,64 @@ mise run tf:apply
 Terraform then references `local:iso/nixos-k3s-base.img` in place of a file it
 manages itself.
 
+## Remote access (Tailscale)
+
+Every node joins the tailnet, and the three servers advertise `10.0.200.0/24`
+into it. That keeps remote `kubectl` pointed at the kube-vip VIP instead of a
+single named node, so control-plane HA survives leaving the LAN. Tailscale moves
+a subnet route to another advertiser by itself when one server goes away.
+
+Configured under `cluster.tailscale` in `hosts.json`; set `enable: false` there
+and the module drops out entirely.
+
+```json
+"tailscale": {
+  "enable": true,
+  "advertise_routes": ["10.0.200.0/24"]
+}
+```
+
+Nodes log in unattended from a pre-auth key, the same shape as the k3s token:
+
+```bash
+# reusable key from https://login.tailscale.com/admin/settings/keys
+umask 077 && echo 'tskey-auth-...' > secrets/tailscale-authkey
+mise run push-tailscale-key    # /var/lib/tailscale-authkey on all six nodes
+mise run deploy
+mise run ts:status             # tailnet name, address and primary routes per node
+```
+
+`deploy` depends on this task, and the task is a no-op with a hint when there is
+no key file — the key has to be on disk before the switch, because
+`tailscaled-autoconnect` runs during activation. The key is only read while a
+node is logged out, so re-deploying is harmless.
+
+Then **approve the subnet route once** at
+`https://login.tailscale.com/admin/machines` (the route shows up under one of
+the servers as pending; approve it on all three for failover).
+
+On the Mac:
+
+```bash
+brew install --cask tailscale
+brew install kubectl
+tailscale up --accept-routes     # without this the 10.0.200.0/24 route is ignored
+```
+
+Copy `./kubeconfig` over from the build host as described above — it already
+points at `https://10.0.200.40:6443`, the VIP is in the API server's `--tls-san`,
+and the subnet route makes it reachable. Nothing about the file changes between
+LAN and tailnet.
+
+- Subnet routes are SNATed by default, so packets reach the VIP with the routing
+  server's LAN address as source and match the existing eth0 firewall rules.
+- `tailscale0` is a trusted firewall interface on every node, so `ssh root@<node
+  tailnet name>` works too — add the Mac's public key to `nix/modules/base.nix`
+  first, that list is the only authorized one.
+- MagicDNS is off on the nodes (`--accept-dns=false`). It rewrites
+  `/etc/resolv.conf`, which puts the tailnet resolver in front of the one k3s
+  hands to containers. Node names still resolve fine *from* the Mac.
+
 ## Notes
 
 - The join token lives in `secrets/k3s-token` (gitignored) and is pushed to
@@ -142,6 +201,7 @@ manages itself.
   does the control plane (`svc_enable=false`), flip that on if you want LB services.
 - `disk[0].file_id` is in `lifecycle.ignore_changes`, so rebuilding the image does
   not recreate live VMs. Node changes ship via `deploy`, not Terraform.
-- Firewall is on: 6443/2379/2380/10250 + UDP 8472 on servers, 10250 + 8472 on agents.
+- Firewall is on: 6443/2379/2380/10250 + UDP 8472 on servers, 10250 + 8472 on agents,
+  UDP 41641 and a trusted `tailscale0` everywhere.
 - Changing a node's `cores`/`memory`/`disk` in `hosts.json` is a `tf:apply`; changing
   its IP means both `tf:apply` and `deploy`.

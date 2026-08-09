@@ -3,6 +3,12 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+
+    # Only for tailscale. 25.05 pins 1.82.5, which the admin console flags as
+    # vulnerable; tailscale expects clients to track its own release train, not a
+    # distro's stable branch. Everything else stays on 25.05 — see nix/modules/tailscale.nix.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+
     nixos-generators = {
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,6 +19,7 @@
     {
       self,
       nixpkgs,
+      nixpkgs-unstable,
       nixos-generators,
     }:
     let
@@ -40,11 +47,13 @@
               name
               bootstrapIp
               ;
+            unstable = nixpkgs-unstable.legacyPackages.${system};
           };
           modules = [
             ./nix/modules/base.nix
             ./nix/modules/hardware.nix
             ./nix/modules/network.nix
+            ./nix/modules/tailscale.nix
             ./nix/modules/tools.nix
             (roleModule node.role)
           ];
