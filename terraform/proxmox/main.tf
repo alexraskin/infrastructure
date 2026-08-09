@@ -1,5 +1,5 @@
 locals {
-  hosts   = jsondecode(file("${path.module}/../hosts.json"))
+  hosts   = jsondecode(file("${path.module}/../../hosts.json"))
   cluster = local.hosts.cluster
   nodes   = local.hosts.nodes
 }
@@ -7,10 +7,6 @@ locals {
 # The golden NixOS image, uploaded once and used as the backing disk for every VM.
 # Content type "iso" is the datastore slot Proxmox accepts arbitrary disk images in;
 # the .img suffix is required for it to be listed as importable.
-#
-# "iso" always goes through the HTTP API (upload_mode does not apply), which is
-# slow and unresumable for a multi-GB image over a WAN link. Set upload_image =
-# false and run `mise run push-image` to rsync it to the node instead.
 resource "proxmox_virtual_environment_file" "nixos_image" {
   count = var.upload_image ? 1 : 0
 
@@ -29,8 +25,6 @@ resource "proxmox_virtual_environment_file" "nixos_image" {
 locals {
   image_file_name = "nixos-k3s-base.img"
 
-  # Either the file Terraform just uploaded, or the one `mise run push-image` put
-  # on the node. Same volume id either way.
   image_file_id = var.upload_image ? one(proxmox_virtual_environment_file.nixos_image[*].id) : "${var.image_datastore}:iso/${local.image_file_name}"
 }
 
@@ -77,8 +71,6 @@ resource "proxmox_virtual_environment_vm" "node" {
     vlan_id = var.vlan_id
   }
 
-  # First-boot identity only. After `mise run deploy` the NixOS config owns the
-  # network, and these values are never read again.
   initialization {
     datastore_id = var.vm_datastore
     interface    = "ide2"
