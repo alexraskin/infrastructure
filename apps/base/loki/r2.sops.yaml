@@ -1,0 +1,40 @@
+# Template only. Loki's R2 credentials, injected as environment variables and
+# expanded into the config by `-config.expand-env=true` — the key names here ARE
+# the env var names, so do not rename them.
+#
+# Mint at Cloudflare dashboard -> R2 -> Manage API tokens: a token with
+# **Object Read & Write**, scoped to the `loki` bucket only. Deliberately not the
+# credential in secrets/r2.tfbackend: that one can read and write Terraform
+# state, and this one lives in a Secret any pod-exec in the cluster could read.
+#
+# R2_ENDPOINT contains the account id, which is why it is in here rather than in
+# helmrelease.yaml — this repo is public.
+#
+#   cp r2.example.yaml r2.sops.yaml
+#   $EDITOR r2.sops.yaml
+#   cd apps && mise exec -- sops --encrypt --in-place base/loki/r2.sops.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+    name: loki-r2
+    namespace: logging
+type: Opaque
+stringData:
+    R2_ACCESS_KEY_ID: ENC[AES256_GCM,data:fUCDC9O8+j5U0aGt6Y9AK5MEDatonhRwLV8cIFyxxjU=,iv:6/c1B6TRJGL3PNpCfmHykd8Kr88jKGpii5tAimqY1ks=,tag:pOHjVxj9CRc0gBisx+cOug==,type:str]
+    R2_SECRET_ACCESS_KEY: ENC[AES256_GCM,data:hPT76yuXRNVHW/yvxv5XXNTpMCYsRvnfL4BedSxCkAXkkWbvgmERQs+oJon54vpuWuG+V/GBQayFp53q8HgGhw==,iv:qMwzXxLfHaZZw5gFk7W6er+WQlov4ba+3QCuWLZv35M=,tag:8AilnJVwJj1Xwy2G3I4Vmw==,type:str]
+    R2_ENDPOINT: ENC[AES256_GCM,data:jkG39DmK5qvTtLiSLsTJ9QK8Ol8rRH+6LvZHIbvHzDSMhW605UeDoe7TAHFBAXoImD+Av6865VjnTE7dKxeIUnw=,iv:7eT16sesiOGJFnwdXEsdXZf/1POStczurQtWS4bfQuE=,tag:tz9W8lZ1fKcOUUiaVl9YLw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBvcFFpU2VoZG9ObTBEa1R6
+            Zm91TUhnRmg3Uk1UaU52RWtJMktTR0RDOXpnCmxFWUNMTlpESkVENEVhbDIxVGhK
+            K0FCTmhiNVdJZkpQVEZQT08rWEVUOFEKLS0tIG4vWExocGRtSnRlMmsyY0RteXZT
+            RVM0bHdObWJTdmoxVm1RQ1BWTitBNzgKC6+0M6zoecslfYY1wAXvjU83vTZhIoL7
+            BCVzomdZyQbQL+kSi5ituDf9e9wXF+dz2JUUwtXaccpfoyMwuKMqxQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-09T21:08:43Z"
+    mac: ENC[AES256_GCM,data:PEp5ilx57Mx4/BkvwA83mTEwXTGGn0BMTL4DgjIueWib/7qwKwVGFsrTMz/12csaAVab6z6JoFsBySkswcNc2KlmsTzpgpFbwzzdIHoVeFjQntYQzl0oD4V7mNtYQzbCJ3jDCmFiO3dpTO2WS4t9u5ViTzn+B+hFUIb9H0dZPw4=,iv:r+AsVmFekKyKReXAOAlvjmwbGFgqOQ2+jyuds/95Jhs=,tag:s4rL7sv7bjTRy2jHi8eKmQ==,type:str]
+    version: 3.13.3
