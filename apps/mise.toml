@@ -144,4 +144,5 @@ flux reconcile kustomization image-automation --with-source || true
 flux reconcile kustomization cloudflared --with-source || true
 flux reconcile kustomization alexraskin-com --with-source || true
 flux reconcile kustomization lastfm-now-playing --with-source || true
+flux reconcile kustomization lhbotgo --with-source || true
 """

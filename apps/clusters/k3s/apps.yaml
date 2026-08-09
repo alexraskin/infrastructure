@@ -89,3 +89,23 @@ spec:
     - name: cloudflared
   wait: true
   timeout: 3m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: lhbotgo
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/lhbotgo
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  # No dependsOn cloudflared: the bot dials Discord out, nothing dials in.
+  wait: true
+  timeout: 3m
