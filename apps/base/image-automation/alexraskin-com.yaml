@@ -9,7 +9,7 @@ metadata:
   namespace: flux-system
 spec:
   image: ghcr.io/alexraskin/alexraskin.com
-  interval: 5m
+  interval: 72h
 ---
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
