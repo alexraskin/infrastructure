@@ -52,6 +52,15 @@ spec:
       # tag:k8s-operator must own it in the ACL or device creation is rejected.
       defaultTags: "tag:k8s"
 
+      # Pinned ahead of the chart. The chart's appVersion is 1.98.9, which the
+      # admin console flags as vulnerable; tailscale/tailscale:v1.102.2 exists,
+      # so the proxies can run the fixed client even though
+      # tailscale/k8s-operator has no stable build past v1.98.9 and the operator
+      # itself cannot follow yet. Drop this override once a stable chart ships
+      # 1.102.x or later — leaving it pinned would hold proxies back instead.
+      image:
+        tag: "v1.102.2"
+
     ingressClass:
       name: tailscale
       enabled: true
