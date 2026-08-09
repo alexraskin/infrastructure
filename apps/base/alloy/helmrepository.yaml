@@ -1,0 +1,10 @@
+# Same URL as apps/base/loki/'s HelmRepository, under a different name on
+# purpose: two Flux Kustomizations owning one object would each try to prune it.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: grafana-alloy
+  namespace: logging
+spec:
+  interval: 1h
+  url: https://grafana.github.io/helm-charts

@@ -39,6 +39,7 @@ terraform -chdir=terraform/cloudflare validate
 cd apps && mise exec -- kustomize build base/alexraskin-com
 cd apps && mise exec -- kustomize build base/monitoring
 cd apps && mise exec -- kustomize build base/tailscale-operator
+cd apps && mise exec -- kustomize build base/loki && mise exec -- kustomize build base/alloy
 ```
 
 There is no test suite. "Does it work" means `mise run preflight`, a `terraform
@@ -336,6 +337,55 @@ flagged until upstream ships one. Remove the pin when a stable chart carries
 1.102.x or later, or it starts holding proxies back instead of pushing them
 forward.
 
+### apps/base/loki/ and apps/base/alloy/ — logs
+
+Loki in **SingleBinary** mode (one StatefulSet, `-target=all`) with chunks in a
+Cloudflare R2 bucket, and Grafana Alloy as a DaemonSet shipping into it. Two
+Kustomizations, `alloy` depending on `loki`.
+
+The chart fights you in three specific ways:
+
+- **`read`, `write` and `backend` must all be set to `replicas: 0`.** The chart
+  defaults to SimpleScalable, and its `validate.yaml` aborts the render with "You
+  have more than zero replicas configured for both the single binary and simple
+  scalable targets" if `deploymentMode: SingleBinary` is set without zeroing
+  them. It is a template error, not a runtime one — `kustomize build` passes and
+  the HelmRelease fails.
+- **The default caches would not fit on these nodes.** `chunksCache` alone asks
+  for 8 GiB of memcached, on agents that have 8 GiB total. It, `resultsCache`,
+  `lokiCanary`, `test` and the nginx `gateway` are all disabled; Grafana queries
+  `svc/loki:3100` directly.
+- **`global.extraEnvFrom` does not reach the single binary.** Its documented
+  scope is read/write/backend and the distributed targets. Credentials have to be
+  attached under `singleBinary.extraEnvFrom`, together with
+  `singleBinary.extraArgs: ["-config.expand-env=true"]`.
+
+Credentials never appear in the values: `loki.storage.s3.accessKeyId` is the
+literal string `${R2_ACCESS_KEY_ID}`, which survives into the rendered ConfigMap
+and is expanded at startup from the `loki-r2` Secret. The **endpoint is in that
+Secret too**, because it embeds the Cloudflare account id and this repo is
+public — the same reason the tailnet name lives in `grafana-tailnet.sops.yaml`.
+
+R2 needs the same two adjustments the Terraform backends make: `region: auto`
+(R2 has no regions) and `s3ForcePathStyle: true` (the `use_path_style` of
+`providers.tf`). The bucket is `loki` and its API token is scoped to that bucket
+only — deliberately *not* the credential in `secrets/r2.tfbackend`, which can
+read and write Terraform state and has no business being readable by anything
+with pod-exec in the cluster. Both are created by hand in the dashboard;
+`terraform/cloudflare`'s token has three permission rows and gains nothing from
+being handed R2 admin to create one bucket.
+
+Alloy reads pod logs through the Kubernetes API (`loki.source.kubernetes`) rather
+than tailing `/var/log/pods`, so there is no CRI log-format parsing and no
+symlink chasing; the chart's ClusterRole already grants `pods/log`. It also runs
+`loki.source.journal` against `/var/log/journal` — the nodes set
+`Storage=persistent`, so k3s, tailscaled, sshd and kernel messages are queryable
+in Grafana as `{job="systemd-journal"}` without SSHing anywhere.
+
+The Grafana datasource is a ConfigMap in `logging` labelled
+`grafana_datasource: "1"`. The monitoring stack's sidecar runs with
+`NAMESPACE=ALL`, so nothing in `apps/base/monitoring/` changes to pick it up.
+
 ## Gotchas discovered the hard way
 
 - **The NIC is `eth0`**, not `ens18`. `network.nix` matches `"en* eth*"`; getting
@@ -374,6 +424,10 @@ forward.
   quietly ran 1.82.5 until the admin console flagged them. Docs describing a fix
   are not the fix. The check is an eval, not a grep:
   `./scripts/nix.sh 'nix eval --raw ".#nixosConfigurations.k3s-server-1.config.services.tailscale.package.version"'`
+- **Loki's `retention_period` does nothing without `compactor.retention_enabled`.**
+  Set one without the other and chunks are never deleted: logs look like they are
+  being aged out because queries stop returning them, while the R2 bucket grows
+  forever. Both live in `apps/base/loki/helmrelease.yaml`.
 - **MagicDNS and HTTPS Certificates must be on in the tailnet admin console**
   (DNS page) or the operator has no cert to fetch and the Ingress never goes
   ready. Same class of one-time manual step as approving the subnet route —

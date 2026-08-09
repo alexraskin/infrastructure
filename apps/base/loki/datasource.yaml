@@ -1,0 +1,25 @@
+# Picked up by the Grafana datasource sidecar in apps/base/monitoring/, which
+# runs with LABEL=grafana_datasource, LABEL_VALUE=1 and NAMESPACE=ALL — so this
+# lands in Grafana without touching the monitoring stack, and without anyone
+# adding a datasource by hand in the UI.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasource-loki
+  namespace: logging
+  labels:
+    grafana_datasource: "1"
+data:
+  loki.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        # The gateway is disabled, so this points straight at the single binary.
+        url: http://loki.logging.svc.cluster.local:3100
+        jsonData:
+          # auth_enabled is false in Loki, so there is no tenant header to send.
+          timeout: 60
+          maxLines: 1000

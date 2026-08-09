@@ -1,0 +1,11 @@
+# Shared with apps/base/alloy/, which declares its own HelmRepository object
+# pointing at the same URL rather than reusing this one — two Flux Kustomizations
+# cannot both own a single resource without fighting over it on prune.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: grafana
+  namespace: logging
+spec:
+  interval: 1h
+  url: https://grafana.github.io/helm-charts
