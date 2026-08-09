@@ -1,0 +1,163 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      # Pinned by hand. Image automation only tracks our own GHCR images, so
+      # this and the images the chart pulls are bumped deliberately.
+      version: "88.2.0"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: monitoring
+      interval: 24h
+  install:
+    crds: Create
+    remediation:
+      retries: 3
+  upgrade:
+    # The chart ships the Prometheus Operator CRDs; without this an upgrade
+    # leaves them at the version the first install wrote.
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  values:
+    # ------------------------------------------------------------ k3s ----
+    # k3s runs the controller-manager, scheduler, proxy and etcd inside the
+    # single k3s process, and by default they bind their metrics ports to
+    # 127.0.0.1. The chart's ServiceMonitors for them would sit permanently
+    # DOWN, so they are off. To turn them on, add to nix/modules/k3s-server.nix:
+    #   --kube-controller-manager-arg=bind-address=0.0.0.0
+    #   --kube-scheduler-arg=bind-address=0.0.0.0
+    #   --kube-proxy-arg=metrics-bind-address=0.0.0.0
+    #   --etcd-expose-metrics=true
+    # open 10257/10259/10249/2381 in the firewall, redeploy, then flip these.
+    kubeControllerManager:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    kubeProxy:
+      enabled: false
+    kubeEtcd:
+      enabled: false
+
+    # Nothing is wired to route alerts yet. Prometheus still evaluates the
+    # rules, so alerts are visible in its UI and in Grafana.
+    alertmanager:
+      enabled: false
+
+    # ----------------------------------------------------- node metrics ----
+    # Runs on every node with hostNetwork, scraped at <node-ip>:9100. That port
+    # is opened in nix/modules/monitoring.nix — without it every node target is
+    # DOWN, because the NixOS firewall drops the scrape arriving over flannel.
+    prometheus-node-exporter:
+      hostNetwork: true
+
+    kube-state-metrics:
+      resources:
+        requests:
+          cpu: 20m
+          memory: 64Mi
+        limits:
+          memory: 192Mi
+
+    # -------------------------------------------------------- prometheus ----
+    prometheus:
+      prometheusSpec:
+        retention: 15d
+        # Leaves headroom on the 20Gi PVC so a full disk never wedges the TSDB.
+        retentionSize: 15GiB
+
+        # Without these four, the operator only picks up objects labelled with
+        # this release's name — a ServiceMonitor written by hand elsewhere in
+        # the repo would be silently ignored.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        probeSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+
+        # Off-cluster targets. The chart writes this into a Secret and mounts
+        # it; it is plain Prometheus scrape_config syntax.
+        additionalScrapeConfigs:
+          - job_name: plex
+            # TODO: replace with the real host:port of the Plex /metrics
+            # endpoint on the LAN. Nodes reach it directly — it does not go
+            # through the cluster network.
+            static_configs:
+              - targets: ["10.0.200.10:9000"]
+                labels:
+                  instance: plex
+            # Uncomment if the endpoint is not at /metrics:
+            # metrics_path: /metrics
+
+        resources:
+          requests:
+            cpu: 200m
+            memory: 1Gi
+          limits:
+            memory: 2Gi
+
+        # local-path is the k3s default StorageClass and is node-local: this
+        # pod is pinned to whichever node the PVC lands on, and the history is
+        # gone if that node is rebuilt. Dashboards and rules come from git, so
+        # only the metric history is at risk.
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-path
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 20Gi
+
+    # ----------------------------------------------------------- grafana ----
+    grafana:
+      # Created from grafana-admin.sops.yaml, not by the chart — the chart's
+      # own generated password would be rewritten on every reconcile.
+      admin:
+        existingSecret: grafana-admin
+        userKey: admin-user
+        passwordKey: admin-password
+
+      # Reached over the tailnet at http://<any-node-ip>:30300. The subnet
+      # router advertises 10.0.200.0/24, so traffic arrives on tailscale0,
+      # which is a trusted interface — nothing has to be opened in the
+      # firewall, and nothing is reachable from the LAN or the internet.
+      service:
+        type: NodePort
+        nodePort: 30300
+
+      # Dashboards from any ConfigMap in the cluster labelled
+      # grafana_dashboard: "1" — that is how the Plex dashboard gets in.
+      sidecar:
+        dashboards:
+          enabled: true
+          searchNamespace: ALL
+          label: grafana_dashboard
+        datasources:
+          enabled: true
+          searchNamespace: ALL
+
+      persistence:
+        enabled: true
+        storageClassName: local-path
+        size: 5Gi
+
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 512Mi
+
+      grafana.ini:
+        server:
+          root_url: http://%(domain)s:30300/
+        analytics:
+          reporting_enabled: false
+          check_for_updates: false

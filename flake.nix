@@ -54,6 +54,7 @@
             ./nix/modules/hardware.nix
             ./nix/modules/network.nix
             ./nix/modules/tailscale.nix
+            ./nix/modules/monitoring.nix
             ./nix/modules/tools.nix
             (roleModule node.role)
           ];
