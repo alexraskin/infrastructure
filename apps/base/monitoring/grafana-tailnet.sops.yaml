@@ -1,0 +1,36 @@
+# Template only. Holds the one thing about this setup that is deliberately not
+# in a public repo: the tailnet name. Grafana needs it to build absolute URLs,
+# and the values must match the name the tailscale operator serves it on —
+# <tls.hosts[0] from the Ingress>.<your tailnet>.ts.net.
+#
+# Find it with:  tailscale status --json | jq -r .MagicDNSSuffix
+#
+#   cp grafana-tailnet.example.yaml grafana-tailnet.sops.yaml
+#   $EDITOR grafana-tailnet.sops.yaml
+#   cd apps && mise exec -- sops --encrypt --in-place base/monitoring/grafana-tailnet.sops.yaml
+#
+# The trailing slash on root-url is not optional — Grafana appends paths to it.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: grafana-tailnet
+    namespace: monitoring
+type: Opaque
+stringData:
+    domain: ENC[AES256_GCM,data:QKUqYtd05rR29QM2XiMa9Cbajzwlj98q,iv:sW3gxInfm+xrNQGnTc1UOMcb1rgYrxuVcj7rJYJiI7M=,tag:hIUMbdiYS7RMM/tdmdZVEA==,type:str]
+    root-url: ENC[AES256_GCM,data:3O5uHga+ys6EQEesoZErz8EGMHmJIkMY2HsYC1TGijpF,iv:YuEGVRdktXAEuPKmwbW89LuBG8MCJuvT+t+9jt/EFoE=,tag:0KQThwkRdwJ0GGnK5dRvsg==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB4RnBHeFp4dzNnU3BWQ3B1
+            VndEQUJaRmljLzM1aWMrZllYZmZTSFlXTFcwCmdLeEtqQU1MdUdnSUFIVmpmMnlS
+            OGFNd3dpVjFsOC80NGttUWpCaDR0YU0KLS0tIDg0SldQZnpjamZKbXdoOVpJUnBn
+            L1E0SVkwdjQrclBJOURKTXFoMkdLRDgK2ZMs3h88+OagzzbJWs0oWr/yfhuJdWKu
+            py+/l2zBzx41yoES0Y5GB6esKj9n4V6xXAsfeg8cCddJBUXu5OzcEw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-09T18:09:34Z"
+    mac: ENC[AES256_GCM,data:D1thEjujwLgNLkYIPctRpf39fcYhIvExnAqPV2JV4Ww0uzzSFfbyXGCRQ3KL/N1+WPObGuyjZGb49GsVNDYaHei02f3lgK39lBYJTy0uTvDVWZytn4NXBGRqFKgqrR+FILgFMbs0aGsz431MnrF3YvfMSZa3aY6HFHlL5Tx6d7Q=,iv:MTsUFap03LMQwh1xEGWzx1eV9T0h51Qr5JyAGgEqmrs=,tag:Be4cfluQN3jexeWGOM4eew==,type:str]
+    version: 3.13.3

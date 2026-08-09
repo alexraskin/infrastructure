@@ -4,6 +4,7 @@ resources:
   - namespace.yaml
   - helmrepository.yaml
   - grafana-admin.sops.yaml
+  - grafana-tailnet.sops.yaml
   - helmrelease.yaml
 
 # Dashboards stay as .json on disk rather than being pasted into a ConfigMap by
