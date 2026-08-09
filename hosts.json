@@ -12,7 +12,13 @@
     "bootstrap": "k3s-server-1",
     "interface": "eth0",
     "kube_vip_version": "v0.8.9",
-    "disk_device": "/dev/sda"
+    "disk_device": "/dev/sda",
+    "tailscale": {
+      "enable": true,
+      "advertise_routes": [
+        "10.0.200.0/24"
+      ]
+    }
   },
   "nodes": {
     "k3s-server-1": {
