@@ -5,4 +5,25 @@ resources:
   - helmrepository.yaml
   - grafana-admin.sops.yaml
   - helmrelease.yaml
-  - plex-dashboard.yaml
+
+# Dashboards stay as .json on disk rather than being pasted into a ConfigMap by
+# hand — they diff readably and can be round-tripped through the Grafana UI.
+# The sidecar picks up any ConfigMap labelled grafana_dashboard: "1", cluster
+# wide, and loads it within ~30s. No Grafana restart, no manual import.
+configMapGenerator:
+  - name: grafana-dashboard-plex
+    namespace: monitoring
+    files:
+      # Upstream dashboard from the exporter:
+      # jsclayton/prometheus-plex-exporter, examples/dashboards/Media Server.json
+      # Unmodified. Its `job`/`instance`/`server` variables are built from
+      # label_values(plays_total, ...), so it finds the plex-exporter job on its
+      # own, and its datasource is a picker defaulting to Prometheus.
+      - media-server.json=dashboards/media-server.json
+
+generatorOptions:
+  # The sidecar selects on this label; the name has to stay stable so a
+  # dashboard edit updates the ConfigMap instead of orphaning the old one.
+  disableNameSuffixHash: true
+  labels:
+    grafana_dashboard: "1"
