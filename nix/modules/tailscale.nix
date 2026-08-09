@@ -20,8 +20,6 @@ let
   isRouter = node.role == "server" && routes != [ ];
 
   flags =
-    # MagicDNS rewrites /etc/resolv.conf. On a k3s node that puts the tailnet
-    # resolver in front of the one k3s hands containers — leave DNS alone.
     [ "--accept-dns=false" ]
     ++ lib.optional isRouter "--advertise-routes=${lib.concatStringsSep "," routes}";
 in
@@ -32,16 +30,10 @@ lib.mkIf enabled {
     # UDP 41641, so peers connect directly instead of relaying through DERP.
     openFirewall = true;
 
-    # Pushed by `mise run push-tailscale-key`, same pattern as the k3s token.
-    # Only read when the node is not logged in yet; re-running deploy is a no-op.
     authKeyFile = "/var/lib/tailscale-authkey";
 
-    # "server" turns on IPv4/IPv6 forwarding and relaxes rp_filter, which a
-    # subnet router needs and a plain client must not have.
     useRoutingFeatures = if isRouter then "server" else "none";
 
-    # up flags apply at first login, set flags on every start — routes have to
-    # be in both or they silently disappear after the initial `tailscale up`.
     extraUpFlags = flags;
     extraSetFlags = flags;
   };
