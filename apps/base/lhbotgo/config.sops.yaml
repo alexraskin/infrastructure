@@ -1,0 +1,40 @@
+# Template only. Fill in the four values, then encrypt it in place:
+#
+#   cp config.example.yaml config.sops.yaml
+#   $EDITOR config.sops.yaml
+#   mise run sops-encrypt base/lhbotgo/config.sops.yaml
+#
+# This replaces the config.toml the bot used to bind-mount under docker
+# (/mnt/lhbotgo/config.toml). The binary still looks for that file and shrugs
+# when it is absent; every key it needs is set here as an env override instead
+# (lhbot/config.go, applyEnvOverrides).
+#
+# command-channel-ids is a comma-separated list of snowflakes; leave it empty to
+# keep the built-in default. lhcloudy-id is a single snowflake. Neither is
+# secret, but they live here so there is one file to fill in rather than three.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: lhbotgo-config
+    namespace: lhbotgo
+type: Opaque
+stringData:
+    bot-token: ENC[AES256_GCM,data:IOJeBdkr1e71KFa8yn30i27+bReoU/Xq52v/wyOqE0t3LwzMKq2hlbxrtJAm6XOVf0WV1aaaUhlSEVM=,iv:j8NrY/obXdTXTzS29/n/ObpFLUy7jp84djTl2QoFxvE=,tag:fQsANwanjPSKi8I8UtGv6Q==,type:str]
+    mongo-uri: ENC[AES256_GCM,data:CeWaW1mHGjEE9iANFZqcjvmcoCT6NEdoaiI46Tw0WIaxFTQerUeWNQ3/J+N3oCB02erPyMEhad5y+coDNQTe8zgjIKq7S2CepZvamvW/8UMjbORGDpex71JkMTTLv2JVFm++v9EHB3OPdxLjj+c79MA4Kw5w7dBkLGUO+fw=,iv:qzIDUEoYq0e1jWEVJRGapd8rUK7vt8e1mU/ogVi1jfA=,tag:7U7hlV4w6GgpKZQsQdC6tg==,type:str]
+    lhcloudy-id: ENC[AES256_GCM,data:sETEro92y0qFCdly5ecjCdxT,iv:NsjNIpHe8LiwBLPwGXma7/l5ieXrwqxitPqmHPBnOpE=,tag:FqZbShrO+8ckkDu4w0TIFg==,type:str]
+    command-channel-ids: ENC[AES256_GCM,data:5UdyUYtMxvhbWhHm03DUdExwWipNAEIbmdoc+QXjlb70Xuzm7A==,iv:1QUS4d42BMAP5+50fOvrGR1ld8jHK5KHzph0DAMz3ME=,tag:ou5fmbm0F4rmYaeD+KPKYw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBud1B6ZnZWVUI4eTJCTVRr
+            aTc2OXZmdDA1KzBWOVh3UTNFUjk0YWI1aFc0Ci9OTkcxNGphb01BRTJLeFFpcmVt
+            dmh3dG9FcXcxRXJjQ3hNeitEZjN3VkEKLS0tIFNpOHBpZWxLV1VTNGczSnB1Zmtn
+            aU4weGZicE9MUFBzaTRuLzRZSG1ma1kKXHxsBqEYp2Tv/Z0O9mEDqfwjDFPyjbVU
+            kuVCCWV09XnvhHBn/Ufqa4I30/G/S17pRiHwQ+slY5YO3y2ZyBrP4g==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-09T14:37:37Z"
+    mac: ENC[AES256_GCM,data:4xT5N4TZa1VCDcjhKdi7h3/EBCa4zZibAjzeokQxqFqUGbggs9sl343nTWu+emQUeyt7E0jJJ7se5ODBqDVnfmXm/1QtEaJLhITeGGbMU64Xao+TeUa68JBVHDSYwJm8ZRkZdOj6ztaoQI8p7Na6UlahArDhc9Qvz93W69jZ0rc=,iv:jsWAGpU6tL84na/3mEw3FYZtGhNmSgRKrctrnf1DwlM=,tag:OZtSSbwiG/bL16XUhmIVfA==,type:str]
+    version: 3.13.3

@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lhbotgo
+  namespace: lhbotgo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lhbotgo
+  # Recreate, not RollingUpdate: this is a Discord gateway client, not a server.
+  # Two pods alive at once means two gateway sessions handling the same events
+  # twice. There is nothing to keep available in the gap — Discord queues the
+  # events — so the old pod goes away before the new one starts.
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: lhbotgo
+    spec:
+      containers:
+        - name: bot
+          image: ghcr.io/alexraskin/lhbotgo:v0.1.7 # {"$imagepolicy": "flux-system:lhbotgo"}
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: lhbotgo-config
+                  key: bot-token
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: lhbotgo-config
+                  key: mongo-uri
+            - name: BOT_LHCLOUDY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: lhbotgo-config
+                  key: lhcloudy-id
+            - name: BOT_COMMAND_CHANNEL_IDS
+              valueFrom:
+                secretKeyRef:
+                  name: lhbotgo-config
+                  key: command-channel-ids
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop: ["ALL"]
