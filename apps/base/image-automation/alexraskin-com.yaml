@@ -1,0 +1,30 @@
+# Scans GHCR for new tags of the website image and picks the newest semver one.
+# The tag it picks is written back into base/alexraskin-com/deployment.yaml by
+# the ImageUpdateAutomation next to this file, which finds the line by its
+# `# {"$imagepolicy": "flux-system:alexraskin-com"}` marker.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: alexraskin-com
+  namespace: flux-system
+spec:
+  image: ghcr.io/alexraskin/alexraskin.com
+  interval: 5m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: alexraskin-com
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: alexraskin-com
+  # The repo also carries `latest`, `main` and a commit sha per build. Only the
+  # release tags are candidates; the `v` is stripped for comparison but the tag
+  # written back is the original, `v`-prefixed one.
+  filterTags:
+    pattern: '^v?(?P<version>\d+\.\d+\.\d+)$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>=0.1.0'

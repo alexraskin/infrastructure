@@ -123,6 +123,16 @@ manifests. Secrets are SOPS-encrypted to an age key in `secrets/age.key`
 The repo is public — encrypted `*.sops.yaml` is meant to be committed; the age
 key is not. `flux bootstrap` pushes commits, so do not run it casually.
 
+Image tags in `apps/base/*/deployment.yaml` are **owned by
+image-automation-controller**, not by hand: `apps/base/image-automation/` scans
+GHCR, picks the newest semver tag and pushes a commit rewriting the line marked
+`# {"$imagepolicy": "flux-system:<app>"}`. Editing a tag manually is undone on
+the next 5m scan; pin by narrowing the ImagePolicy range instead. This is why
+the GitRepository is SSH with the `flux-git-auth` deploy key (`mise run
+git-deploy-key`, needs write access on GitHub) rather than anonymous HTTPS, and
+why `install` passes `--components-extra=image-reflector-controller,image-automation-controller`.
+Only our own images are automated; `cloudflared` is still pinned by hand.
+
 ## Gotchas discovered the hard way
 
 - **The NIC is `eth0`**, not `ens18`. `network.nix` matches `"en* eth*"`; getting

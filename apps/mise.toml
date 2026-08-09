@@ -65,20 +65,61 @@ sops "${1:?usage: mise run sops-edit <file>}"
 
 # --------------------------------------------------------------- bootstrap ----
 
+[tasks."git-deploy-key"]
+description = "Generate the deploy key Flux pushes image-tag bumps with (once — then add it on GitHub)"
+shell = "bash -c"
+run = """
+set -euo pipefail
+key="{{config_root}}/../secrets/flux-deploy-key"
+
+# Kept on disk, like secrets/k3s-token and secrets/age.key, so rebuilding the
+# cluster does not mean registering a new deploy key on GitHub.
+if [ -s "$key" ]; then
+  echo "$key already exists, reusing it"
+else
+  mkdir -p "$(dirname "$key")"
+  ssh-keygen -t ed25519 -N '' -C 'flux@k3s' -f "$key" >/dev/null
+  chmod 600 "$key"
+  echo "wrote $key"
+fi
+
+kubectl create namespace flux-system --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n flux-system create secret generic flux-git-auth \
+  --from-file=identity="$key" \
+  --from-file=identity.pub="$key.pub" \
+  --from-literal=known_hosts="$(ssh-keyscan -t rsa,ecdsa,ed25519 github.com 2>/dev/null)" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+echo
+cat "$key.pub"
+"""
+
 [tasks.install]
-description = "Install Flux and point it at this repo (no GitHub token needed)"
+description = "Install Flux and point it at this repo"
 shell = "bash -c"
 run = """
 set -euo pipefail
 
-# Controllers only. `flux bootstrap` would commit these manifests to the repo and
-# create a deploy key, which needs a GitHub PAT with write access — unnecessary
-# here because clusters/k3s/flux-system.yaml is committed by hand and the repo is
-# public, so Flux reads it anonymously.
-flux install
+# Controllers only — `flux bootstrap` would commit its own manifests to the repo.
+# The two extra ones are what watch GHCR and write the new tags back into
+# apps/base; without them the image-automation Kustomization has no CRDs to
+# apply and fails on its own, leaving the apps alone.
+flux install --components-extra=image-reflector-controller,image-automation-controller
+
+kubectl -n flux-system get secret flux-git-auth >/dev/null 2>&1 || {
+  echo "secret/flux-git-auth is missing — run: mise run git-deploy-key" >&2
+  exit 1
+}
 
 kubectl apply -f clusters/k3s/flux-system.yaml
-flux reconcile source git flux-system
+
+# Fails until the deploy key is registered on GitHub, which is a manual step.
+flux reconcile source git flux-system || {
+  echo
+  echo "Could not clone over SSH. Is the deploy key from 'mise run git-deploy-key'" >&2
+  echo "registered on the repo with write access?" >&2
+  exit 1
+}
 
 echo
 echo "Flux is installed and syncing apps/clusters/k3s from main."
@@ -99,6 +140,7 @@ shell = "bash -c"
 run = """
 set -euo pipefail
 flux reconcile source git flux-system
+flux reconcile kustomization image-automation --with-source || true
 flux reconcile kustomization cloudflared --with-source || true
 flux reconcile kustomization alexraskin-com --with-source || true
 flux reconcile kustomization lastfm-now-playing --with-source || true

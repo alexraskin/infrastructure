@@ -8,20 +8,8 @@ clusters/k3s/         what Flux reconciles: the sync config plus the app Kustomi
 base/cloudflared/     the tunnel — the only way traffic enters the cluster
 base/alexraskin-com/  the website
 base/lastfm-now-playing/  the Last.fm now-playing API
+base/image-automation/    scans GHCR and writes new image tags back into base/
 .sops.yaml            age recipient; encrypts data/stringData in *.sops.yaml
-```
-
-## How traffic gets in
-
-There is no ingress controller and no LoadBalancer — traefik and servicelb are
-disabled on the cluster. `cloudflared` dials *out* to Cloudflare and forwards to
-Services by their in-cluster DNS name, so nothing needs a public IP or an open
-port. Routing lives in the Cloudflare dashboard (Zero Trust → Networks →
-Tunnels); point the hostname at:
-
-```
-alexraskin.com                             -> http://alexraskin-com.web.svc.cluster.local:80
-lastfm.alexraskin.com, lastfm.twizy.sh     -> http://lastfm-now-playing.lastfm.svc.cluster.local:80
 ```
 
 ## Secrets
@@ -51,14 +39,42 @@ git add -A && git commit && git push               # Flux reads the remote, not 
 mise run install
 ```
 
-No GitHub token needed: `flux bootstrap` would require a PAT with write access to
-commit its own manifests and add a deploy key. Instead `clusters/k3s/flux-system.yaml`
-is committed here by hand, and because the repo is public Flux reads it over
-anonymous HTTPS. The cluster never pushes to GitHub, so it needs no write
-credentials at all.
+No PAT and no `flux bootstrap`, which would commit its own manifests to the repo:
+`clusters/k3s/flux-system.yaml` is committed here by hand. The cluster does need
+one credential, though — a deploy key, because image automation pushes commits
+back. `mise run git-deploy-key` generates it into `../secrets/flux-deploy-key`,
+loads it as `flux-git-auth`, and prints the public half; paste that into
+**Settings → Deploy keys** on the repo with **Allow write access** ticked.
+`mise run install` refuses to continue without the secret, and fails loudly if
+the key has not been registered yet.
 
 Then `mise run status` to see what Flux thinks, and `mise run sync` to reconcile
 immediately instead of waiting for the 10m interval.
+
+## Image updates
+
+Nothing here pins a tag by hand. `base/image-automation/` gives each app an
+ImageRepository (scan GHCR every 5m) and an ImagePolicy (newest semver tag,
+`v` optional), and a single ImageUpdateAutomation rewrites the tags in
+`base/*/deployment.yaml` and pushes the commit — which Flux then pulls and rolls
+out. The line it rewrites is found by its marker, not by position:
+
+```yaml
+image: ghcr.io/alexraskin/alexraskin.com:v2.0.1 # {"$imagepolicy": "flux-system:alexraskin-com"}
+```
+
+So shipping a release is `git tag v2.0.2 && git push --tags` in the app repo.
+GitHub Actions builds and pushes the image, the controllers do the rest; expect
+the rollout within ~10 minutes. Editing a tag here by hand is pointless — the
+next scan puts the policy's choice back. To hold an app at an older version,
+narrow the ImagePolicy range instead.
+
+Two consequences worth knowing:
+
+- The `image-automation` Kustomization is deliberately standalone — no app
+  `dependsOn` it. If the extra controllers are missing, only it goes red.
+- Commits on `main` now come from `fluxcdbot` as well as from you. Pull before
+  you push, or expect rejections.
 
 ## Notes
 
@@ -67,10 +83,8 @@ immediately instead of waiting for the 10m interval.
 - lastfm-now-playing takes its key from the `lastfm-api-key` secret as a plain
   env var. The app also accepts a *path* in `LASTFM_API_KEY` (that is how it read
   a docker swarm secret); the k8s form passes the key itself.
-- The image tag is `latest` with `imagePullPolicy: Always`, so a new push is only
-  picked up on pod restart — `kubectl -n web rollout restart deploy/alexraskin-com`.
-  Automating that means Flux writing back to git, which *does* need a token; having
-  CI commit an image digest here is the alternative.
+- Third-party images (`cloudflared`) are still pinned by hand — image automation
+  covers our own images only.
 - **Flux syncs from the remote.** Uncommitted or unpushed changes do nothing.
 - `dependsOn` makes the website wait for cloudflared — there is no point serving
   something nothing can reach.
