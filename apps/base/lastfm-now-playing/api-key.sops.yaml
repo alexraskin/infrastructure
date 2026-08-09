@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: lastfm-api-key
+    namespace: lastfm
+type: Opaque
+stringData:
+    api-key: ENC[AES256_GCM,data:Ly5RbopxzDN2i0/xJL6Im6LiD+2JwPHQn3Bu1q5C6Qc=,iv:BuoxWyGik/WNEnFnBCiEqKBXSJduxi6krWYezWacrTA=,tag:92DOyJ4i81efkkrfrLKi4A==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBPL1lLYVRla0lQN01HdlRz
+            bndsYU1LNjZJU1h4clZBMVhmSFdtSTlBWENBCmxwSjVwQ09Ld2FsdjhiNitrRVl2
+            VTlZZXlsa0QwUmNxS0kzTGNvWUZ2SWcKLS0tIDRrdzJQL0dTWGdCSUd6b0RqWG5l
+            cGlRN1ZrT2FvTXBCaGZYREQxWjc5QkkKrw5mMHNKYq+qtFY1VP29h2as5XnFYGvx
+            j6jNTkslxCC0SoHW4yawZMH2R6PImclp/i5pupHS3XKr2FuWeSywxQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-09T00:43:05Z"
+    mac: ENC[AES256_GCM,data:4jh1LLTVxj71qMimW0+hM54GeTbDtx+ioyH4SPA1n65s2IJ70p678aqb4dOJCVgxuUeFxbQl9wV/vvLTjeX4vQ37Hxjc3BhgX8VZfTD53TmIBkuIlO/wS3mD3ycvshhLqjryiipvdTOR6TOPHHQTWfGpuZX/HzU7TLBPFoMKQcI=,iv:NFVLyMcYAGqvp0iNsPDBXfH8rvvOTSUwzeM0lR8q8sY=,tag:RfLrcJomgc9ji6yns3AXEQ==,type:str]
+    version: 3.13.3

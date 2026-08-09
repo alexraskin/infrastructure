@@ -1,0 +1,17 @@
+# Template only. Fill in the Last.fm API key (https://www.last.fm/api/accounts),
+# then encrypt it in place:
+#
+#   cp api-key.example.yaml api-key.sops.yaml
+#   $EDITOR api-key.sops.yaml
+#   mise run sops-encrypt base/lastfm-now-playing/api-key.sops.yaml
+#
+# api-key.sops.yaml is safe to commit *after* encryption. The plaintext form is
+# gitignored so an unencrypted one cannot be committed by accident.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lastfm-api-key
+  namespace: lastfm
+type: Opaque
+stringData:
+  api-key: PASTE_LASTFM_API_KEY_HERE

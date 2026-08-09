@@ -31,8 +31,27 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  # The site is only reachable through the tunnel, so there is no point bringing
-  # it up before cloudflared is healthy.
+  dependsOn:
+    - name: cloudflared
+  wait: true
+  timeout: 3m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: lastfm-now-playing
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/lastfm-now-playing
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   dependsOn:
     - name: cloudflared
   wait: true
