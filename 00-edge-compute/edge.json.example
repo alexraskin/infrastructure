@@ -9,7 +9,12 @@
     "zone:     must be a Cloudflare zone the API token can read.",
     "sites:    one entry gets a DNS A record, an ACME cert and an HAProxy",
     "          backend. `backend` is host:port as seen from the edge, so a",
-    "          tailnet address of the machine serving it."
+    "          tailnet address of the machine serving it.",
+    "loki_push_url:",
+    "          where nixos/hosts/edge-1/logging.nix ships this box's journal.",
+    "          The tailnet name of the Loki Ingress the tailscale operator",
+    "          serves (apps/base/loki/ingress.yaml) — here rather than in the",
+    "          NixOS module because that name is not published."
   ],
 
   "instance": {
