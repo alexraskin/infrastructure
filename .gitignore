@@ -28,3 +28,5 @@ result-*
 imports.tf
 
 .env
+
+00-edge-compute/edge.json

@@ -1,0 +1,182 @@
+# Third mise config in the repo, after the root (cluster) and apps/ (GitOps).
+# Separate because it is a separate set of credentials and a separate blast
+# radius — the same reason terraform/cloudflare/ is its own root.
+#
+#   mise trust        # once, in this directory
+#
+# Three phases:
+#   tf:apply      an Ubuntu ARM instance, a public IP, and the DNS records
+#   install       nixos-anywhere replaces Ubuntu with NixOS (one-shot)
+#   deploy        push this flake and switch to it (repeatable)
+
+[tools]
+terraform = "1.9"
+jq = "latest"
+
+[env]
+SSH_OPTS = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
+
+# --------------------------------------------------------------- terraform ---
+
+[tasks."tf:init"]
+description = "terraform init (state in R2)"
+dir = "terraform"
+shell = "bash -c"
+run = """
+set -euo pipefail
+for f in r2.tfbackend oci.env cloudflare-api-token; do
+  [ -s "../../secrets/$f" ] || {
+    echo "missing secrets/$f" >&2
+    echo "  r2.tfbackend         -> terraform/r2.tfbackend.example at the repo root" >&2
+    echo "  oci.env              -> 00-edge-compute/terraform/oci.env.example" >&2
+    echo "  cloudflare-api-token -> already used by terraform/cloudflare/" >&2
+    exit 1
+  }
+done
+terraform init -upgrade -backend-config=../../secrets/r2.tfbackend
+"""
+
+[tasks."tf:plan"]
+description = "Plan the VCN, instance and DNS records"
+dir = "terraform"
+depends = ["tf:init"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+source ../scripts/tf-env.sh
+terraform plan
+"""
+
+[tasks."tf:apply"]
+description = "Create the edge instance, retrying each availability domain on capacity errors"
+dir = "terraform"
+depends = ["tf:init"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+source ../scripts/tf-env.sh
+
+# Always-free A1 capacity is scarce and uneven across ADs, and "Out of host
+# capacity" is the normal outcome rather than a misconfiguration. Retry on that
+# error only — anything else is a real failure and stops here.
+#
+# By index, not by name. Reading the AD names up front would mean
+# `terraform console` on a data source that is not in state yet, which prints
+# "(known after apply)" rather than a list. Indices need no prior read: OCI
+# regions have one or three ADs, and asking for one that does not exist is a
+# distinct error from having no capacity in one that does.
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
+
+for idx in 0 1 2; do
+  echo "==> apply, availability domain index $idx"
+  set +e
+  terraform apply -var "instance_availability_domain_index=$idx" "$@" 2>&1 | tee "$log"
+  rc=${PIPESTATUS[0]}
+  set -e
+
+  [ "$rc" -eq 0 ] && exit 0
+
+  if grep -qi "Out of host capacity" "$log"; then
+    echo "no capacity in AD $idx — trying the next one"
+    continue
+  fi
+
+  # Terraform's message for an out-of-range list index. Means this region has
+  # fewer ADs than we tried, not that anything is misconfigured.
+  if grep -qiE "does not identify an element|Invalid index" "$log"; then
+    echo "region has no AD at index $idx — every one it does have is full." >&2
+    echo "try again later, or set TF_VAR_oci_region to another region." >&2
+    exit 1
+  fi
+
+  echo "apply failed for a reason other than capacity" >&2
+  exit "$rc"
+done
+
+echo "every availability domain is out of A1 capacity. Try again later, or another region." >&2
+exit 1
+"""
+
+[tasks."tf:destroy"]
+description = "Destroy the instance, its network and its DNS records"
+dir = "terraform"
+shell = "bash -c"
+run = """
+set -euo pipefail
+source ../scripts/tf-env.sh
+terraform destroy
+"""
+
+[tasks.ip]
+description = "The instance's current public IP"
+dir = "terraform"
+shell = "bash -c"
+run = """
+set -euo pipefail
+terraform output -raw public_ip
+echo
+"""
+
+# ------------------------------------------------------------------- nixos ---
+
+[tasks.install]
+description = "One-shot: nixos-anywhere replaces Ubuntu with NixOS (erases the box)"
+run = "scripts/install.sh"
+
+[tasks."push-secrets"]
+description = "Tailscale pre-auth key and the Cloudflare token for ACME DNS-01"
+run = "scripts/push-secrets.sh"
+
+[tasks.deploy]
+description = "Push this flake and nixos-rebuild switch (builds on the box)"
+run = "scripts/deploy.sh"
+
+[tasks.ssh]
+description = "SSH to the edge box"
+shell = "bash -c"
+run = """
+set -euo pipefail
+exec ssh $SSH_OPTS "root@$(terraform -chdir=terraform output -raw public_ip)"
+"""
+
+[tasks.status]
+description = "Tailscale, HAProxy, certs and backend reachability, as the box sees them"
+shell = "bash -c"
+run = """
+set -euo pipefail
+ip=$(terraform -chdir=terraform output -raw public_ip)
+ssh $SSH_OPTS "root@$ip" '
+  echo "--- tailscale"
+  tailscale status --peers=false || true
+  echo
+  echo "--- haproxy"
+  systemctl is-active haproxy
+  echo
+  echo "--- certs"
+  ls /var/lib/acme 2>/dev/null || echo "none issued yet"
+  echo
+  echo "--- backends"
+  jq -r ".sites[] | .backend" /etc/nixos-edge/edge.json | while read -r hp; do
+    printf "%-24s " "$hp"
+    timeout 3 bash -c "cat < /dev/null > /dev/tcp/${hp%%:*}/${hp##*:}" \\
+      && echo reachable || echo UNREACHABLE
+  done
+'
+"""
+
+# ---------------------------------------------------------------- validate ---
+
+[tasks.check]
+description = "terraform validate + fmt, and evaluate the flake"
+shell = "bash -c"
+run = """
+set -euo pipefail
+terraform -chdir=terraform fmt -recursive .
+terraform -chdir=terraform validate
+# path: rather than a bare path — a bare one resolves to the enclosing git repo,
+# which is the *cluster* flake, and the eval fails with "does not provide
+# attribute". path: takes the directory literally, untracked files included.
+../scripts/nix.sh 'nix eval --raw "path:./00-edge-compute#nixosConfigurations.edge-1.config.system.build.toplevel.drvPath"'
+echo
+"""
