@@ -147,14 +147,9 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
-  # No dependsOn cloudflared: Grafana is reached over the tailnet, nothing
-  # enters through the tunnel. It does need the operator, which owns the
-  # `tailscale` IngressClass its Ingress names.
   dependsOn:
     - name: tailscale-operator
   wait: true
-  # The chart installs CRDs and five workloads on first run, and Prometheus
-  # waits on a local-path PVC — 3m is not enough here.
   timeout: 15m
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -176,10 +171,8 @@ spec:
   # Logs go to R2, not through the tunnel, so no dependsOn cloudflared. The
   # Grafana datasource ConfigMap here is read by the monitoring stack's sidecar,
   # which is a label lookup, not an ordering dependency.
-  #
-  # tailscale-operator is an ordering dependency though: ingress.yaml puts Loki
-  # on the tailnet for the edge node, and an Ingress whose IngressClass does not
-  # exist yet is accepted and then never reconciled.
+  # tailscale-operator is an ordering dependency: service.yaml needs its
+  # loadBalancerClass, or the Service sits <pending> forever.
   dependsOn:
     - name: tailscale-operator
   wait: true
