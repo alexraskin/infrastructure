@@ -71,17 +71,17 @@ resource "oci_core_security_list" "edge" {
     }
   }
 
-  # ingress_security_rules {
-  #   protocol    = "6"
-  #   source      = var.ssh_ingress_cidr
-  #   stateless   = false
-  #   description = "SSH — narrow once the tailnet is up"
+  ingress_security_rules {
+    protocol    = "6"
+    source      = var.ssh_ingress_cidr
+    stateless   = false
+    description = "SSH — narrow once the tailnet is up"
 
-  #   tcp_options {
-  #     min = 22
-  #     max = 22
-  #   }
-  # }
+    tcp_options {
+      min = 22
+      max = 22
+    }
+  }
 
   ingress_security_rules {
     protocol    = "1" # ICMP

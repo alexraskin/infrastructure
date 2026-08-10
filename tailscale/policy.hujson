@@ -9,6 +9,13 @@
 			"users":       ["autogroup:nonroot", "root"],
 			"checkPeriod": "92h",
 		},
+
+		{
+			"action": "accept",
+			"src":    ["autogroup:admin"],
+			"dst":    ["tag:edge"],
+			"users":  ["root"],
+		},
 	],
 
 	"nodeAttrs": [
@@ -56,12 +63,6 @@
 			"ip":  ["tcp:32400"],
 		},
 
-		// The edge ships its journal to Loki, which the tailscale operator puts
-		// on the tailnet as its own device (apps/base/loki/ingress.yaml).
-		// tag:k8s-loki rather than tag:k8s so this grant reaches exactly that
-		// one proxy and not Grafana's. Loki runs auth_enabled: false, so the
-		// grant is the only thing standing between a tailnet device and the log
-		// store — keep the src to tag:edge.
 		{
 			"src": ["tag:edge"],
 			"dst": ["tag:k8s-loki"],
@@ -74,10 +75,7 @@
 		"tag:k8s-operator": [],
 		"tag:k8s":          ["tag:k8s-operator"],
 
-		// The Loki Ingress, split out of tag:k8s so the edge's grant above can
-		// name one proxy. Set by the tailscale.com/tags annotation on the
-		// Ingress; the operator refuses to create the device unless it owns the
-		// tag, which is what this line does.
+
 		"tag:k8s-loki": ["tag:k8s-operator"],
 
 		"tag:k3s": [],

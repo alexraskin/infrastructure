@@ -531,6 +531,17 @@ under `edge-compute/terraform.tfstate`. Structure follows
   LAN, and would hairpin every stream through whichever k3s server owns the
   route. Its pre-auth key is `secrets/tailscale-authkey-edge` — tagged, so the
   ACL can grant it exactly the one `host:port` in `edge.json` and nothing else.
+- **`--ssh` is on, as break-glass.** tailscaled serves port 22 on the tailnet
+  address, so a dead sshd no longer means a trip to the OCI serial console —
+  which is what it meant once, with 22 removed from the security list and no
+  other way in. sshd still owns the public IP, which is what `scripts/deploy.sh`
+  and every `mise` task here connect to (`terraform output -raw public_ip`), so
+  automation is untouched. The matching rule in `tailscale/policy.hujson` is
+  `autogroup:admin` → `tag:edge`, users `root`, **`accept` not `check`**: check
+  puts a browser re-auth in front of every connection, fine for a human and
+  fatal for anything unattended. It cannot ride on the existing rule, whose
+  `dst` is `autogroup:self` — that means devices owned by the calling user, and
+  a tagged node has no owner.
 - **`logging.nix` ships the journal to the cluster's Loki**, over the tailnet,
   to the operator-served Ingress in `apps/base/loki/ingress.yaml`. It is
   `services.alloy`, matching what the cluster runs, not promtail.
@@ -618,6 +629,19 @@ under `edge-compute/terraform.tfstate`. Structure follows
   Set one without the other and chunks are never deleted: logs look like they are
   being aged out because queries stop returning them, while the R2 bucket grows
   forever. Both live in `apps/base/loki/helmrelease.yaml`.
+- **Enabling `--ssh` makes the policy file load-bearing for SSH.** tailscaled
+  intercepts port 22 on the tailnet address unconditionally once the flag is
+  set, and if no `ssh` rule matches it **refuses** the connection rather than
+  falling through to sshd. So turning it on without the matching rule is
+  strictly worse than leaving it off: it breaks tailnet SSH that used to work.
+- **`Connection refused` on a tailnet address does not mean "firewalled".**
+  `00-edge-compute`'s `default.nix` sets `trustedInterfaces = [ "tailscale0" ]`,
+  so every port is accepted on that interface regardless of `allowedTCPPorts`
+  and the kernel RSTs anything with no listener. A closed port and a port whose
+  daemon has died look identical, and both look nothing like a dropped packet —
+  an OCI security-list removal times out instead. Probing a port nothing has
+  ever served (`/dev/tcp/<ip>/9999`) tells you which of the two you are in:
+  refused there means the interface is wide open and the daemon is simply gone.
 - **MagicDNS and HTTPS Certificates must be on in the tailnet admin console**
   (DNS page) or the operator has no cert to fetch and the Ingress never goes
   ready. Same class of one-time manual step as approving the subnet route —
