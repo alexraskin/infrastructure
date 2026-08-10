@@ -1,6 +1,6 @@
 { unstable, ... }:
 let
-  flags = [ "--accept-dns=false", "--advertise-tags="];
+  flags = [ "--accept-dns=false" ];
 in
 {
   services.tailscale = {

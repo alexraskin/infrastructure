@@ -446,6 +446,27 @@ The Grafana datasource is a ConfigMap in `logging` labelled
 `grafana_datasource: "1"`. The monitoring stack's sidecar runs with
 `NAMESPACE=ALL`, so nothing in `apps/base/monitoring/` changes to pick it up.
 
+`ingress.yaml` puts Loki on the tailnet, the same operator mechanism as the
+Grafana Ingress. It exists for exactly one client: the Oracle edge node, which
+is a tailnet leaf with no `--accept-routes` — and the cluster's advertised
+`10.0.200.0/24` is node LAN space, so Loki's ClusterIP was never in it and no
+amount of route-accepting would have reached it. Nothing in the cluster uses
+this path; Grafana and the Alloy DaemonSet still dial `svc/loki:3100`.
+
+- **The `tailscale.com/tags: tag:k8s-loki` annotation is load-bearing.** Left
+  alone the operator tags every proxy `tag:k8s`, so a grant letting the edge
+  reach Loki would also let it reach Grafana. `tag:k8s-loki` exists to make that
+  grant addressable at one service, and `tailscale/policy.hujson` must own it
+  under `tag:k8s-operator` or the operator's device creation is rejected. The
+  policy's `tests` assert both halves: `tag:edge` accepts `tag:k8s-loki:443` and
+  is denied `tag:k8s:443`.
+- **Loki runs `auth_enabled: false`**, so whatever the ACL admits can push,
+  query *and* delete. The grant is the only control; keep its `src` to
+  `tag:edge`.
+- The Kustomization now `dependsOn: tailscale-operator` for the IngressClass. An
+  Ingress naming a class that does not exist yet is accepted and then never
+  reconciled — no error, it simply never gets a device.
+
 ### 00-edge-compute/ — the public edge
 
 A free Oracle Cloud ARM box running HAProxy, terminating TLS on a public IP and
@@ -510,6 +531,27 @@ under `edge-compute/terraform.tfstate`. Structure follows
   LAN, and would hairpin every stream through whichever k3s server owns the
   route. Its pre-auth key is `secrets/tailscale-authkey-edge` — tagged, so the
   ACL can grant it exactly the one `host:port` in `edge.json` and nothing else.
+- **`logging.nix` ships the journal to the cluster's Loki**, over the tailnet,
+  to the operator-served Ingress in `apps/base/loki/ingress.yaml`. It is
+  `services.alloy`, matching what the cluster runs, not promtail.
+  - HAProxy logs with `log /dev/log local0 info` and journald owns `/dev/log`,
+    so haproxy, tailscaled, `acme-*.service`, sshd and the kernel are one
+    journal and one `loki.source.journal` collects all of them. No rsyslog.
+  - `services.journald.storage = "persistent"` — the default is volatile when
+    `/var/log/journal` is absent, which drops anything not yet shipped across a
+    reboot.
+  - The job label is `edge-journal`, deliberately **not** `systemd-journal`:
+    that is what the in-cluster DaemonSet labels the six k3s nodes with, and
+    reusing it folds an Oracle box into every existing
+    `{job="systemd-journal"}` query without anyone noticing.
+  - Alloy's UI listens on `0.0.0.0:12345` by default, and `default.nix` sets
+    `trustedInterfaces = [ "tailscale0" ]` — which opens *every* port to every
+    tailnet peer regardless of `allowedTCPPorts`. `extraFlags` binds it to
+    loopback instead.
+  - The push URL is a **required** `loki_push_url` in `edge.json`, because it
+    contains the tailnet name and this repo is public. Missing, it `throw`s at
+    eval with a pointer to `edge.json.example` rather than silently shipping
+    nowhere. An `edge.json` predating this module will not have the key.
 - **The first ACME run always fails, and nothing retries it.** nixos-anywhere
   activates the whole config during `install`, before `push-secrets.sh` has put
   `/etc/cloudflare/credentials` on the box, so the acme unit dies with "Failed

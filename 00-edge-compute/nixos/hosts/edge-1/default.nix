@@ -11,6 +11,7 @@
     ./tailscale.nix
     ./acme.nix
     ./haproxy.nix
+    ./logging.nix
   ];
 
   boot.loader = {
