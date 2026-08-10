@@ -1,28 +1,14 @@
 #!/usr/bin/env bash
-# Run a shell script in an environment that has nix + ssh.
-#
-# Uses the host's nix when present, otherwise falls back to the nixos/nix
-# container with a persistent /nix volume (first run pulls ~500MB, later runs
-# reuse the store). The script is fed on stdin so nothing has to survive a
-# round of shell quoting.
-#
-#   scripts/nix.sh 'nix build .#image --no-link --print-out-paths'
-#
-# The flake dir is the working directory in both modes.
+
 set -euo pipefail
 
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 script=${1:?usage: nix.sh <shell script>}
 
-# The qcow image is assembled inside a qemu VM, so the builder has to advertise
-# the kvm feature (and actually have /dev/kvm — see the device below).
+
 export NIX_CONFIG="experimental-features = nix-command flakes
 system-features = kvm nixos-test benchmark big-parallel uid-range"
 
-# The flake is evaluated from the git tree, which is what keeps secrets/ and the
-# multi-GB build/ output out of the nix store. Untracked files are invisible to
-# it, so a half-added tree would silently build the wrong thing. Only the paths
-# the flake actually reads matter — the compose services in this repo do not.
 untracked=$(git -C "$repo" ls-files --others --exclude-standard -- \
   flake.nix flake.lock hosts.json nix || true)
 if [ -n "$untracked" ]; then
