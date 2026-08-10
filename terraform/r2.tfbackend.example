@@ -1,10 +1,4 @@
-# Copy to secrets/r2.tfbackend (gitignored) and fill in. Both Terraform roots
-# share this file; they differ only by the `key` set in their providers.tf.
-#
-# The token is an R2 API token (Cloudflare dashboard -> R2 -> Manage API tokens)
-# with Object Read & Write on the bucket. It is not the same token as
-# secrets/cloudflare-api-token, and R2 shows the secret once.
-#
+# Copy to secrets/r2.tfbackend (gitignored) and fill in.
 #   mise run tf:init        # passes -backend-config for the Proxmox root
 #   mise run cf:init        # same, for the Cloudflare root
 
