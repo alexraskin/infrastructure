@@ -56,7 +56,7 @@
 			"ip":  ["*"],
 		},
 
-		// (00-edge-compute). It is the only device on this tailnet with a public IP
+		// (00-cloud-edge). It is the only device on this tailnet with a public IP
 		{
 			"src": ["tag:edge"],
 			"dst": ["100.73.219.120"],
