@@ -1,21 +1,16 @@
 { edge, ... }:
 {
-  # Default is volatile without /var/log/journal; that loses unshipped logs.
   services.journald.storage = "persistent";
 
   services.alloy = {
     enable = true;
 
-    # trustedInterfaces = [ "tailscale0" ] opens every port to the tailnet, so
-    # bind Alloy's UI to loopback rather than serve it there.
     extraFlags = [
       "--server.http.listen-addr=127.0.0.1:12345"
       "--disable-reporting"
     ];
   };
 
-  # /etc, not a store path: the module wires /etc/alloy/*.alloy into
-  # reloadTriggers, so a config change reloads instead of restarting.
   environment.etc."alloy/config.alloy".text = ''
     // Journal fields arrive as __journal_* and are dropped unless promoted.
     loki.relabel "journal" {

@@ -10,7 +10,6 @@
   ];
 
   boot.kernelParams = [
-    # OCI's serial console, which is the only way in when networking is broken.
     "console=ttyS0,115200n8"
     "net.ifnames=0"
   ];
