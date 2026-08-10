@@ -7,11 +7,11 @@ crosses Cloudflare.
 ```mermaid
 flowchart LR
     USER["Client"]
-    DNS["DNS A record<br/>proxied = false"]
+    DNS["DNS A record<br/>wildcard or per-site<br/>proxied = false"]
 
     subgraph oci["Oracle Cloud - 1 NixOS VM, aarch64"]
-        HAP["HAProxy :443<br/>TLS terminates here"]
-        ACME["ACME DNS-01<br/>LetsEncrypt"]
+        HAP["HAProxy :443<br/>TLS terminates here<br/>routes by Host header"]
+        ACME["ACME DNS-01<br/>LetsEncrypt, wildcard certs"]
         TS["tailscale<br/>leaf, no --accept-routes"]
     end
 
@@ -28,7 +28,7 @@ flowchart LR
     ACME -. "cert, reloads haproxy" .-> HAP
 ```
 
-Hostnames and backends live in `edge.json`, **gitignored** — copy
+Hostnames, wildcards and backends live in `edge.json`, **gitignored** — copy
 `edge.json.example`. Nothing works without it; the flake eval and every `tf:*`
 task read it.
 
@@ -46,13 +46,25 @@ mise run status
 Also `mise run ssh`, `mise run ip`, `mise run check` (fmt + validate + flake
 eval).
 
-Adding a site is one entry in `edge.json`: it grows a DNS record, an ACME cert
-and an HAProxy backend.
+## Sites and wildcards
+
+`edge.json` has two lists. `wildcards` are base domains — each gets a
+`*.<base>` cert and a `*.<base>` A record. `sites` are `domain` → `backend`
+pairs, each becoming an HAProxy backend routed by `Host` header.
+
+A site under a listed wildcard needs no DNS record and no cert of its own, so
+adding one is a `sites` entry and `mise run deploy` — no `tf:apply`, no new
+LetsEncrypt order. A site outside every wildcard still gets both, so the two
+styles mix freely.
+
+A wildcard covers exactly one label: `*.relay.example.com` serves
+`app.relay.example.com` but not `a.b.relay.example.com`, and not the bare
+`relay.example.com`. Both of those fall back to their own cert and record.
 
 ## Layout
 
 ```
-edge.json            shape, zone, sites, backends — read by the flake and by terraform
+edge.json            shape, zone, wildcards, sites — read by the flake and by terraform
 flake.nix            nixosConfigurations.edge-1 (aarch64)
 nixos/hosts/edge-1/  default, hardware, disk-config, ssh-keys, tailscale, acme, haproxy
 terraform/           providers, backend, network, compute, dns, outputs
@@ -69,18 +81,6 @@ All in `secrets/` at the repo root. Start from `terraform/oci.env.example`.
 | `oci_api_key.pem`        | OCI API signing key (`_public.pem` is already uploaded to OCI)   |
 | `cloudflare-api-token`   | Shared with `terraform/cloudflare/`; also on the box for DNS-01  |
 | `tailscale-authkey-edge` | Tagged pre-auth key; falls back to `tailscale-authkey`           |
-
-## Plex settings
-
-Settings → Network:
-
-- **Custom server access URLs**: `https://<site>:443` — without it Plex
-  advertises its LAN address and clients bypass the edge.
-- **Remote Access**: off.
-- **LAN Networks**: add `100.64.0.0/10`, or Plex treats the edge as remote and
-  applies the remote quality cap.
-- **Secure connections**: *Preferred*, not *Required* — HAProxy speaks plain
-  HTTP to the backend and *Required* refuses it.
 
 Design notes, failure modes and the reasoning behind all of it are in
 `CLAUDE.md` under **00-cloud-edge/**.
