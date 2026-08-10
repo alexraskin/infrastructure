@@ -61,8 +61,8 @@ spec:
         path: /data/data.db
 
       ui:
-        title: "k3s status"
-        header: "k3s"
+        title: "Infra status"
+        header: "k3s - plex - edge"
 
       endpoints:
         - name: "API (VIP)"
@@ -148,6 +148,27 @@ spec:
           url: "tcp://10.0.200.53:22"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+
+        - name: "edge-1"
+          group: "Off-cluster"
+          url: "tcp://100.79.150.123:443"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+
+        - name: "chronos (NAS)"
+          group: "Off-cluster"
+          url: "tcp://100.109.167.97:443"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+
+        - name: "Plex"
+          group: "Off-cluster"
+          url: "http://10.0.200.87:32400/identity"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+            - "[BODY] == pat(*machineIdentifier*)"
+            - "[RESPONSE_TIME] < 2000"
 
         - name: "CoreDNS"
           group: "Platform"

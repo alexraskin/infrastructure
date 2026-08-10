@@ -69,6 +69,19 @@
 			"dst": ["tag:k8s-loki"],
 			"ip":  ["tcp:3100"],
 		},
+
+		// Gatus probes. tag:k3s is the src because pod egress leaves through a
+		// node and is SNAT'd to its tailnet address.
+		{
+			"src": ["tag:k3s"],
+			"dst": ["tag:edge"],
+			"ip":  ["tcp:443"],
+		},
+		{
+			"src": ["tag:k3s"],
+			"dst": ["100.109.167.97"], // chronos, the NAS
+			"ip":  ["tcp:443"],
+		},
 	],
 
 	"tagOwners": {
@@ -109,10 +122,16 @@
 			],
 		},
 		{
-			// Subnet routers, but a src in no grant.
-			"src":   "tag:k3s",
-			"proto": "tcp",
-			"deny":  ["100.73.219.120:32400", "10.0.200.40:6443"],
+			// Subnet routers. Only what gatus probes, nothing else.
+			"src":    "tag:k3s",
+			"proto":  "tcp",
+			"accept": ["tag:edge:443", "100.109.167.97:443"],
+			"deny": [
+				"100.73.219.120:32400",
+				"10.0.200.40:6443",
+				"tag:edge:22",
+				"100.109.167.97:5001",
+			],
 		},
 		{
 			// Same for the operator's proxies.
