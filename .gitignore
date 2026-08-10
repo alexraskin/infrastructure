@@ -28,3 +28,7 @@ result-*
 .env
 
 00-cloud-edge/edge.json
+ci.auto.tfvars
+
+# import blocks name every adopted record — hostnames and Cloudflare record IDs
+terraform/cloudflare/imports.tf
