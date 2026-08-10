@@ -1,12 +1,8 @@
 locals {
-  # One directory up: edge.json has to live inside the flake root, and the
-  # flake root is the parent. Both read the same file — the hosts.json idiom.
   edge     = jsondecode(file("${path.module}/../edge.json"))
   instance = local.edge.instance
 }
 
-# OCI's UpdateVcn cannot narrow or move a CIDR that a subnet already sits in, so
-# a changed vcn_cidr has to destroy and recreate rather than update in place.
 resource "terraform_data" "vcn_cidr_marker" {
   input = var.vcn_cidr
 }
@@ -41,13 +37,6 @@ resource "oci_core_route_table" "public" {
   }
 }
 
-# The first of two firewalls — nixos/hosts/edge-1/default.nix opens the same
-# ports on the host. A port open in only one of the two produces a connection
-# that *hangs* rather than one that is refused, which reads like a routing
-# problem instead of a firewall one.
-#
-# Port 80 is deliberately absent: ACME runs DNS-01 against Cloudflare, so there
-# is no HTTP-01 challenge to answer and nothing to serve in the clear.
 resource "oci_core_security_list" "edge" {
   compartment_id = var.oci_compartment_ocid
   vcn_id         = oci_core_vcn.edge.id
@@ -70,10 +59,6 @@ resource "oci_core_security_list" "edge" {
       max = 443
     }
   }
-
-  # Tailscale NAT-traverses without this, so the tunnel comes up either way.
-  # What this buys is a *direct* WireGuard path instead of a DERP relay — on a
-  # link whose entire job is carrying video, that is the difference that matters.
   ingress_security_rules {
     protocol    = "17" # UDP
     source      = "0.0.0.0/0"
@@ -86,22 +71,18 @@ resource "oci_core_security_list" "edge" {
     }
   }
 
-  ingress_security_rules {
-    protocol    = "6"
-    source      = var.ssh_ingress_cidr
-    stateless   = false
-    description = "SSH — narrow once the tailnet is up"
+  # ingress_security_rules {
+  #   protocol    = "6"
+  #   source      = var.ssh_ingress_cidr
+  #   stateless   = false
+  #   description = "SSH — narrow once the tailnet is up"
 
-    tcp_options {
-      min = 22
-      max = 22
-    }
-  }
+  #   tcp_options {
+  #     min = 22
+  #     max = 22
+  #   }
+  # }
 
-  # Path MTU discovery. Without "fragmentation needed" getting back, a
-  # WireGuard-wrapped stream that exceeds the path MTU stalls instead of
-  # failing — the connection establishes and then hangs on the first large
-  # response, which is a miserable thing to debug.
   ingress_security_rules {
     protocol    = "1" # ICMP
     source      = "0.0.0.0/0"
@@ -125,8 +106,6 @@ resource "oci_core_subnet" "public" {
   security_list_ids          = [oci_core_security_list.edge.id]
   prohibit_public_ip_on_vnic = false
 
-  # OCI rejects a subnet CIDR outside the VCN's current blocks, and Terraform
-  # would otherwise try the subnet update before the VCN replacement lands.
   lifecycle {
     replace_triggered_by = [oci_core_vcn.edge]
   }

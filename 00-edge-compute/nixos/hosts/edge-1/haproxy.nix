@@ -1,11 +1,3 @@
-# HAProxy: terminate TLS on the public IP, forward to home over the tailnet.
-#
-# The reference design this is modelled on SNI-passthroughs to a proxy at home
-# that owns the certs. That is the better shape when there is such a proxy —
-# the edge never sees plaintext. There isn't one here: Plex serves its own
-# *.plex.direct cert, which is not valid for the name clients dial, so a
-# passthrough would present a name mismatch to every client. So this terminates
-# and speaks plain HTTP to Plex across the WireGuard link.
 {
   lib,
   edge,
@@ -29,9 +21,6 @@ let
   sites = map (site: site // { name = lib.replaceStrings [ "." ] [ "_" ] site.domain; }) edge.sites;
 in
 {
-  # The cert has to exist before haproxy starts, or the bind fails and the unit
-  # dies rather than degrading. On a fresh box that is the difference between
-  # "waits ~30s for DNS-01" and "crash-loops until someone restarts it".
   systemd.services.haproxy = {
     after = map (site: "acme-finished-${site.domain}.target") edge.sites;
     wants = map (site: "acme-finished-${site.domain}.target") edge.sites;
