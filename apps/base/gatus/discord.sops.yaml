@@ -1,0 +1,33 @@
+# Template only. Discord -> the channel's Settings -> Integrations -> Webhooks
+# -> New Webhook -> Copy Webhook URL. The URL is the credential: anyone holding
+# it can post to that channel, which is why it is not in the HelmRelease.
+#
+# The secret name and the key are referenced by the HelmRelease's env block —
+# do not rename them.
+#
+#   cp discord.example.yaml discord.sops.yaml
+#   $EDITOR discord.sops.yaml
+#   cd apps && mise exec -- sops --encrypt --in-place base/gatus/discord.sops.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+    name: gatus-discord
+    namespace: gatus
+type: Opaque
+stringData:
+    webhook-url: ENC[AES256_GCM,data:bYo8cd7w7PKOKWCn7gkfskj9OUYWHQqOUnHV9lru66jokMxhbMRqCEBqDggE0Kl6+58pCNVcGKN0op/RSqkzm2pDBOEfdfp/UsH5i698y3mBk/9jpyYesUKi/KyRWJ61irpv93kiwQbB+2Yn5L9JdJolLdq2JMoVrw==,iv:5NmMpL4dZ/r0hfK3vnDXfFhYipJvl1asP5kY0z/rPQk=,tag:jNFYD6uhTkykRF4lsoFN+w==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBUOXk1WkdsU3JWR1pZb0ll
+            Wmh6bFBwTUkwRm1JVnlKMzY0bFhkYVBtcVRJCjNsbWowdzFEVks5dFB4bG84KzFL
+            RjVBdGJwL1N0UUdwSkUrOG1HYUR3NDQKLS0tIEdhL3BQQzFQRzBRRzZqZ2h5ZGQv
+            ZlBCanpmUGx6THB5U05RQ1IycVpNbEEK0Zvzn1FdNNHRySJe1kSNPqXB865TZ8Yy
+            HIq8XNsIpGQNImdgn7d8Z49DRWLMCqpH7QEIWyI2Xe2G+4BsOTTHow==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-10T19:01:38Z"
+    mac: ENC[AES256_GCM,data:Y2PsqIsckDCeKbKCmdEUwn3hxYRWv6wVrGvdfXMazL9bXIzlxpcT3ZGJ1unw6Ue7YYCET6l+kG0/ZcPeGxwY07E4heGCvS8T5Ko/0OJylR3UvNgRU8gOO0M5b46Gvn1UcsXbtaG1F8YkKmJ02SvWcp3HjJhbrR8zKTTVqAKQlSU=,iv:LDlXYJrYbqVyzpsEnWub3Zjyh081AdHvkIKEB0QG6D8=,tag:nfFJ2YJ+nhJ4B6GI4yrb7w==,type:str]
+    version: 3.13.3

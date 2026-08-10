@@ -120,13 +120,47 @@ Postgres would remove both problems and is what the upstream example this was
 modelled on uses. There is no Postgres in this cluster, and standing one up to
 hold a status page's history is the wrong trade.
 
+## Retention — mostly not a knob
+
+Gatus does not have a "keep 30 days" setting, and the reason is that it stores
+two different things with two different lifetimes:
+
+- **Raw results and events** are capped by *count*, not age:
+  `maximum-number-of-results` (100) and `maximum-number-of-events` (50), per
+  endpoint. Both are set explicitly here rather than left to default so the
+  bound is visible. At a 60s interval, 100 results is the last ~100 minutes —
+  asking for 30 days of raw results would mean ~43k rows per endpoint and is
+  not what the schema is for.
+- **Uptime is aggregated and already expires at 30 days.** Gatus rolls hourly
+  buckets into daily ones and deletes anything past
+  `uptimeRetention = 30 * 24h` (cleanup fires above 32 days). Those constants
+  are compiled in — there is no config for them. That is what the 30d figure on
+  the page reads from, and it is why the sqlite file stays small on its own.
+
+Net: the DB is bounded to single-digit MB for 22 endpoints, the 1Gi PVC is
+already far more than it needs, and the way to shrink it further is fewer
+results per endpoint, not a shorter window.
+
 ## Alerting
 
-None configured. Gatus evaluates conditions and shows them on the page; nothing
-is paged. Same position as `alertmanager: enabled: false` in `monitoring/` — no
-route exists yet. To add one, an `alerting:` block plus `alerts:` on the
-endpoints that matter, with the webhook coming from a SOPS secret through `env:`
-and referenced as `${VAR}` in the config, never inlined.
+Discord, through `alerting.discord`, with `default-alert` supplying the
+thresholds so each endpoint only carries `alerts: [- type: discord]`: **3
+consecutive failures to fire, 2 to resolve, and `send-on-resolved: true`**. At a
+60s interval that is a three-minute outage before anything is posted, which is
+what keeps a single blipped probe off the channel.
+
+The webhook URL is the credential — anyone with it can post to the channel — so
+it comes from `discord.sops.yaml` (Secret `gatus-discord`, key `webhook-url`),
+reaches the pod as `DISCORD_WEBHOOK_URL`, and appears in the config only as
+`${DISCORD_WEBHOOK_URL}`. Gatus runs `os.ExpandEnv` over the whole config file
+before parsing it, which is the same mechanism the apiserver token uses. This is
+why the Flux Kustomization for `gatus` has a `decryption` block — without it the
+Secret is applied still encrypted and the pod alerts nowhere.
+
+**`discord.sops.yaml` ships with a placeholder.** It is encrypted, so the
+placeholder is invisible in a diff and nothing fails loudly — alerts simply post
+into a 404. Fill it in with
+`cd apps && mise exec -- sops base/gatus/discord.sops.yaml`.
 
 ## Gotchas
 
