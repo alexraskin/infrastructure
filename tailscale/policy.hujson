@@ -63,10 +63,7 @@
 			"ip":  ["tcp:32400"],
 		},
 
-		// 3100 is Loki's own port: the operator serves this as a plain TCP
-		// LoadBalancer, not an HTTPS Ingress, so the edge can push to the bare
-		// MagicDNS name. WireGuard already encrypts it; this grant is the only
-		// access control, since Loki runs auth_enabled: false.
+		// Log push. Loki has no auth; this grant is the access control.
 		{
 			"src": ["tag:edge"],
 			"dst": ["tag:k8s-loki"],
@@ -93,14 +90,10 @@
 		},
 	},
 
-	// Evaluated by the API during `terraform plan`, so a grant that widens
-	// access fails the pull request rather than the apply.
+	// Evaluated by the API at `terraform plan`, so a widened grant fails the PR.
 	"tests": [
 		{
-			// The edge node is the only device here reachable from the public
-			// internet. Both halves of its containment are asserted: the one
-			// backend it reverse-proxies, and the reach it must not have —
-			// other ports on the same host, the cluster VIP, a k3s node.
+			// The edge reaches its one backend and Loki, nothing else.
 			"src":   "tag:edge",
 			"proto": "tcp",
 			"accept": [
@@ -111,29 +104,25 @@
 				"100.73.219.120:22",
 				"10.0.200.40:6443",
 				"10.0.200.41:22",
-				// The whole point of splitting tag:k8s-loki out: the edge gets
-				// Loki, not Grafana or any other operator proxy.
+				// tag:k8s-loki is split out so this stays denied.
 				"tag:k8s:443",
 			],
 		},
 		{
-			// The k3s nodes advertise 10.0.200.0/24 but are named as a src
-			// nowhere in grants, so being a subnet router buys them no access
-			// of their own.
+			// Subnet routers, but a src in no grant.
 			"src":   "tag:k3s",
 			"proto": "tcp",
 			"deny":  ["100.73.219.120:32400", "10.0.200.40:6443"],
 		},
 		{
-			// Same for the per-Ingress proxies the operator creates.
+			// Same for the operator's proxies.
 			"src":   "tag:k8s",
 			"proto": "tcp",
 			"deny":  ["100.73.219.120:32400", "10.0.200.40:6443"],
 		},
 	],
 
-	// autogroup:self covers user-owned devices only, so a tagged node — which
-	// has no user — gets no SSH anywhere.
+	// autogroup:self is user-owned devices only; a tagged node has no owner.
 	"sshTests": [
 		{
 			"src":  "tag:edge",
