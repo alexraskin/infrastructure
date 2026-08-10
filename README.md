@@ -69,8 +69,8 @@ flowchart LR
 
 ### Runtime
 
-Two independent tailscale mechanisms: the nodes are a **subnet router** for
-`10.0.200.0/24`; the operator gives individual Services their **own** tailnet
+Two independent tailscale mechanisms: the nodes are a **subnet router** for the
+cluster subnet; the operator gives individual Services their **own** tailnet
 device. Public traffic never touches either — it arrives through an outbound
 cloudflared tunnel, so no port is open to the internet.
 
@@ -85,26 +85,26 @@ flowchart TB
     end
 
     subgraph ts["Tailnet"]
-        SR["subnet router<br/>10.0.200.0/24"]
-        TSD["grafana.tailnet.ts.net<br/>operator-managed device"]
+        SR["subnet router<br/>cluster subnet"]
+        TSD["operator-managed device<br/>MagicDNS name"]
     end
 
     subgraph pve["Proxmox host"]
-        subgraph cp["control plane - 3 NixOS VMs, .41-.43"]
-            VIP["kube-vip VIP 10.0.200.40:6443"]
+        subgraph cp["control plane - 3 NixOS VMs"]
+            VIP["kube-vip VIP :6443"]
             ETCD["k3s server + embedded etcd"]
         end
-        subgraph ag["workloads - 3 NixOS VMs, .51-.53"]
-            CFD["cloudflared<br/>dials out"]
-            APPS["alexraskin-com, go-vanityurls,<br/>lastfm-now-playing, lhbotgo"]
+        subgraph ag["workloads - 3 NixOS VMs"]
+            CFD["cloudflared"]
+            APPS["apps"]
             MON["kube-prometheus-stack<br/>Prometheus + Grafana"]
-            LOG["Loki (SingleBinary) + Alloy DaemonSet"]
+            LOG["Loki + Alloy DaemonSet"]
             TSO["tailscale-operator<br/>IngressClass tailscale"]
         end
     end
 
     R2L[("R2 bucket<br/>loki chunks")]
-    PLEX["10.0.200.87:9001<br/>plex-exporter"]
+    PLEX["plex-exporter"]
 
     USER --> DNS --> TUN
     TUN -. "outbound tunnel" .- CFD
@@ -130,8 +130,7 @@ Proxmox node, and `mise trust` in this directory.
 The flake is evaluated from the git tree, so **`git add` before deploying** —
 untracked changes are invisible to Nix and `scripts/nix.sh` will refuse to run.
 
-Edit `hosts.json` first (currently `10.0.200.0/24`, VIP `.40`, servers `.41-.43`,
-agents `.51-.53`), then:
+Edit `hosts.json` first — the subnet, the VIP, and one entry per node — then:
 
 ```bash
 cp terraform/proxmox/terraform.tfvars.example terraform/proxmox/terraform.tfvars
@@ -172,8 +171,8 @@ through the PVE HTTP API, with no resume — use
 
 ## Remote access
 
-Every node joins a tailnet and the three servers advertise `10.0.200.0/24` into
-it, so remote `kubectl` still talks to the VIP and stays HA. Drop a reusable
+Every node joins a tailnet and the three servers advertise the cluster subnet
+into it, so remote `kubectl` still talks to the VIP and stays HA. Drop a reusable
 pre-auth key in `secrets/tailscale-authkey`, `mise run deploy`, then approve the
 subnet route once in the Tailscale admin console. Clients need
 `tailscale up --accept-routes`; `./kubeconfig` needs no changes between LAN and
