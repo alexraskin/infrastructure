@@ -2,10 +2,8 @@ pve_endpoint  = "https://proxmox:8006/"
 pve_api_token = "root@pam!terraform=0000000000000000000000000"
 pve_node      = "bunker"
 
-# Datastore with 'iso' content enabled — this is where the NixOS image lands.
 image_datastore = "local"
 
-# Datastore for VM disks + cloud-init drives.
 vm_datastore = "local-lvm"
 disk_format  = "raw"
 
@@ -14,10 +12,31 @@ network_bridge = "vmbr0"
 
 ssh_public_key_path = "~/.ssh/id_ed25519.pub"
 
-# The image goes through the PVE HTTP API, which is slow and unresumable over a
-# WAN link. Flip this off and use `mise run push-image` (rsync, resumable) instead.
 upload_image = true
 
-# Seconds allowed for that API upload. The 1800s provider default is not enough
-# for a multi-GB image on a slow link.
 image_upload_timeout = 7200
+
+backup_storage  = "backups"
+backup_schedule = "*-*-* 02:30"
+backup_enabled  = true
+# backup_retention = { keep-daily = "7", keep-weekly = "4", keep-monthly = "3" }
+
+# NFS server behind the 'backups' and 'iso' storages. Reachable from the PVE
+# host's own subnet, not from the cluster VLAN.
+nas_server = ""
+
+# ACME. The account itself is not managed — an API token cannot touch the
+# account endpoints — so register it once by hand:
+#   pvenode acme account register default mailto:you@example.com
+pve_fqdn = "pve.example.com"
+acme_dns_plugin_data = {
+  CF_Account_ID = "0000000000000000000000000000000"
+  CF_Email      = "you@example.com"
+  CF_Token      = "cloudflare-api-token-with-zone-dns-edit"
+}
+
+# The management bridge exactly as the host has it. A typo here, applied,
+# takes the host off the network.
+pve_bridge_address = "10.0.0.2/24"
+pve_bridge_gateway = "10.0.0.1"
+pve_bridge_port    = "enp1s0"
