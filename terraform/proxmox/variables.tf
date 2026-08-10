@@ -96,3 +96,68 @@ variable "cpu_type" {
   type        = string
   default     = "host"
 }
+
+variable "backup_storage" {
+  description = "Storage the nightly vzdump writes to (the NFS export on the NAS)"
+  type        = string
+  default     = "backups"
+}
+
+variable "backup_schedule" {
+  description = "systemd calendar event for the backup job, in the PVE host's local timezone"
+  type        = string
+  default     = "*-*-* 02:30"
+}
+
+variable "backup_enabled" {
+  description = "Whether the backup job runs on schedule"
+  type        = bool
+  default     = true
+}
+
+variable "backup_retention" {
+  description = "Job-level prune policy, overriding the storage's own prune-backups"
+  type        = map(string)
+  default = {
+    "keep-daily"   = "7"
+    "keep-weekly"  = "4"
+    "keep-monthly" = "3"
+  }
+}
+
+variable "nas_server" {
+  description = "NFS server backing the backups and iso storages"
+  type        = string
+}
+
+variable "pve_fqdn" {
+  description = "Public hostname of the PVE host, the subject of its ACME certificate"
+  type        = string
+}
+
+variable "acme_account" {
+  description = "Name of the ACME account on the host that orders the certificate"
+  type        = string
+  default     = "default"
+}
+
+variable "acme_dns_plugin_data" {
+  description = "Credentials for the acme.sh DNS plugin (CF_Account_ID, CF_Email, CF_Token)"
+  type        = map(string)
+  sensitive   = true
+}
+
+variable "pve_bridge_address" {
+  description = "The PVE host's own address on the management bridge, CIDR form"
+  type        = string
+}
+
+variable "pve_bridge_gateway" {
+  description = "Default gateway on the management bridge"
+  type        = string
+}
+
+variable "pve_bridge_port" {
+  description = "Physical NIC enslaved to the management bridge"
+  type        = string
+}

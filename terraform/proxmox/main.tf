@@ -4,9 +4,6 @@ locals {
   nodes   = local.hosts.nodes
 }
 
-# The golden NixOS image, uploaded once and used as the backing disk for every VM.
-# Content type "iso" is the datastore slot Proxmox accepts arbitrary disk images in;
-# the .img suffix is required for it to be listed as importable.
 resource "proxmox_virtual_environment_file" "nixos_image" {
   count = var.upload_image ? 1 : 0
 
@@ -101,7 +98,6 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   lifecycle {
     ignore_changes = [
-      # Rebuilding the image must not recreate running cluster members.
       disk[0].file_id,
     ]
   }

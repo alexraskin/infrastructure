@@ -26,3 +26,15 @@ output "control_plane_endpoint" {
   description = "kube-vip VIP fronting the API servers"
   value       = "https://${local.cluster.vip}:6443"
 }
+
+output "backup_job" {
+  description = "The nightly vzdump job: what it covers, where it lands, how long it is kept"
+  value = {
+    id        = proxmox_backup_job.cluster.id
+    storage   = proxmox_backup_job.cluster.storage
+    schedule  = proxmox_backup_job.cluster.schedule
+    enabled   = proxmox_backup_job.cluster.enabled
+    vmids     = proxmox_backup_job.cluster.vmid
+    retention = proxmox_backup_job.cluster.prune_backups
+  }
+}

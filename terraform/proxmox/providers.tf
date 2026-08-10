@@ -1,9 +1,6 @@
 terraform {
   required_version = ">= 1.6"
 
-  # Partial config: bucket and key are not secret, credentials and the endpoint
-  # are. The rest comes from secrets/r2.tfbackend via -backend-config, which the
-  # mise init tasks pass. R2 speaks S3, but is not AWS — hence the skips.
   backend "s3" {
     bucket                      = "terraform"
     key                         = "promox-k3-nix/terraform.tfstate"

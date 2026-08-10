@@ -37,7 +37,6 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "this" {
           service  = rule.service
         }
       ],
-      # Cloudflare requires the list to end with a rule that has no hostname.
       [{ service = var.catch_all_service }],
     )
   }
@@ -56,7 +55,7 @@ resource "cloudflare_dns_record" "tunnel" {
   type    = "CNAME"
   content = "${cloudflare_zero_trust_tunnel_cloudflared.this.id}.cfargotunnel.com"
   proxied = true
-  ttl     = 1 # ignored while proxied, but the API requires a value
+  ttl     = 1
   comment = "terraform: k3s tunnel"
 }
 
