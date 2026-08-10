@@ -10,8 +10,9 @@ VMs, NixOS owns everything inside them, Flux deploys workloads from `apps/`.
 
 ## Commands
 
-`mise` runs everything. Two separate configs: `mise.toml` at the root (cluster)
-and `apps/mise.toml` (GitOps). `mise trust` is needed once per directory.
+`mise` runs everything. Three separate configs: `mise.toml` at the root
+(cluster), `apps/mise.toml` (GitOps) and `00-edge-compute/mise.toml` (the Oracle
+edge). `mise trust` is needed once per directory.
 
 ```bash
 mise run preflight      # validate Proxmox API token, node, datastores, VM IDs, IPs, SSH — do this first
@@ -30,12 +31,24 @@ mise run cf:apply       # same, applied
 mise run reset          # DESTRUCTIVE: wipe k3s state cluster-wide (typed confirmation)
 ```
 
+From `00-edge-compute/` (its own mise config):
+
+```bash
+mise run tf:apply       # Oracle instance, public IP, DNS records — retries every AD on capacity errors
+mise run install        # nixos-anywhere: kexec + disko + install. One shot, erases the box
+mise run deploy         # push the flake and switch; repeatable
+mise run status         # tailscale, haproxy, certs, backend reachability
+```
+
 Validation without touching infrastructure:
 
 ```bash
 terraform -chdir=terraform/proxmox validate && terraform fmt -recursive terraform/
 terraform -chdir=terraform/cloudflare validate
+terraform -chdir=00-edge-compute/terraform validate
 ./scripts/nix.sh 'nix eval ".#nixosConfigurations.k3s-server-1.config.networking.hostName"'
+# path:, or nix resolves to the enclosing git repo — which is the cluster flake
+./scripts/nix.sh 'nix eval "path:./00-edge-compute#nixosConfigurations.edge-1.config.system.build.toplevel.drvPath"'
 cd apps && mise exec -- kustomize build base/alexraskin-com
 cd apps && mise exec -- kustomize build base/monitoring
 cd apps && mise exec -- kustomize build base/tailscale-operator
@@ -385,6 +398,85 @@ in Grafana as `{job="systemd-journal"}` without SSHing anywhere.
 The Grafana datasource is a ConfigMap in `logging` labelled
 `grafana_datasource: "1"`. The monitoring stack's sidecar runs with
 `NAMESPACE=ALL`, so nothing in `apps/base/monitoring/` changes to pick it up.
+
+### 00-edge-compute/ — the public edge
+
+A free Oracle Cloud ARM box running HAProxy, terminating TLS on a public IP and
+forwarding to home over Tailscale. It exists because **Plex cannot go through
+the cloudflared tunnel**: Cloudflare's terms 2.8 restrict serving video through
+the proxy, disabling caching does not change that (2.8 is about bytes crossing
+their network), and a tunnel is proxied by definition — `*.cfargotunnel.com`
+only resolves orange-clouded. Oracle rather than AWS purely for egress: 10 TB/mo
+free against AWS's 100 GB, and a 4K remux direct-play is ~27 GB/hour.
+
+Its own mise config (`mise trust` once) and its own Terraform root, state in R2
+under `edge-compute/terraform.tfstate`. Structure follows
+[FinnPL/Homelab-Setup `cloud-edge`](https://github.com/FinnPL/Homelab-Setup/tree/main/cloud-edge).
+
+- **`edge.json` is the single source of truth**, like `hosts.json`: shape, zone,
+  sites and their backends, read by `flake.nix` (`builtins.fromJSON`) and
+  `terraform/network.tf` (`jsondecode`). One entry grows a DNS record, an ACME
+  cert and an HAProxy backend. It is **gitignored** — the public hostnames are
+  the one part of this setup worth not publishing, the same reasoning as
+  `grafana-tailnet.sops.yaml`. Structure is in `edge.json.example`; a missing
+  `edge.json` fails the flake eval and every `tf:*` task.
+- **The flake root is `00-edge-compute/`, not a subdirectory.** A flake's source
+  is copied into the store, so a flake in `nixos/` reading `../edge.json`
+  resolves it to `/nix/store/edge.json` and fails with "access to absolute path
+  … is forbidden in pure evaluation mode". `terraform/` reads `../edge.json`
+  instead, which is why that path looks backwards.
+- **Own flake, deliberately not another `hosts.json` entry.** The cluster flake
+  is x86_64 and every node in it is a k3s node from one golden image; this is one
+  aarch64 box in someone else's datacentre. Sharing it would make the cluster's
+  `nix eval` checks depend on an Oracle instance. Cost is a duplicated ~30-line
+  tailscale module.
+- **Three phases**: `tf:apply` (Ubuntu ARM instance, public IP, DNS records) →
+  `install` (nixos-anywhere: kexec, disko, install, reboot — one shot, erases
+  the box, refuses if already NixOS) → `deploy` (push flake, switch, repeatable).
+- **Both build on the box.** The build host is x86_64 and the instance is
+  aarch64, so `scripts/deploy-node.sh`'s build-locally-then-`nix copy` cannot
+  work. `--build-on-remote` hands it to the instance's Ampere cores; the kexec
+  image is *substituted* prebuilt, a download rather than a build, so no
+  emulation is involved. `deploy` ships the tree with tar over ssh, not rsync —
+  rsync must exist on both ends and is not in a minimal NixOS profile, so the
+  first deploy would be the one that fails.
+- **The public IP is ephemeral on purpose.** A reserved OCI IP cannot be
+  attached at create time, only afterwards and only to an instance that has no
+  ephemeral one — which means no internet during first boot and no unattended
+  install. Taking the ephemeral address and having `terraform/dns.tf` point the
+  A records at `oci_core_instance.edge.public_ip` removes that ordering problem.
+  This is also why the Cloudflare provider is in *this* root and not
+  `terraform/cloudflare/`: the value only exists here.
+- **`proxied = false` on those records is load-bearing.** Orange-clouding puts
+  the video back on Cloudflare's network and back under 2.8.
+- **"Out of host capacity" is the normal failure**, not a misconfiguration.
+  Always-free A1 capacity is scarce and uneven across availability domains;
+  `mise run tf:apply` walks every AD, retrying on that error only.
+- **TLS terminates at the edge**, unlike the reference design's SNI passthrough.
+  There is no reverse proxy at home to hand the connection to, and Plex serves
+  its own `*.plex.direct` cert, which is not valid for the name clients dial.
+  Certs are LetsEncrypt over **DNS-01**, which is why port 80 is closed in both
+  the OCI security list and the NixOS firewall.
+- **Tailscale here is a leaf with no `--accept-routes`.** The Plex host is its
+  own tailnet device, so the backend is a peer address; accepting the cluster's
+  `10.0.200.0/24` would give the one machine with a public IP a path to the whole
+  LAN, and would hairpin every stream through whichever k3s server owns the
+  route. Its pre-auth key is `secrets/tailscale-authkey-edge` — tagged, so the
+  ACL can grant it exactly the one `host:port` in `edge.json` and nothing else.
+- **The first ACME run always fails, and nothing retries it.** nixos-anywhere
+  activates the whole config during `install`, before `push-secrets.sh` has put
+  `/etc/cloudflare/credentials` on the box, so the acme unit dies with "Failed
+  to load environment files". A later `deploy` does *not* fix it: the unit's
+  definition has not changed, so `switch-to-configuration` leaves the failed
+  oneshot alone, and HAProxy goes on serving the self-signed placeholder that
+  acme writes so services can start. The site answers on 443 and fails
+  verification — `curl -w '%{ssl_verify_result}'` returns 19, not 0. `deploy.sh`
+  now starts `acme-<domain>.service` explicitly after the switch, which is
+  idempotent (the unit checks expiry before contacting LetsEncrypt).
+- Credentials all come from `secrets/` via `scripts/tf-env.sh` as `TF_VAR_*`:
+  `oci.env`, `oci_api_key.pem` (the signing key; `oci_api_key_public.pem` is
+  already uploaded to OCI and unread here), and the existing
+  `cloudflare-api-token`, which is also pushed to the box for ACME DNS-01.
 
 ## Gotchas discovered the hard way
 
