@@ -72,8 +72,6 @@ run = """
 set -euo pipefail
 key="{{config_root}}/../secrets/flux-deploy-key"
 
-# Kept on disk, like secrets/k3s-token and secrets/age.key, so rebuilding the
-# cluster does not mean registering a new deploy key on GitHub.
 if [ -s "$key" ]; then
   echo "$key already exists, reusing it"
 else
@@ -100,10 +98,6 @@ shell = "bash -c"
 run = """
 set -euo pipefail
 
-# Controllers only — `flux bootstrap` would commit its own manifests to the repo.
-# The two extra ones are what watch GHCR and write the new tags back into
-# apps/base; without them the image-automation Kustomization has no CRDs to
-# apply and fails on its own, leaving the apps alone.
 flux install --components-extra=image-reflector-controller,image-automation-controller
 
 kubectl -n flux-system get secret flux-git-auth >/dev/null 2>&1 || {
