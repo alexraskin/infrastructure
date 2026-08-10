@@ -89,6 +89,42 @@ under `edge-compute/terraform.tfstate`.
   LAN, and would hairpin every stream through whichever k3s server owns the
   route. Its pre-auth key is `secrets/tailscale-authkey-edge` — tagged, so the
   ACL can grant it exactly the one `host:port` in `edge.json` and nothing else.
+- **It is also the tailnet's exit node.** `--advertise-exit-node`, and like the
+  cluster's subnet routes the flag has to be in **both** `extraUpFlags` and
+  `extraSetFlags` or it is gone after the first `tailscale up`. Three pieces
+  besides the flag, none of which announce themselves when missing:
+  - **`useRoutingFeatures = "server"`**, which is the only thing that sets
+    `net.ipv4.conf.all.forwarding`. Without it tailscaled advertises the route
+    and silently forwards nothing.
+  - **`networking.firewall.extraForwardRules`.** This box runs the *nftables*
+    firewall, whose `forward` chain is `policy drop` and — unlike `input` —
+    has no `trustedInterfaces` rule, so `trustedInterfaces = [ "tailscale0" ]`
+    does not cover it. Tailscale's own `accept` in its table is not enough: an
+    accept in one base chain does not skip the others, and the NixOS chain runs
+    too and drops. The cluster's subnet routers get away without this only
+    because they are on the iptables backend, which leaves `FORWARD` at accept.
+    Established/related is already accepted, so one rule for new inbound from
+    `tailscale0` is the whole fix.
+  - **Two policy-file entries.** `autoApprovers.exitNode: ["tag:edge"]`, or the
+    route sits unapproved until someone clicks it in the admin console; and a
+    grant whose `dst` is `autogroup:internet`. The existing
+    `autogroup:admin → *` grant does **not** cover it — `*` never matches
+    `autogroup:internet`, it has to be named. Apply `ts:apply` *before*
+    deploying, since auto-approval is evaluated when the route is advertised.
+  - `tailscale-offloads` is Tailscale's own throughput advice for routers
+    (`ethtool -K eth0 rx-udp-gro-forwarding on rx-gro-list off`); ethtool
+    settings do not survive a reboot, hence the unit.
+- **The exit node blackholes IPv6.** An exit node advertises `::/0` as well as
+  `0.0.0.0/0`, unconditionally — there is no v4-only exit node — and the VCN in
+  `terraform/network.tf` has no IPv6 block, no `::/0` route and no v6 security
+  rules, so those packets arrive over the tunnel and stop. Dual-stack sites
+  still load, after a happy-eyeballs timeout on the first connection to each;
+  v6-only destinations do not. Fixing it means giving the VCN a `/56`, the
+  subnet a `/64`, an IPv6 route to the IGW and matching rules, not a Tailscale
+  setting.
+- **Exit-node traffic is Oracle egress**, out of the same 10 TB/mo the Plex
+  streams come from. A phone on the exit node all day is small next to a 4K
+  remux, but it is the same budget.
 - **`--ssh` is on, as break-glass.** tailscaled serves port 22 on the tailnet
   address, so a dead sshd no longer means a trip to the OCI serial console —
   which is what it meant once, with 22 removed from the security list and no
