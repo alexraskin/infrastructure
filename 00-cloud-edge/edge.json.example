@@ -1,0 +1,39 @@
+{
+  "_comment": [
+    "Copy to edge.json and fill in. edge.json is gitignored: the public",
+    "hostnames are the one part of this setup worth not publishing.",
+    "Read by flake.nix (builtins.fromJSON) and terraform/network.tf",
+    "(jsondecode) — the hosts.json idiom.",
+    "",
+    "instance:  always-free A1 caps are 4 ocpus, 24 GB and 200 GB total.",
+    "zone:      must be a Cloudflare zone the API token can read.",
+    "wildcards: optional. Each base gets one `*.<base>` cert and one `*.<base>`",
+    "           A record, so a site under it needs neither. Covers one label:",
+    "           a.<base> yes, a.b.<base> no.",
+    "sites:     one entry gets an HAProxy backend, plus its own cert and A",
+    "           record if no wildcard covers it. `backend` is host:port as seen",
+    "           from the edge, so a tailnet address of the machine serving it."
+  ],
+
+  "instance": {
+    "hostname": "edge-1",
+    "shape": "VM.Standard.A1.Flex",
+    "ocpus": 2,
+    "memory_gb": 12,
+    "boot_volume_gb": 100
+  },
+
+  "acme_email": "you@example.com",
+  "zone": "example.com",
+
+  "wildcards": [
+    "relay.example.com"
+  ],
+
+  "sites": [
+    {
+      "domain": "service.relay.example.com",
+      "backend": "100.64.0.1:8080"
+    }
+  ]
+}
