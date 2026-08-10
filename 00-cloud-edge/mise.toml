@@ -8,7 +8,7 @@ SSH_OPTS = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
 # --------------------------------------------------------------- terraform ---
 
 [tasks."tf:init"]
-description = "terraform init (state in R2)"
+description = "terraform init"
 dir = "terraform"
 shell = "bash -c"
 run = """
