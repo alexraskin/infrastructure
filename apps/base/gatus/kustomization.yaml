@@ -4,4 +4,5 @@ resources:
   - namespace.yaml
   - serviceaccount.yaml
   - helmrepository.yaml
+  - discord.sops.yaml
   - helmrelease.yaml

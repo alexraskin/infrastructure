@@ -30,6 +30,11 @@ spec:
           secretKeyRef:
             name: gatus-probe-token
             key: token
+      DISCORD_WEBHOOK_URL:
+        valueFrom:
+          secretKeyRef:
+            name: gatus-discord
+            key: webhook-url
 
     persistence:
       enabled: true
@@ -59,6 +64,17 @@ spec:
       storage:
         type: sqlite
         path: /data/data.db
+        maximum-number-of-results: 100
+        maximum-number-of-events: 50
+
+      alerting:
+        discord:
+          webhook-url: "${DISCORD_WEBHOOK_URL}"
+          title: "k3s"
+          default-alert:
+            failure-threshold: 3
+            success-threshold: 2
+            send-on-resolved: true
 
       ui:
         title: "Infra status"
@@ -76,6 +92,8 @@ spec:
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == ok"
+          alerts:
+            - type: discord
 
         - name: "k3s-server-1"
           group: "Control plane"
@@ -88,6 +106,8 @@ spec:
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == ok"
+          alerts:
+            - type: discord
 
         - name: "k3s-server-2"
           group: "Control plane"
@@ -100,6 +120,8 @@ spec:
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == ok"
+          alerts:
+            - type: discord
 
         - name: "k3s-server-3"
           group: "Control plane"
@@ -112,54 +134,72 @@ spec:
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == ok"
+          alerts:
+            - type: discord
 
         - name: "k3s-server-1"
           group: "Nodes"
           url: "tcp://10.0.200.41:22"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
 
         - name: "k3s-server-2"
           group: "Nodes"
           url: "tcp://10.0.200.42:22"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
 
         - name: "k3s-server-3"
           group: "Nodes"
           url: "tcp://10.0.200.43:22"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
 
         - name: "k3s-agent-1"
           group: "Nodes"
           url: "tcp://10.0.200.51:22"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
 
         - name: "k3s-agent-2"
           group: "Nodes"
           url: "tcp://10.0.200.52:22"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
 
         - name: "k3s-agent-3"
           group: "Nodes"
           url: "tcp://10.0.200.53:22"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
 
         - name: "edge-1"
           group: "Off-cluster"
           url: "tcp://100.79.150.123:443"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
 
         - name: "chronos (NAS)"
           group: "Off-cluster"
           url: "tcp://100.109.167.97:443"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
 
         - name: "Plex"
           group: "Off-cluster"
@@ -169,6 +209,8 @@ spec:
             - "[STATUS] == 200"
             - "[BODY] == pat(*machineIdentifier*)"
             - "[RESPONSE_TIME] < 2000"
+          alerts:
+            - type: discord
 
         - name: "CoreDNS"
           group: "Platform"
@@ -179,6 +221,8 @@ spec:
             query-type: "A"
           conditions:
             - "[DNS_RCODE] == NOERROR"
+          alerts:
+            - type: discord
 
         - name: "Grafana"
           group: "Platform"
@@ -187,6 +231,8 @@ spec:
           conditions:
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 2000"
+          alerts:
+            - type: discord
 
         - name: "Prometheus"
           group: "Platform"
@@ -194,6 +240,8 @@ spec:
           interval: 60s
           conditions:
             - "[STATUS] == 200"
+          alerts:
+            - type: discord
 
         - name: "Loki"
           group: "Platform"
@@ -201,6 +249,8 @@ spec:
           interval: 60s
           conditions:
             - "[STATUS] == 200"
+          alerts:
+            - type: discord
 
         - name: "Alloy"
           group: "Platform"
@@ -208,6 +258,8 @@ spec:
           interval: 60s
           conditions:
             - "[STATUS] == 200"
+          alerts:
+            - type: discord
 
         - name: "alexraskin.com (origin)"
           group: "Apps"
@@ -216,6 +268,8 @@ spec:
           conditions:
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 2000"
+          alerts:
+            - type: discord
 
         - name: "go-vanityurls (origin)"
           group: "Apps"
@@ -223,6 +277,8 @@ spec:
           interval: 60s
           conditions:
             - "[STATUS] == 200"
+          alerts:
+            - type: discord
 
         - name: "lastfm-now-playing (origin)"
           group: "Apps"
@@ -230,6 +286,8 @@ spec:
           interval: 60s
           conditions:
             - "[STATUS] == 200"
+          alerts:
+            - type: discord
 
         - name: "alexraskin.com"
           group: "Public"
@@ -239,3 +297,5 @@ spec:
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 3000"
             - "[CERTIFICATE_EXPIRATION] > 240h"
+          alerts:
+            - type: discord
