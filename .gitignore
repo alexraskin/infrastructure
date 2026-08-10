@@ -25,8 +25,6 @@ result-*
 *.tfbackend
 !*.tfbackend.example
 
-imports.tf
-
 .env
 
-00-edge-compute/edge.json
+00-cloud-edge/edge.json
