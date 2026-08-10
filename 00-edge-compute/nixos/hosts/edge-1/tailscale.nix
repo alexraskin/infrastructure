@@ -1,6 +1,11 @@
 { unstable, ... }:
 let
-  flags = [ "--accept-dns=false" ];
+
+  flags = [
+    "--accept-dns=false"
+
+    "--ssh"
+  ];
 in
 {
   services.tailscale = {
