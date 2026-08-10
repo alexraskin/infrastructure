@@ -1,0 +1,47 @@
+services:
+  plex:
+    image: plexinc/pms-docker:latest
+    container_name: plex
+    network_mode: host
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Phoenix
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/lib/plexmediaserver:/config
+      - type: bind
+        source: /mnt/media/Media
+        target: /media
+        read_only: true
+    restart: always
+    labels:
+      didar.enabled: "true"
+  prom-plex-exporter:
+    container_name: prom-plex-exporter
+    image: ghcr.io/jsclayton/prometheus-plex-exporter
+    ports:
+      - 9001:9000/tcp
+    environment:
+      PLEX_SERVER: ${PLEX_SERVER}
+      PLEX_TOKEN: ${PLEX_TOKEN}
+    restart: always
+    labels:
+      didar.enabled: "true"
+  subtrace:
+    image: ghcr.io/alexraskin/subtrace:latest
+    container_name: subtrace
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Phoenix
+    volumes:
+      - ./subtrace-config:/config          # subtrace.toml + subtrace.db
+      - type: bind
+        source: /mnt/media/Media
+        target: /media                     # read-write: subtrace writes .srt sidecars
+    restart: always
+    labels:
+      didar.enabled: "true"
