@@ -24,6 +24,13 @@ spec:
     deployment:
       strategy: Recreate
 
+    env:
+      GATUS_APISERVER_TOKEN:
+        valueFrom:
+          secretKeyRef:
+            name: gatus-probe-token
+            key: token
+
     persistence:
       enabled: true
       storageClassName: local-path
@@ -64,6 +71,8 @@ spec:
           interval: 30s
           client:
             insecure: true
+          headers:
+            Authorization: "Bearer ${GATUS_APISERVER_TOKEN}"
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == ok"
@@ -74,6 +83,8 @@ spec:
           interval: 60s
           client:
             insecure: true
+          headers:
+            Authorization: "Bearer ${GATUS_APISERVER_TOKEN}"
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == ok"
@@ -84,6 +95,8 @@ spec:
           interval: 60s
           client:
             insecure: true
+          headers:
+            Authorization: "Bearer ${GATUS_APISERVER_TOKEN}"
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == ok"
@@ -94,6 +107,8 @@ spec:
           interval: 60s
           client:
             insecure: true
+          headers:
+            Authorization: "Bearer ${GATUS_APISERVER_TOKEN}"
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == ok"

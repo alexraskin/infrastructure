@@ -19,9 +19,8 @@ where the fault is.
 
 - **Control plane** — `/readyz` on the VIP and on each server's own `:6443`. The
   VIP alone would stay green with two of three servers dead; the per-server
-  checks are what show that. `/readyz` answers unauthenticated (k3s grants it to
-  `system:public-info-viewer`), so no token is involved; `client.insecure: true`
-  is because the serving cert is k3s' own CA.
+  checks are what show that. `client.insecure: true` is because the serving cert
+  is k3s' own CA. These probes carry a bearer token — see below.
 - **Nodes** — `tcp://<ip>:22`, not `icmp://`. `base.nix` opens 22 on every node,
   and gatus' ICMP probe needs a raw socket the pod does not have: the chart runs
   it as uid 65534 with no `NET_RAW`. Giving it that capability to ping a host
@@ -41,6 +40,27 @@ put the extra endpoints in a SOPS-encrypted ConfigMap, mount it into `/config`
 with `extraVolumeMounts`, and point `GATUS_CONFIG_PATH` at the directory — gatus
 merges every file in a config *directory*, which is how a second file can carry
 what this one cannot.
+
+## The apiserver token
+
+**k3s runs the apiserver with anonymous auth off**, so an unauthenticated
+`/readyz` is a 401 with a `Status` body, not `ok` — the first version of this
+config had no token and every control-plane check failed on exactly that. Any
+*authenticated* caller gets `ok`, through the default `system:public-info-viewer`
+ClusterRoleBinding, so `gatus-probe` needs **no Role or ClusterRole of its own**;
+being a ServiceAccount is the whole qualification.
+
+`serviceaccount.yaml` also creates a `kubernetes.io/service-account-token`
+Secret. That is the long-lived, non-projected kind on purpose: gatus takes a
+bearer token only through `${ENV_VAR}` substitution in a header, and a projected
+token is a file it cannot read. Nothing secret is committed — the token
+controller fills the Secret in, and the `HelmRelease` reaches it with a
+`secretKeyRef`. The 1-year cleanup of *unused* legacy tokens does not apply; this
+one is used every 30s.
+
+Kept as a bearer token rather than dropping the conditions to `[STATUS] == 401`:
+a 401 proves only that something is listening and terminating TLS. `ok` from
+`/readyz` is the actual readiness signal, which is the point of the group.
 
 ## Storage and the strategy
 
