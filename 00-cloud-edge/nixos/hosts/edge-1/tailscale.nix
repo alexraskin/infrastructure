@@ -4,7 +4,7 @@ let
   flags = [
     "--accept-dns=true"
     "--ssh"
-    "--advertise-tags=tag:edge"
+    # "--advertise-tags=tag:edge"
     "--advertise-exit-node"
   ];
 in
