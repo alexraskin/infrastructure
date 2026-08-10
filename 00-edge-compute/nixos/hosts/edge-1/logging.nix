@@ -1,21 +1,4 @@
 { edge, ... }:
-let
-  # Required, and deliberately not defaulted: silently shipping nowhere is worse
-  # than failing the eval. edge.json is gitignored, so an existing one predates
-  # this module and will not have the key.
-  lokiPushUrl =
-    edge.loki_push_url or (throw ''
-      edge.json is missing "loki_push_url".
-
-      It is the tailnet name of the Loki Ingress the tailscale operator serves
-      (apps/base/loki/ingress.yaml), which is why it lives in the gitignored
-      edge.json rather than here:
-
-        "loki_push_url": "https://loki.<tailnet>.ts.net/loki/api/v1/push"
-
-      See 00-edge-compute/edge.json.example.
-    '');
-in
 {
   # HAProxy logs with `log /dev/log local0 info`, and journald owns /dev/log —
   # so haproxy, tailscaled, acme-*.service, sshd and the kernel are all one
@@ -79,11 +62,23 @@ in
 
     loki.write "default" {
       endpoint {
-        // Reached peer-to-peer over the tailnet. This box runs without
-        // --accept-routes, and the cluster's advertised 10.0.200.0/24 is node
-        // LAN space anyway — Loki's ClusterIP is not in it. The operator's
-        // Ingress device is what makes this reachable at all.
-        url = "${lokiPushUrl}"
+        // A bare MagicDNS name, resolved peer-to-peer over the tailnet.
+        // Requires --accept-dns=true in tailscale.nix: that is what installs
+        // "search <tailnet>.ts.net" in resolv.conf, and *.ts.net is not
+        // published in public DNS, so with it false there is no resolver for
+        // this name anywhere on the box.
+        //
+        // Plain http, and no tailnet name in the URL, both because
+        // apps/base/loki/service.yaml serves this as a tailscale LoadBalancer
+        // rather than an HTTPS Ingress — an Ingress' cert is issued for the
+        // FQDN, so https://loki/ would fail hostname verification and the
+        // tailnet name would have to be hidden in edge.json. WireGuard already
+        // encrypts the hop; the ACL grant is the access control.
+        //
+        // Not reachable any other way: this box runs without --accept-routes,
+        // and the cluster's advertised 10.0.200.0/24 is node LAN space anyway,
+        // so Loki's ClusterIP was never in it.
+        url = "http://loki:3100/loki/api/v1/push"
       }
     }
   '';

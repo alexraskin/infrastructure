@@ -6,4 +6,4 @@ resources:
   - r2.sops.yaml
   - helmrelease.yaml
   - datasource.yaml
-  - ingress.yaml
+  - service.yaml

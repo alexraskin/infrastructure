@@ -446,26 +446,41 @@ The Grafana datasource is a ConfigMap in `logging` labelled
 `grafana_datasource: "1"`. The monitoring stack's sidecar runs with
 `NAMESPACE=ALL`, so nothing in `apps/base/monitoring/` changes to pick it up.
 
-`ingress.yaml` puts Loki on the tailnet, the same operator mechanism as the
-Grafana Ingress. It exists for exactly one client: the Oracle edge node, which
-is a tailnet leaf with no `--accept-routes` — and the cluster's advertised
-`10.0.200.0/24` is node LAN space, so Loki's ClusterIP was never in it and no
-amount of route-accepting would have reached it. Nothing in the cluster uses
-this path; Grafana and the Alloy DaemonSet still dial `svc/loki:3100`.
+`service.yaml` puts Loki on the tailnet for exactly one client: the Oracle edge
+node, which is a tailnet leaf with no `--accept-routes` — and the cluster's
+advertised `10.0.200.0/24` is node LAN space, so Loki's ClusterIP was never in
+it and no amount of route-accepting would have reached it. Nothing in the
+cluster uses this path; Grafana and the Alloy DaemonSet still dial
+`svc/loki:3100`, and that ClusterIP is a different Service, untouched.
 
+- **A `LoadBalancer` with `loadBalancerClass: tailscale`, not an Ingress.** This
+  is the operator's other mode: a plain TCP proxy on the port declared here,
+  where an Ingress is HTTPS on 443 (its status advertises 80 as well; nothing is
+  listening there). The difference decides the URL. An Ingress' LetsEncrypt cert
+  is issued for the fully-qualified `loki.<tailnet>.ts.net`, so `https://loki/`
+  fails hostname verification and the tailnet name has to travel to the edge in
+  a gitignored file. A LoadBalancer has no cert, so the edge pushes to the bare
+  MagicDNS name `http://loki:3100` and never learns the tailnet name — the URL
+  stops being a secret and lives as a literal in `logging.nix`.
+- **Dropping TLS costs nothing here.** Tailnet traffic is already encrypted end
+  to end by WireGuard. The grant in `tailscale/policy.hujson` is the real
+  control, and it has to be, because Loki runs `auth_enabled: false` — whatever
+  the ACL admits can push, query *and* delete. Keep its `src` to `tag:edge`.
 - **The `tailscale.com/tags: tag:k8s-loki` annotation is load-bearing.** Left
   alone the operator tags every proxy `tag:k8s`, so a grant letting the edge
   reach Loki would also let it reach Grafana. `tag:k8s-loki` exists to make that
   grant addressable at one service, and `tailscale/policy.hujson` must own it
   under `tag:k8s-operator` or the operator's device creation is rejected. The
-  policy's `tests` assert both halves: `tag:edge` accepts `tag:k8s-loki:443` and
-  is denied `tag:k8s:443`.
-- **Loki runs `auth_enabled: false`**, so whatever the ACL admits can push,
-  query *and* delete. The grant is the only control; keep its `src` to
-  `tag:edge`.
-- The Kustomization now `dependsOn: tailscale-operator` for the IngressClass. An
-  Ingress naming a class that does not exist yet is accepted and then never
-  reconciled — no error, it simply never gets a device.
+  policy's `tests` assert both halves: `tag:edge` accepts `tag:k8s-loki:3100`
+  and is denied `tag:k8s:443`.
+- **`tailscale.com/hostname: loki` is what fixes the URL.** Without it the
+  device is named after the Service, `loki-tailnet`. Names are also claimed
+  first-come: if a device already holds `loki` when this one is created, the new
+  one silently becomes `loki-1` and the edge pushes into a name that does not
+  resolve, retrying forever with no error on the cluster side.
+- The Kustomization `dependsOn: tailscale-operator`, for the same reason an
+  Ingress would: a `loadBalancerClass` with no controller behind it is accepted
+  and then sits `<pending>` forever.
 
 ### 00-edge-compute/ — the public edge
 
@@ -543,7 +558,8 @@ under `edge-compute/terraform.tfstate`. Structure follows
   `dst` is `autogroup:self` — that means devices owned by the calling user, and
   a tagged node has no owner.
 - **`logging.nix` ships the journal to the cluster's Loki**, over the tailnet,
-  to the operator-served Ingress in `apps/base/loki/ingress.yaml`. It is
+  to the operator-served LoadBalancer in `apps/base/loki/service.yaml`, at the
+  bare MagicDNS name `http://loki:3100/loki/api/v1/push`. It is
   `services.alloy`, matching what the cluster runs, not promtail.
   - HAProxy logs with `log /dev/log local0 info` and journald owns `/dev/log`,
     so haproxy, tailscaled, `acme-*.service`, sshd and the kernel are one
@@ -560,15 +576,16 @@ under `edge-compute/terraform.tfstate`. Structure follows
     tailnet peer regardless of `allowedTCPPorts`. `extraFlags` binds it to
     loopback instead.
   - **`--accept-dns=true` in `tailscale.nix` is a dependency of this**, not a
-    preference. The push URL is a MagicDNS name and `*.ts.net` is *not*
-    published in public DNS, so with `accept-dns` false the box has no resolver
-    for it at all and `loki.write` logs
-    `dial tcp: lookup … no such host` on a retry loop forever while Alloy
-    otherwise looks perfectly healthy.
-  - The push URL is a **required** `loki_push_url` in `edge.json`, because it
-    contains the tailnet name and this repo is public. Missing, it `throw`s at
-    eval with a pointer to `edge.json.example` rather than silently shipping
-    nowhere. An `edge.json` predating this module will not have the key.
+    preference. It is what installs `search <tailnet>.ts.net` in `resolv.conf`,
+    which is the whole reason the bare name `loki` resolves — the same mechanism
+    behind `ssh <node>` on any MagicDNS client. `*.ts.net` is *not* published in
+    public DNS, so with `accept-dns` false the box has no resolver for the name
+    at all and `loki.write` logs `dial tcp: lookup … no such host` on a retry
+    loop forever while Alloy otherwise looks perfectly healthy: unit active,
+    config valid, journal source running.
+  - The URL is a literal here rather than a field in the gitignored `edge.json`,
+    which is only true because it is a bare name. An HTTPS Ingress would force
+    the FQDN into it and the tailnet name would have to be hidden again.
 - **The first ACME run always fails, and nothing retries it.** nixos-anywhere
   activates the whole config during `install`, before `push-secrets.sh` has put
   `/etc/cloudflare/credentials` on the box, so the acme unit dies with "Failed

@@ -1,0 +1,43 @@
+# Puts Loki's push API on the tailnet for the Oracle edge node in
+# 00-edge-compute/. Nothing in the cluster uses this path — Grafana and the
+# Alloy DaemonSet still dial svc/loki:3100, and this is a second Service, so the
+# chart's ClusterIP is untouched.
+#
+# A LoadBalancer rather than an Ingress on purpose. The operator serves an
+# Ingress as HTTPS on 443 only (port 80 is advertised in the Ingress status and
+# is not actually listening), and the LetsEncrypt cert it fetches is issued for
+# the fully-qualified loki.<tailnet>.ts.net — so an HTTPS client cannot use the
+# bare MagicDNS name without a hostname-verification failure. A LoadBalancer is
+# a plain TCP proxy on the port declared here, which is what lets the edge push
+# to http://loki:3100 and never learn the tailnet name.
+#
+# TLS is no loss: tailnet traffic is already encrypted end to end by WireGuard,
+# and the ACL grant in tailscale/policy.hujson is what actually controls who may
+# reach this. Loki itself runs auth_enabled: false, so that grant is the only
+# control — keep its src to tag:edge.
+#
+# tailscale.com/hostname is what fixes the device name, and therefore the URL;
+# without it the device is named after this Service (loki-tailnet). The tag must
+# be owned by tag:k8s-operator in the policy file or device creation is
+# rejected, and it is split out of tag:k8s so the edge's grant reaches this
+# proxy and not Grafana's.
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki-tailnet
+  namespace: logging
+  annotations:
+    tailscale.com/hostname: "loki"
+    tailscale.com/tags: "tag:k8s-loki"
+spec:
+  type: LoadBalancer
+  loadBalancerClass: tailscale
+  # Matches the chart's single-binary pods; taken from the live svc/loki.
+  selector:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/instance: loki
+    app.kubernetes.io/component: single-binary
+  ports:
+    - name: http
+      port: 3100
+      targetPort: http-metrics

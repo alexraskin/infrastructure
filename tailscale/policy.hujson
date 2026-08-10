@@ -63,10 +63,14 @@
 			"ip":  ["tcp:32400"],
 		},
 
+		// 3100 is Loki's own port: the operator serves this as a plain TCP
+		// LoadBalancer, not an HTTPS Ingress, so the edge can push to the bare
+		// MagicDNS name. WireGuard already encrypts it; this grant is the only
+		// access control, since Loki runs auth_enabled: false.
 		{
 			"src": ["tag:edge"],
 			"dst": ["tag:k8s-loki"],
-			"ip":  ["tcp:443"],
+			"ip":  ["tcp:3100"],
 		},
 	],
 
@@ -101,7 +105,7 @@
 			"proto": "tcp",
 			"accept": [
 				"100.73.219.120:32400",
-				"tag:k8s-loki:443",
+				"tag:k8s-loki:3100",
 			],
 			"deny": [
 				"100.73.219.120:22",
