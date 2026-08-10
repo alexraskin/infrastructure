@@ -288,14 +288,3 @@ spec:
             - "[STATUS] == 200"
           alerts:
             - type: discord
-
-        - name: "alexraskin.com"
-          group: "Public"
-          url: "https://alexraskin.com"
-          interval: 120s
-          conditions:
-            - "[STATUS] == 200"
-            - "[RESPONSE_TIME] < 3000"
-            - "[CERTIFICATE_EXPIRATION] > 240h"
-          alerts:
-            - type: discord
