@@ -12,12 +12,30 @@ gets an empty zone list rather than a 403 — the same permission-filtering
 behaviour as a privsep Proxmox token.
 
 It **adopts** the pre-existing tunnel rather than creating one: `imports.tf`
-holds `import` blocks for the tunnel, its config and every CNAME, so the
-connector token already in `apps/base/cloudflared/token.sops.yaml` stays valid
-and cloudflared never restarts. A correct plan is "N to import, 0 to add, 0 to
-destroy". If it wants to *create* the tunnel, an import block is missing or
+holds `import` blocks for the tunnel, its config and every DNS record it owns,
+so the connector token already in `apps/base/cloudflared/token.sops.yaml` stays
+valid and cloudflared never restarts. A correct plan is "N to import, 0 to add,
+0 to destroy". If it wants to *create* the tunnel, an import block is missing or
 `tunnel_id` is wrong — applying then builds a second tunnel and moves the CNAMEs
 to one with no connectors, which is the outage case.
+
+**`imports.tf` is gitignored**, because every block in it names a hostname and
+a Cloudflare record ID. Once the import has been applied the file is inert —
+the resources are in state, and an `import` block for something already managed
+is a no-op — so nothing here depends on it existing, CI included. It is kept
+locally only as the recovery path for a lost state file. Rebuilding it does not
+need the old copy; the record IDs come back from the API:
+
+```bash
+curl -s -H "Authorization: Bearer $(cat ../../secrets/cloudflare-api-token)" \
+  "https://api.cloudflare.com/client/v4/zones/<zone_id>/dns_records?per_page=100" \
+  | jq -r '.result[] | "\(.id)\t\(.type)\t\(.name)"'
+```
+
+with the tunnel's own two blocks keyed `<account_id>/<tunnel_id>`, both of which
+are already in `terraform.tfvars`. If state is ever lost and this file is *not*
+rebuilt first, the "Guard against destructive plans" step in CI fails the run
+rather than letting the apply create a second tunnel.
 
 `var.ingress` is the whole tunnel config. Order only matters for overlapping
 rules (paths, wildcards), so a plan that merely reorders distinct hostnames is
