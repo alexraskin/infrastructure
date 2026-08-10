@@ -1,0 +1,72 @@
+name: "Tailscale: deploy"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "tailscale/**"
+      - ".github/workflows/tailscale-deploy.yml"
+  pull_request:
+    paths:
+      - "tailscale/**"
+      - ".github/workflows/tailscale-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Run terraform apply (dangerous)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: tailscale
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    name: "tailscale"
+    runs-on: ubuntu-latest
+
+    environment: tailscale
+    defaults:
+      run:
+        working-directory: ./tailscale
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+
+      TAILSCALE_OAUTH_CLIENT_ID: ${{ vars.TAILSCALE_OAUTH_CLIENT_ID }}
+      TAILSCALE_AUDIENCE: ${{ vars.TAILSCALE_AUDIENCE }}
+
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_ENDPOINT_URL_S3: ${{ secrets.R2_S3_ENDPOINT }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.9"
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -out .planfile -input=false
+
+      - name: Terraform Apply
+        if: |
+          (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+          (github.event_name == 'workflow_dispatch' && inputs.apply)
+        run: terraform apply -auto-approve -input=false .planfile
