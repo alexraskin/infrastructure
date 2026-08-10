@@ -37,7 +37,7 @@ mise run ts:status      # tailnet name/address/primary routes per node
 mise run ts:plan        # terraform, from tailscale/ (the tailnet policy file)
 mise run ts:apply       # same, applied — CI does this on push to main
 mise run cf:plan        # terraform, from terraform/cloudflare/ (tunnel + DNS)
-mise run cf:apply       # same, applied
+mise run cf:apply       # same, applied — CI does this on push to main
 mise run reset          # DESTRUCTIVE: wipe k3s state cluster-wide (typed confirmation)
 ```
 
@@ -190,7 +190,7 @@ This file covers the cluster as a whole: the pieces below own their own
 
 | directory | what it documents |
 |---|---|
-| `terraform/proxmox/` | the six VMs, and the Proxmox provider's sharp edges |
+| `terraform/proxmox/` | the six VMs, the nightly vzdump job, and the Proxmox provider's sharp edges |
 | `terraform/cloudflare/` | the cloudflared tunnel, its ingress rules and DNS |
 | `tailscale/` | the tailnet policy file and the Terraform root that applies it |
 | `apps/` | Flux GitOps, SOPS, image automation |
