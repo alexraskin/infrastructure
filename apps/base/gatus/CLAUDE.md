@@ -28,6 +28,10 @@ where the fault is.
 - **Platform** — CoreDNS (a real DNS query against `10.43.0.10`), Grafana,
   Prometheus, Loki, Alloy, by cluster DNS.
 - **Apps** — the in-cluster Services, i.e. the same origins the tunnel dials.
+- **Off-cluster** — the Oracle edge (`100.79.150.123`) and the NAS, *chronos*
+  (`100.109.167.97`), both over the tailnet on `tcp:443`; and Plex on *morpheus*
+  over the LAN. See below; the first two are not reachable without a grant in
+  `tailscale/policy.hujson`.
 - **Public** — `https://alexraskin.com` end to end, with a cert-expiry
   condition. Red here with its **Apps** twin green means cloudflared, DNS or the
   tunnel, not the workload.
@@ -61,6 +65,46 @@ one is used every 30s.
 Kept as a bearer token rather than dropping the conditions to `[STATUS] == 401`:
 a 401 proves only that something is listening and terminating TLS. `ok` from
 `/readyz` is the actual readiness signal, which is the point of the group.
+
+## Reaching the edge and the NAS
+
+Both are probed **over the tailnet, by IP, with a TCP check** — three
+constraints stacked, none of them arbitrary.
+
+- **Tailnet, not LAN.** The NAS' LAN address `10.0.54.235` is on a different
+  subnet from the cluster's `10.0.200.0/24` and nothing on 22/80/443/5000/5001
+  answers from either a node or the build host, only the tailscale UDP endpoint
+  does — it is firewalled off at the router, which no change in this repo fixes.
+  Its tailnet address answers on 80/443/5000/5001. The edge has no LAN address
+  at all.
+- **TCP, not ICMP.** Same reason as the Nodes group: the pod has no `NET_RAW`.
+- **The tailnet ACL has to grant it.** `policy.hujson` is default-deny
+  (`acls: []`, everything through `grants`) and `tag:k3s` was the src of no
+  grant at all — the cluster nodes could reach nothing on the tailnet. Two
+  grants now cover exactly these two probes, `tag:k3s → tag:edge:443` and
+  `tag:k3s → 100.109.167.97:443`, and the `tests` block pins both the accepts
+  and what stays denied (`tag:edge:22`, the NAS' `:5001`, Plex, the VIP).
+  **`tag:k3s` is the right src, not `tag:k8s`**: the gatus pod is not one of the
+  operator's tailnet proxies, its egress leaves through a node and tailscale
+  SNATs it to that node's tailnet address.
+
+Until that policy is applied the edge and NAS checks are red, and red for a
+reason that has nothing to do with either box being down.
+
+**Plex is the exception: it is probed over the LAN**, `http://10.0.200.87:32400/identity`
+on *morpheus*, which is on the cluster's own subnet and answers unauthenticated
+with an XML `MediaContainer` — a real health signal, unlike a TCP connect. No
+grant is involved, and the ACL's `tag:k3s → 100.73.219.120:32400` deny is
+deliberately left in place. The cost is that `10.0.200.87` is a **DHCP lease**:
+if it moves, this check goes red and the address here has to follow. Switching
+it to the tailnet address instead means adding a grant *and* flipping that line
+in the policy's `tests` from deny to accept — the same two-line edit the edge
+and NAS got.
+
+The public path to Plex (`plex.relay.alexraskin.com` → the edge → morpheus) is
+not probed. Those hostnames live in the gitignored `00-cloud-edge/edge.json` for
+the same reason the tunnel's do; the `edge-1:443` check covers the hop that is
+actually in this repo's control.
 
 ## Storage and the strategy
 
