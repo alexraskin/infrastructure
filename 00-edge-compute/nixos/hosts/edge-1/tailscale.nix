@@ -2,7 +2,7 @@
 let
 
   flags = [
-    "--accept-dns=false"
+    "--accept-dns=true"
 
     "--ssh"
   ];

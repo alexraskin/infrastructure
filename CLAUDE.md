@@ -559,6 +559,12 @@ under `edge-compute/terraform.tfstate`. Structure follows
     `trustedInterfaces = [ "tailscale0" ]` — which opens *every* port to every
     tailnet peer regardless of `allowedTCPPorts`. `extraFlags` binds it to
     loopback instead.
+  - **`--accept-dns=true` in `tailscale.nix` is a dependency of this**, not a
+    preference. The push URL is a MagicDNS name and `*.ts.net` is *not*
+    published in public DNS, so with `accept-dns` false the box has no resolver
+    for it at all and `loki.write` logs
+    `dial tcp: lookup … no such host` on a retry loop forever while Alloy
+    otherwise looks perfectly healthy.
   - The push URL is a **required** `loki_push_url` in `edge.json`, because it
     contains the tailnet name and this repo is public. Missing, it `throw`s at
     eval with a pointer to `edge.json.example` rather than silently shipping
