@@ -56,6 +56,15 @@
 			"ip":  ["*"],
 		},
 
+		// Exit node. `dst: ["*"]` above does not cover this — autogroup:internet
+		// is only matched when it is named, so without this grant the edge is
+		// approved as an exit node and every client using it gets nothing.
+		{
+			"src": ["autogroup:member"],
+			"dst": ["autogroup:internet"],
+			"ip":  ["*"],
+		},
+
 		// (00-cloud-edge). It is the only device on this tailnet with a public IP
 		{
 			"src": ["tag:edge"],
@@ -101,6 +110,9 @@
 		"routes": {
 			"10.0.200.0/24": ["tag:k3s"],
 		},
+
+		// Without this the edge advertises 0.0.0.0/0 and waits for a human.
+		"exitNode": ["tag:edge"],
 	},
 
 	// Evaluated by the API at `terraform plan`, so a widened grant fails the PR.
