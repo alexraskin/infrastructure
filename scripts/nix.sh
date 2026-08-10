@@ -60,12 +60,12 @@ fi
 # repo owned by root. Hand it back on the way out, success or not. Named
 # explicitly rather than chown -R: the repo also holds media and service data.
 reown() {
-  # Every lockfile a flake in this repo might write. 00-edge-compute/ is a
+  # Every lockfile a flake in this repo might write. 00-cloud-edge/ is a
   # second, self-contained flake (see its README) and nix writes its lock as
   # root too — the symptom otherwise is a `git add` that fails on a file the
   # invoking user cannot touch.
   docker run --rm --volume "$repo:/work" --entrypoint chown "$image" \
-    "$(id -u):$(id -g)" /work/flake.lock /work/00-edge-compute/flake.lock >/dev/null 2>&1 || true
+    "$(id -u):$(id -g)" /work/flake.lock /work/00-cloud-edge/flake.lock >/dev/null 2>&1 || true
 }
 trap reown EXIT
 
