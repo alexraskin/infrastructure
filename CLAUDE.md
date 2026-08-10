@@ -19,7 +19,7 @@ short enough that a comment block twice the length of the config is noise.
 ## Commands
 
 `mise` runs everything. Three separate configs: `mise.toml` at the root
-(cluster), `apps/mise.toml` (GitOps) and `00-edge-compute/mise.toml` (the Oracle
+(cluster), `apps/mise.toml` (GitOps) and `00-cloud-edge/mise.toml` (the Oracle
 edge). `mise trust` is needed once per directory.
 
 ```bash
@@ -41,7 +41,7 @@ mise run cf:apply       # same, applied
 mise run reset          # DESTRUCTIVE: wipe k3s state cluster-wide (typed confirmation)
 ```
 
-From `00-edge-compute/` (its own mise config):
+From `00-cloud-edge/` (its own mise config):
 
 ```bash
 mise run tf:apply       # Oracle instance, public IP, DNS records — retries every AD on capacity errors
@@ -55,11 +55,11 @@ Validation without touching infrastructure:
 ```bash
 terraform -chdir=terraform/proxmox validate && terraform fmt -recursive terraform/
 terraform -chdir=terraform/cloudflare validate
-terraform -chdir=00-edge-compute/terraform validate
+terraform -chdir=00-cloud-edge/terraform validate
 terraform -chdir=tailscale init -backend=false && terraform -chdir=tailscale validate
 ./scripts/nix.sh 'nix eval ".#nixosConfigurations.k3s-server-1.config.networking.hostName"'
 # path:, or nix resolves to the enclosing git repo — which is the cluster flake
-./scripts/nix.sh 'nix eval "path:./00-edge-compute#nixosConfigurations.edge-1.config.system.build.toplevel.drvPath"'
+./scripts/nix.sh 'nix eval "path:./00-cloud-edge#nixosConfigurations.edge-1.config.system.build.toplevel.drvPath"'
 cd apps && mise exec -- kustomize build base/alexraskin-com
 cd apps && mise exec -- kustomize build base/monitoring
 cd apps && mise exec -- kustomize build base/tailscale-operator
@@ -197,7 +197,7 @@ This file covers the cluster as a whole: the pieces below own their own
 | `apps/base/monitoring/` | Prometheus + Grafana |
 | `apps/base/tailscale-operator/` | the `tailscale` IngressClass and proxy tags |
 | `apps/base/loki/` | Loki + Alloy, R2 chunk storage, the edge's push path |
-| `00-edge-compute/` | the public Oracle edge: HAProxy, ACME, its own flake |
+| `00-cloud-edge/` | the public Oracle edge: HAProxy, ACME, its own flake |
 
 ## Gotchas discovered the hard way
 
