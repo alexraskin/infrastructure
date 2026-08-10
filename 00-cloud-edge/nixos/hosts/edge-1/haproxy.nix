@@ -39,9 +39,6 @@ in
         mode http
         option httplog
         option dontlognull
-        # Streams are long and mostly idle between range requests, and Plex
-        # holds a websocket open for its event channel. The defaults (1m
-        # client/server, no tunnel setting) cut both.
         timeout connect 5s
         timeout client  5m
         timeout server  5m
@@ -60,8 +57,6 @@ in
 
       ${backends}
 
-      # A hostname that resolves here but has no rule must not fall through to
-      # a real backend. Same intent as the tunnel's http_status:404 catch-all.
       backend unknown_host
         http-request deny status 404
     '';
