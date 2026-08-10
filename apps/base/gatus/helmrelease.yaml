@@ -1,0 +1,205 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gatus
+  namespace: gatus
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: gatus
+      version: "1.5.0"
+      sourceRef:
+        kind: HelmRepository
+        name: twin
+        namespace: gatus
+      interval: 24h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    deployment:
+      strategy: Recreate
+
+    persistence:
+      enabled: true
+      storageClassName: local-path
+      size: 1Gi
+      mountPath: /data
+
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+    serviceMonitor:
+      enabled: true
+      interval: 1m
+    ingress:
+      enabled: true
+      ingressClassName: tailscale
+      hosts: []
+      tls:
+        - hosts:
+            - status
+
+    config:
+      storage:
+        type: sqlite
+        path: /data/data.db
+
+      ui:
+        title: "k3s status"
+        header: "k3s"
+
+      endpoints:
+        - name: "API (VIP)"
+          group: "Control plane"
+          url: "https://10.0.200.40:6443/readyz"
+          interval: 30s
+          client:
+            insecure: true
+          conditions:
+            - "[STATUS] == 200"
+            - "[BODY] == ok"
+
+        - name: "k3s-server-1"
+          group: "Control plane"
+          url: "https://10.0.200.41:6443/readyz"
+          interval: 60s
+          client:
+            insecure: true
+          conditions:
+            - "[STATUS] == 200"
+            - "[BODY] == ok"
+
+        - name: "k3s-server-2"
+          group: "Control plane"
+          url: "https://10.0.200.42:6443/readyz"
+          interval: 60s
+          client:
+            insecure: true
+          conditions:
+            - "[STATUS] == 200"
+            - "[BODY] == ok"
+
+        - name: "k3s-server-3"
+          group: "Control plane"
+          url: "https://10.0.200.43:6443/readyz"
+          interval: 60s
+          client:
+            insecure: true
+          conditions:
+            - "[STATUS] == 200"
+            - "[BODY] == ok"
+
+        - name: "k3s-server-1"
+          group: "Nodes"
+          url: "tcp://10.0.200.41:22"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+
+        - name: "k3s-server-2"
+          group: "Nodes"
+          url: "tcp://10.0.200.42:22"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+
+        - name: "k3s-server-3"
+          group: "Nodes"
+          url: "tcp://10.0.200.43:22"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+
+        - name: "k3s-agent-1"
+          group: "Nodes"
+          url: "tcp://10.0.200.51:22"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+
+        - name: "k3s-agent-2"
+          group: "Nodes"
+          url: "tcp://10.0.200.52:22"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+
+        - name: "k3s-agent-3"
+          group: "Nodes"
+          url: "tcp://10.0.200.53:22"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+
+        - name: "CoreDNS"
+          group: "Platform"
+          url: "10.43.0.10"
+          interval: 60s
+          dns:
+            query-name: "kubernetes.default.svc.cluster.local"
+            query-type: "A"
+          conditions:
+            - "[DNS_RCODE] == NOERROR"
+
+        - name: "Grafana"
+          group: "Platform"
+          url: "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local/api/health"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+            - "[RESPONSE_TIME] < 2000"
+
+        - name: "Prometheus"
+          group: "Platform"
+          url: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/-/healthy"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+
+        - name: "Loki"
+          group: "Platform"
+          url: "http://loki.logging.svc.cluster.local:3100/ready"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+
+        - name: "Alloy"
+          group: "Platform"
+          url: "http://alloy.logging.svc.cluster.local:12345/-/ready"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+
+        - name: "alexraskin.com (origin)"
+          group: "Apps"
+          url: "http://alexraskin-com.web.svc.cluster.local/ping"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+            - "[RESPONSE_TIME] < 2000"
+
+        - name: "go-vanityurls (origin)"
+          group: "Apps"
+          url: "http://go-vanityurls.vanityurls.svc.cluster.local/"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+
+        - name: "lastfm-now-playing (origin)"
+          group: "Apps"
+          url: "http://lastfm-now-playing.lastfm.svc.cluster.local/ping"
+          interval: 60s
+          conditions:
+            - "[STATUS] == 200"
+
+        - name: "alexraskin.com"
+          group: "Public"
+          url: "https://alexraskin.com"
+          interval: 120s
+          conditions:
+            - "[STATUS] == 200"
+            - "[RESPONSE_TIME] < 3000"
+            - "[CERTIFICATE_EXPIRATION] > 240h"

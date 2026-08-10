@@ -197,6 +197,7 @@ This file covers the cluster as a whole: the pieces below own their own
 | `apps/base/monitoring/` | Prometheus + Grafana |
 | `apps/base/tailscale-operator/` | the `tailscale` IngressClass and proxy tags |
 | `apps/base/loki/` | Loki + Alloy, R2 chunk storage, the edge's push path |
+| `apps/base/gatus/` | the tailnet-only status page and what it probes |
 | `00-cloud-edge/` | the public Oracle edge: HAProxy, ACME, its own flake |
 
 ## Gotchas discovered the hard way
