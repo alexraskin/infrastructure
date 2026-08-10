@@ -249,6 +249,43 @@ chmod 600 kubeconfig
 echo "wrote kubeconfig (KUBECONFIG is already set by mise in this dir)"
 """
 
+[tasks."ts:init"]
+description = "terraform init for the tailnet policy root (state lives in R2)"
+dir = "tailscale"
+shell = "bash -c"
+run = """
+set -euo pipefail
+for f in tailscale-oauth.env r2.tfbackend; do
+  [ -s "../secrets/$f" ] || {
+    echo "missing secrets/$f — see tailscale/tailscale-oauth.env.example" >&2
+    exit 1
+  }
+done
+terraform init -upgrade -backend-config=../secrets/r2.tfbackend
+"""
+
+[tasks."ts:plan"]
+description = "Plan the tailnet policy file"
+dir = "tailscale"
+depends = ["ts:init"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+set -a; . ../secrets/tailscale-oauth.env; set +a
+terraform plan
+"""
+
+[tasks."ts:apply"]
+description = "Apply the tailnet policy file (CI does this on push to main)"
+dir = "tailscale"
+depends = ["ts:init"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+set -a; . ../secrets/tailscale-oauth.env; set +a
+terraform apply
+"""
+
 [tasks."ts:status"]
 description = "Tailnet address and advertised routes, per node"
 shell = "bash -c"
