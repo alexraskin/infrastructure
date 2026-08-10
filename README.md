@@ -1,6 +1,6 @@
 # infrastructure
 
-Home lab: an HA k3s cluster of **3 servers** (control plane, embedded etcd) and
+Homelab Infra: an HA k3s cluster of **3 servers** (control plane, embedded etcd) and
 **3 agents**, running as NixOS VMs on Proxmox. Terraform creates the VMs, NixOS
 owns everything inside them, kube-vip floats a control-plane VIP across the
 servers, and Flux deploys the workloads in `apps/`.
@@ -11,40 +11,43 @@ flake.nix             golden image + one nixosConfiguration per node
 nix/modules/          base, hardware, network, tailscale, k3s-server, k3s-agent, image
 terraform/proxmox/    uploads the image, creates the six VMs
 terraform/cloudflare/ the tunnel, its ingress rules, and the DNS records
+tailscale/            the tailnet policy file, applied by its own Terraform root
 apps/                 GitOps — what Flux deploys (see apps/README.md)
+00-cloud-edge/        the public Oracle edge (see 00-cloud-edge/README.md)
 mise.toml             the task runner
 ```
 
-## How it works
+## How a node comes to exist
 
 One generic NixOS image is built once and cloned into six VMs, each getting its
-hostname, IP and SSH key from a cloud-init drive. `mise run deploy` then replaces
-that generic system with the real per-node config, in order: bootstrap server →
+hostname, IP and SSH key from a cloud-init drive. Deploying then replaces that
+generic system with the real per-node config, in order: bootstrap server →
 remaining servers → agents. Agents join the VIP, so any one control-plane node
 can die.
 
-### Build and deploy
-
-Everything below reads `hosts.json`. Terraform makes the VMs exist; NixOS makes
-them into cluster nodes; Flux fills the cluster with workloads.
+The image carries no identity, which is the point — it is the same bytes for
+every node, and everything that distinguishes them arrives afterwards. That is
+also why `nix/modules/hardware.nix` exists: it re-states the root filesystem and
+boot settings that the image generator supplies to the image but not to a node
+config.
 
 ```mermaid
 flowchart LR
     HJ["hosts.json<br/>IPs, VM IDs, sizes, VIP"]
 
-    subgraph build["mise run image"]
+    subgraph build["golden image"]
         FLAKE["flake.nix + nix/modules<br/>base + image"]
-        QCOW["build/nixos.qcow2<br/>golden image, no identity"]
+        QCOW["build/nixos.qcow2<br/>no identity"]
     end
 
-    subgraph tf["mise run tf:apply"]
-        TFP["terraform/proxmox"]
+    subgraph tf["terraform/proxmox"]
+        TFP["terraform"]
         VMS["6 Proxmox VMs<br/>+ cloud-init drive<br/>hostname, IP, SSH key"]
     end
 
-    subgraph dep["mise run deploy"]
-        SEC["push-token<br/>push-tailscale-key"]
-        DN["scripts/deploy-node.sh<br/>nix copy + switch-to-configuration"]
+    subgraph dep["per-node config"]
+        SEC["k3s token<br/>tailscale pre-auth key"]
+        DN["nix copy + switch-to-configuration"]
         ORDER["bootstrap server -> /readyz<br/>-> servers 2,3 -> VIP<br/>-> agents"]
     end
 
@@ -67,7 +70,12 @@ flowchart LR
     IAC --> REPO
 ```
 
-### Runtime
+`hosts.json` is read by both `flake.nix` (`builtins.fromJSON`) and
+`terraform/proxmox/main.tf` (`jsondecode`), so the two never disagree about what
+a node is. Which of them acts on a change depends on the field: cores, memory
+and disk are Terraform's; an IP is both Terraform's and NixOS's.
+
+## Runtime
 
 Two independent tailscale mechanisms: the nodes are a **subnet router** for the
 cluster subnet; the operator gives individual Services their **own** tailnet
@@ -120,96 +128,49 @@ flowchart TB
     MON -. "node-exporter :9100" .-> cp
 ```
 
-## Setup
+## State and secrets
 
-Needs Nix **or** Docker (`scripts/nix.sh` falls back to the `nixos/nix`
-container), a Proxmox API token with **privilege separation off**
-(`pveum user token add root@pam terraform --privsep 0`), SSH access to the
-Proxmox node, and `mise trust` in this directory.
+Terraform state for every root lives in a Cloudflare R2 bucket. The backend
+blocks are deliberately partial — credentials and the endpoint are absent,
+because a backend block takes no variables and this repo is public, and the
+endpoint alone carries the account ID. They are supplied at `init` time from
+`secrets/r2.tfbackend`.
 
-The flake is evaluated from the git tree, so **`git add` before deploying** —
-untracked changes are invisible to Nix and `scripts/nix.sh` will refuse to run.
+`secrets/` is gitignored and holds what the cluster cannot be given declaratively:
 
-Edit `hosts.json` first — the subnet, the VIP, and one entry per node — then:
+| file | what it is |
+| --- | --- |
+| `k3s-token` | the join token, pushed to nodes rather than baked into the image |
+| `tailscale-authkey` | tagged pre-auth key; tagged so the route auto-approves and the key never expires |
+| `age.key` | what Flux decrypts `apps/` with |
+| `cloudflare-api-token` | the Terraform provider's, and the edge's DNS-01 credential |
+| `r2.tfbackend` | R2 credentials for the state backend |
 
-```bash
-cp terraform/proxmox/terraform.tfvars.example terraform/proxmox/terraform.tfvars
-$EDITOR terraform/proxmox/terraform.tfvars   # endpoint, token, node, datastores
+The k3s token and the tailscale key are pushed to `/var/lib/` on each node
+before its first switch, because k3s will not start without the former and
+tailscale's autoconnect runs during activation.
 
-mise run preflight        # checks the API, datastores, VM IDs, IPs, SSH first
-mise run bootstrap        # image -> tf apply -> deploy -> kubeconfig -> status
-```
+## Working on it
 
-## Tasks
+Every command is a `mise` task; `mise.toml` is the list, and each directory's
+`CLAUDE.md` explains what the tasks do and what breaks. Three separate configs:
+the root (cluster), `apps/` (GitOps) and `00-cloud-edge/` (the edge), each
+needing `mise trust` once.
 
-```bash
-mise run image            # build the golden qcow2 into build/
-mise run tf:plan          # and tf:apply, tf:destroy
-mise run deploy           # every node, in order
-mise run deploy-node k3s-agent-2
-mise run kubeconfig       # ./kubeconfig, pointed at the VIP
-mise run status           # nodes + kube-system pods
-mise run ts:status        # tailnet address and routes per node
-mise run cf:plan          # and cf:apply — the Cloudflare tunnel and DNS
-mise run reset            # DESTRUCTIVE: wipe k3s state cluster-wide
-```
+The design notes — why a setting is load-bearing, what breaks if it changes, and
+the failure modes found the hard way — live in `CLAUDE.md` beside the thing they
+describe:
 
-Secrets live in `secrets/` (gitignored): `k3s-token` and `tailscale-authkey` are
-pushed to the nodes rather than baked into the image, `age.key` is what Flux
-decrypts `apps/` with, `cloudflare-api-token` is the Terraform provider's, and
-`r2.tfbackend` holds the R2 credentials for the state backend.
+| directory | what it documents |
+| --- | --- |
+| `terraform/proxmox/` | the six VMs, and the Proxmox provider's sharp edges |
+| `terraform/cloudflare/` | the cloudflared tunnel, its ingress rules and DNS |
+| `tailscale/` | the tailnet policy file and the Terraform root that applies it |
+| `apps/` | Flux GitOps, SOPS, image automation |
+| `apps/base/monitoring/` | Prometheus + Grafana |
+| `apps/base/tailscale-operator/` | the `tailscale` IngressClass and proxy tags |
+| `apps/base/loki/` | Loki + Alloy, R2 chunk storage, the edge's push path |
+| `00-cloud-edge/` | the public Oracle edge: HAProxy, ACME, its own flake |
 
-Terraform state for both roots lives in an R2 bucket. Credentials and the R2
-endpoint are **not** in the backend block — copy `terraform/r2.tfbackend.example`
-to `secrets/r2.tfbackend` and fill it in; `tf:init` and `cf:init` pass it with
-`-backend-config`.
-
-If the image upload times out over a slow link — `iso` content always goes
-through the PVE HTTP API, with no resume — use
-`mise run push-image root@pve-host` and set `upload_image = false` in
-`terraform/proxmox/terraform.tfvars`.
-
-## Remote access
-
-Every node joins a tailnet and the three servers advertise the cluster subnet
-into it, so remote `kubectl` still talks to the VIP and stays HA. Drop a reusable
-pre-auth key in `secrets/tailscale-authkey`, `mise run deploy`, then approve the
-subnet route once in the Tailscale admin console. Clients need
-`tailscale up --accept-routes`; `./kubeconfig` needs no changes between LAN and
-tailnet.
-
-Set `cluster.tailscale.enable` to `false` in `hosts.json` to drop it entirely.
-
-## Cloudflare
-
-Nothing is exposed by an ingress controller — traffic arrives through the
-cloudflared tunnel running in the cluster, which dials out and forwards to
-Services by cluster DNS. The tunnel, its hostname → Service rules and the CNAMEs
-pointing at it live in `terraform/cloudflare/`:
-
-```bash
-cp terraform/cloudflare/terraform.tfvars.example terraform/cloudflare/terraform.tfvars
-$EDITOR terraform/cloudflare/terraform.tfvars   # account, zones, ingress
-mise run cf:plan
-mise run cf:apply
-```
-
-Adding a public hostname is one `ingress` entry — the CNAME is derived from it.
-That list is authoritative: a rule added in the dashboard is reverted on the next
-apply.
-
-The API token goes in `secrets/cloudflare-api-token` and needs three permissions
-on a custom token: **Account / Cloudflare Tunnel / Edit**, **Zone / DNS / Edit**,
-and **Zone / Zone / Read** (DNS/Edit does not imply it, and without it zone
-lookups quietly return nothing).
-
-## Notes
-
-- Traefik and servicelb are disabled; kube-vip does the control plane only.
-- Rebuilding the image does not recreate live VMs — node changes ship via
-  `deploy`, not Terraform. Changing a node's cores/memory/disk in `hosts.json` is
-  a `tf:apply`; changing its IP is both.
-- Firewall is on: 6443/2379/2380/10250 + UDP 8472 on servers, 10250 + 8472 on
-  agents, UDP 41641 and a trusted `tailscale0` everywhere.
-- Terraform state holds credentials in cleartext (the tunnel token, the Proxmox
-  token). It lives in R2, so keep that bucket private.
+There is no test suite. "Does it work" is `mise run preflight`, a `terraform
+plan`, a `nix eval` of the affected node, and `mise run status`.
