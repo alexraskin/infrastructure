@@ -66,13 +66,13 @@ cluster uses this path; Grafana and the Alloy DaemonSet still dial
 - **Dropping TLS costs nothing here.** Tailnet traffic is already encrypted end
   to end by WireGuard. The grant in `tailscale/policy.hujson` is the real
   control, and it has to be, because Loki runs `auth_enabled: false` — whatever
-  the ACL admits can push, query *and* delete. Keep its `src` to `tag:edge`.
+  the ACL admits can push, query *and* delete. Keep its `src` to `tag:cloud-edge`.
 - **The `tailscale.com/tags: tag:k8s-loki` annotation is load-bearing.** Left
   alone the operator tags every proxy `tag:k8s`, so a grant letting the edge
   reach Loki would also let it reach Grafana. `tag:k8s-loki` exists to make that
   grant addressable at one service, and `tailscale/policy.hujson` must own it
   under `tag:k8s-operator` or the operator's device creation is rejected. The
-  policy's `tests` assert both halves: `tag:edge` accepts `tag:k8s-loki:3100`
+  policy's `tests` assert both halves: `tag:cloud-edge` accepts `tag:k8s-loki:3100`
   and is denied `tag:k8s:443`.
 - **`tailscale.com/hostname: loki` is what fixes the URL.** Without it the
   device is named after the Service, `loki-tailnet`. Names are also claimed

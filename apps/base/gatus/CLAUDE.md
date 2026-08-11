@@ -81,9 +81,9 @@ constraints stacked, none of them arbitrary.
 - **The tailnet ACL has to grant it.** `policy.hujson` is default-deny
   (`acls: []`, everything through `grants`) and `tag:k3s` was the src of no
   grant at all — the cluster nodes could reach nothing on the tailnet. Two
-  grants now cover exactly these two probes, `tag:k3s → tag:edge:443` and
+  grants now cover exactly these two probes, `tag:k3s → tag:cloud-edge:443` and
   `tag:k3s → 100.109.167.97:443`, and the `tests` block pins both the accepts
-  and what stays denied (`tag:edge:22`, the NAS' `:5001`, Plex, the VIP).
+  and what stays denied (`tag:cloud-edge:22`, the NAS' `:5001`, Plex, the VIP).
   **`tag:k3s` is the right src, not `tag:k8s`**: the gatus pod is not one of the
   operator's tailnet proxies, its egress leaves through a node and tailscale
   SNATs it to that node's tailnet address.
