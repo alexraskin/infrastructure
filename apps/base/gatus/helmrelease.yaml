@@ -209,6 +209,14 @@ spec:
           alerts:
             - type: discord
 
+        - name: "nfs-server"
+          group: "Nodes"
+          url: "tcp://10.0.200.30:2049"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
+
         - name: "cloud-edge"
           group: "Off-cluster"
           url: "tcp://cloud-edge-egress.gatus.svc.cluster.local:443"

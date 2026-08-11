@@ -38,6 +38,30 @@ cluster PKI (`talos_machine_secrets`) is in there too.
   are deliberately the node addresses instead. Reasoning is in the root
   `CLAUDE.md` under "The VIP is Talos', not kube-vip's".
 
+## nfs.tf — the NFS server LXC
+
+A privileged Debian LXC on the cluster bridge, exporting a second disk to the
+Kubernetes nodes. `apps/base/csi-driver-nfs/` consumes it; that directory's
+`CLAUDE.md` covers why this exists instead of the NAS.
+
+- **`unprivileged = false` and `features.mount = ["nfs"]` are both required.**
+  The kernel NFS server loads `nfsd` and manipulates mounts, which an
+  unprivileged container cannot do. This is the only guest here that is not
+  locked down, which is why the export is restricted to the cluster subnet.
+- **Provisioning runs through `pct exec` on the PVE host**, not SSH into the
+  container: `scripts/nfs-provision.sh`, called from a `local-exec` provisioner.
+  The provider already needs that SSH access, so the container needs no
+  authorized key, no sshd, and no wait for one to come up. The tradeoff is that
+  a provisioner only runs at **create** — changing the export means re-running
+  the script by hand, or tainting the container.
+- **`mount_point[0].volume` is in `ignore_changes`.** The config names a
+  datastore (`local-lvm`) and the provider reads back an allocated volume id
+  (`local-lvm:vm-130-disk-1`), so every plan would otherwise want to replace the
+  container — which would discard the data.
+- Its VMID is in the nightly backup job (`backups.tf`) explicitly. Unlike the
+  Talos nodes, this container is not reproducible from git: the data is only
+  here.
+
 ## What is adopted, and what cannot be
 
 Most of this root was written against a host that already existed, so the

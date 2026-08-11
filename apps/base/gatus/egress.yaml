@@ -1,12 +1,3 @@
-# Egress proxies for the two off-cluster probes. Under k3s these were dialled
-# straight at their tailnet addresses, because every node ran tailscaled and
-# pod egress was SNAT'd to the node's tailnet address. Talos nodes are not on
-# the tailnet at all, so the operator has to carry the traffic instead: it
-# gives each of these Services a proxy pod with its own tailnet device and
-# rewrites externalName to point at it.
-#
-# The ACL grant for these is src tag:k8s, not the old tag:k3s — see
-# tailscale/policy.hujson.
 apiVersion: v1
 kind: Service
 metadata:
@@ -16,7 +7,7 @@ metadata:
     tailscale.com/tailnet-ip: "100.79.150.123"
 spec:
   type: ExternalName
-  externalName: placeholder # overwritten by the operator
+  externalName: placeholder
 ---
 apiVersion: v1
 kind: Service
@@ -27,4 +18,4 @@ metadata:
     tailscale.com/tailnet-ip: "100.109.167.97"
 spec:
   type: ExternalName
-  externalName: placeholder # overwritten by the operator
+  externalName: placeholder

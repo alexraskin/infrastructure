@@ -91,8 +91,15 @@ spec:
               values: [talos-worker-1]
 ---
 # The db nodes' second disk — a real partition, not a directory volume, mounted
-# by Talos at /var/mnt/db. Nothing claims these yet: a workload has to tolerate
-# dedicated=database:NoSchedule and ask for storageClassName: db-local.
+# by Talos at /var/mnt/db. CloudNativePG claims these: three interchangeable
+# volumes for three interchangeable Postgres instances.
+#
+# Deliberately **no claimRef here**, unlike the local-path volumes above. CNPG
+# names its claims postgres-1..3 but does not choose which instance lands on
+# which node, so pinning postgres-2 to this node's volume would deadlock
+# whenever the scheduler disagreed. They are identical in size and class, so
+# first-come binding is correct — at the cost of a Released volume needing its
+# claimRef cleared by hand if a claim is ever deleted.
 apiVersion: v1
 kind: PersistentVolume
 metadata:

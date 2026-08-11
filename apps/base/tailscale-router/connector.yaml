@@ -1,15 +1,3 @@
-# The subnet router, which used to be the three k3s servers running tailscaled
-# under nix/modules/tailscale.nix. Talos nodes are not on the tailnet, so the
-# route is advertised from inside the cluster instead: an off-LAN kubectl still
-# reaches the VIP at 10.0.200.40, and the tailnet still resolves LAN addresses.
-#
-# This is circular on purpose and the tradeoff is accepted: the route into the
-# cluster's subnet lives in the cluster. If the cluster is down, so is the
-# route, and recovery is on-LAN or through the Proxmox console.
-#
-# tag:k8s-router must be listed in tagOwners as owned by tag:k8s-operator, and
-# in autoApprovers.routes for 10.0.200.0/24, or the route waits for a human in
-# the admin console.
 apiVersion: tailscale.com/v1alpha1
 kind: Connector
 metadata:
