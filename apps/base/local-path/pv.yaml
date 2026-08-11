@@ -1,12 +1,16 @@
-# Static PVs, one per claim in the cluster. `hostPath` with DirectoryOrCreate
-# is what the Talos local-storage guide documents: kubelet creates the
-# directory, and nodeAffinity is what makes the volume honest about being
-# node-local. A PV in a pod spec is only ever a PVC reference, so this does not
-# meet Talos' PodSecurity baseline, which would reject a hostPath volume.
+# Static PVs, one per claim in the cluster. Each binds a Talos **user volume**
+# declared in terraform/proxmox/talos.tf and mounted at /var/mnt/<name>, so
+# adding a claim is a PV here *and* a volume there — nothing provisions on
+# demand, and /var/mnt is read-only to anything but Talos.
 #
-# Adding a claim means adding a PV here first — nothing provisions on demand.
-# /var is the Talos EPHEMERAL partition: it survives reboots and upgrades, but
-# not `talosctl reset` or a reinstall.
+# `local`, not `hostPath`, and the difference is load-bearing: kubelet applies
+# fsGroup ownership to a local volume, so a chart running as a non-root uid can
+# write to it. A hostPath PV stays root-owned and Prometheus dies on
+# "open /prometheus/queries.active: permission denied".
+#
+# nodeAffinity is what makes the volume honest about being node-local. These
+# live on the EPHEMERAL partition: they survive reboots and upgrades, but not
+# `talosctl reset` or a reinstall.
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -17,9 +21,8 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-path
-  hostPath:
-    path: /var/mnt/local-path/prometheus
-    type: DirectoryOrCreate
+  local:
+    path: /var/mnt/prometheus
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -38,9 +41,8 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-path
-  hostPath:
-    path: /var/mnt/local-path/grafana
-    type: DirectoryOrCreate
+  local:
+    path: /var/mnt/grafana
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -59,9 +61,8 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-path
-  hostPath:
-    path: /var/mnt/local-path/loki
-    type: DirectoryOrCreate
+  local:
+    path: /var/mnt/loki
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -80,9 +81,8 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-path
-  hostPath:
-    path: /var/mnt/local-path/gatus
-    type: DirectoryOrCreate
+  local:
+    path: /var/mnt/gatus
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -91,9 +91,9 @@ spec:
               operator: In
               values: [talos-worker-1]
 ---
-# The db nodes' second disk, mounted by Talos at /var/mnt/db. Nothing claims
-# these yet: a workload has to tolerate dedicated=database:NoSchedule and ask
-# for storageClassName: db-local.
+# The db nodes' second disk — a real partition, not a directory volume, mounted
+# by Talos at /var/mnt/db. Nothing claims these yet: a workload has to tolerate
+# dedicated=database:NoSchedule and ask for storageClassName: db-local.
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -104,9 +104,8 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: db-local
-  hostPath:
-    path: /var/mnt/db/data
-    type: DirectoryOrCreate
+  local:
+    path: /var/mnt/db
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -125,9 +124,8 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: db-local
-  hostPath:
-    path: /var/mnt/db/data
-    type: DirectoryOrCreate
+  local:
+    path: /var/mnt/db
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -146,9 +144,8 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: db-local
-  hostPath:
-    path: /var/mnt/db/data
-    type: DirectoryOrCreate
+  local:
+    path: /var/mnt/db
   nodeAffinity:
     required:
       nodeSelectorTerms:
