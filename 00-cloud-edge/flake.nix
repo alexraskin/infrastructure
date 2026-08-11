@@ -1,7 +1,6 @@
 {
   description = "Public edge node: HAProxy on Oracle Cloud, reaching home over Tailscale";
 
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
@@ -11,6 +10,11 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -18,6 +22,7 @@
       nixpkgs,
       nixpkgs-unstable,
       disko,
+      sops-nix,
       ...
     }:
     let
@@ -51,6 +56,7 @@
         };
         modules = [
           disko.nixosModules.disko
+          sops-nix.nixosModules.sops
           ./nixos/hosts/oracle-edge
         ];
       };

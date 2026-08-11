@@ -1,0 +1,6 @@
+# The edge's secrets are encrypted to the same age key as everything under
+# apps/. Whole-file encryption here, unlike apps/.sops.yaml — nothing downstream
+# needs to read a key out of this without decrypting it.
+creation_rules:
+  - path_regex: \.sops\.ya?ml$
+    age: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw

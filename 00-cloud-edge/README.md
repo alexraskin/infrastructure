@@ -76,9 +76,10 @@ Terraform root and not `terraform/cloudflare/` — the value only exists here.
 ```text
 edge.json                 shape, zone, wildcards, sites — read by the flake and by terraform
 flake.nix                 nixosConfigurations.cloud-edge (aarch64)
-nixos/hosts/oracle-edge/  default, hardware, disk-config, ssh-keys, tailscale, acme, haproxy, logging
+nixos/hosts/oracle-edge/  default, hardware, disk-config, ssh-keys, secrets, tailscale, acme, haproxy, logging
+                          secrets.sops.yaml — the box's own secrets, committed encrypted
 terraform/                providers, backend, network, compute, dns, outputs
-scripts/                  install.sh, deploy.sh, push-secrets.sh, tf-env.sh
+scripts/                  install.sh, deploy.sh, push-age-key.sh, tf-env.sh
 ```
 
 TLS terminates here rather than passing SNI through, because there is no reverse
@@ -98,9 +99,15 @@ are all one journald stream — to the cluster's Loki over the tailnet.
 
 All in `secrets/` at the repo root. Start from `terraform/oci.env.example`.
 
-| File                     | What it is                                                      |
-| ------------------------ | --------------------------------------------------------------- |
-| `oci.env`                | OCIDs, fingerprint, region, compartment, SSH public key          |
-| `oci_api_key.pem`        | OCI API signing key (`_public.pem` is already uploaded to OCI)   |
-| `cloudflare-api-token`   | Shared with `terraform/cloudflare/`; also on the box for DNS-01  |
-| `tailscale-authkey-edge` | Tagged pre-auth key; falls back to `tailscale-authkey`           |
+| File                   | What it is                                                     |
+| ---------------------- | -------------------------------------------------------------- |
+| `oci.env`              | OCIDs, fingerprint, region, compartment, SSH public key        |
+| `oci_api_key.pem`      | OCI API signing key (`_public.pem` is already uploaded to OCI) |
+| `cloudflare-api-token` | Terraform's copy, shared with `terraform/cloudflare/`          |
+| `age.key`              | Opens every `*.sops.yaml` in the repo, this box's included     |
+
+Terraform reads the first three. **The box itself reads only `age.key`**: its
+pre-auth key and its own copy of the Cloudflare token live encrypted in
+`nixos/hosts/oracle-edge/secrets.sops.yaml`, which is committed, and sops-nix
+decrypts them at activation. Edit them with `mise run secrets:edit` — from this
+directory, never from `apps/`, which has a different `.sops.yaml`.

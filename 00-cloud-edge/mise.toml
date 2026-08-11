@@ -1,9 +1,11 @@
 [tools]
 terraform = "1.9"
 jq = "latest"
+sops = "latest"
 
 [env]
 SSH_OPTS = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
+SOPS_AGE_KEY_FILE = "{{config_root}}/../secrets/age.key"
 
 # --------------------------------------------------------------- terraform ---
 
@@ -102,9 +104,21 @@ echo
 description = "One-shot: nixos-anywhere replaces Ubuntu with NixOS (erases the box)"
 run = "scripts/install.sh"
 
-[tasks."push-secrets"]
-description = "Tailscale pre-auth key and the Cloudflare token for ACME DNS-01"
-run = "scripts/push-secrets.sh"
+[tasks."secrets:edit"]
+description = "Decrypt the box's secrets into $EDITOR and re-encrypt on save"
+shell = "bash -c"
+# Run from here, never from apps/: sops picks .sops.yaml out of the working
+# directory, and apps/ has a different one that would leave this file plaintext.
+run = "exec sops nixos/hosts/oracle-edge/secrets.sops.yaml"
+
+[tasks."secrets:show"]
+description = "Print the decrypted secrets"
+shell = "bash -c"
+run = "exec sops --decrypt nixos/hosts/oracle-edge/secrets.sops.yaml"
+
+[tasks."push-age-key"]
+description = "The age key sops-nix decrypts the box's secrets with"
+run = "scripts/push-age-key.sh"
 
 [tasks.deploy]
 description = "Push this flake and nixos-rebuild switch (builds on the box)"

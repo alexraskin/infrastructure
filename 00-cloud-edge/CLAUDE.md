@@ -5,8 +5,7 @@ forwarding to home over Tailscale. It exists because **Plex cannot go through
 the cloudflared tunnel**: Cloudflare's terms 2.8 restrict serving video through
 the proxy, disabling caching does not change that (2.8 is about bytes crossing
 their network), and a tunnel is proxied by definition — `*.cfargotunnel.com`
-only resolves orange-clouded. Oracle rather than AWS purely for egress: 10 TB/mo
-free against AWS's 100 GB, and a 4K remux direct-play is ~27 GB/hour.
+only resolves orange-clouded.
 
 Its own mise config (`mise trust` once) and its own Terraform root, state in R2
 under `edge-compute/terraform.tfstate`.
@@ -87,7 +86,7 @@ under `edge-compute/terraform.tfstate`.
   own tailnet device, so the backend is a peer address; accepting the cluster's
   `10.0.200.0/24` would give the one machine with a public IP a path to the whole
   LAN, and would hairpin every stream through whichever k3s server owns the
-  route. Its pre-auth key is `secrets/tailscale-authkey-edge` — tagged
+  route. Its pre-auth key is `tailscale_authkey` in `secrets.sops.yaml` — tagged
   `tag:cloud-edge`, so the ACL can grant it exactly the one `host:port` in
   `edge.json` and nothing else. **The tag is baked into the key**, not into
   `tailscale.nix`: the NixOS module feeds one flag list to both `tailscale up`
@@ -191,20 +190,63 @@ under `edge-compute/terraform.tfstate`.
   - The URL is a literal here rather than a field in the gitignored `edge.json`,
     which is only true because it is a bare name. An HTTPS Ingress would force
     the FQDN into it and the tailnet name would have to be hidden again.
-- **The first ACME run always fails, and nothing retries it.** nixos-anywhere
-  activates the whole config during `install`, before `push-secrets.sh` has put
-  `/etc/cloudflare/credentials` on the box, so the acme unit dies with "Failed
-  to load environment files". A later `deploy` does *not* fix it: the unit's
-  definition has not changed, so `switch-to-configuration` leaves the failed
-  oneshot alone, and HAProxy goes on serving the self-signed placeholder that
-  acme writes so services can start. The site answers on 443 and fails
-  verification — `curl -w '%{ssl_verify_result}'` returns 19, not 0. `deploy.sh`
-  now starts `acme-<domain>.service` explicitly after the switch, which is
-  idempotent (the unit checks expiry before contacting LetsEncrypt).
-- Credentials all come from `secrets/` via `scripts/tf-env.sh` as `TF_VAR_*`:
-  `oci.env`, `oci_api_key.pem` (the signing key; `oci_api_key_public.pem` is
-  already uploaded to OCI and unread here), and the existing
-  `cloudflare-api-token`, which is also pushed to the box for ACME DNS-01.
+- **The first ACME run used to always fail, and this is why `--extra-files`
+  exists.** nixos-anywhere activates the whole config during `install`, which
+  once happened before anything had put the Cloudflare token on the box — so the
+  acme unit died with "Failed to load environment files". A later `deploy` did
+  *not* fix it: the unit's definition had not changed, so
+  `switch-to-configuration` left the failed oneshot alone, and HAProxy went on
+  serving the self-signed placeholder that acme writes so services can start.
+  The site answered on 443 and failed verification — `curl -w
+  '%{ssl_verify_result}'` returns 19, not 0. Two things now prevent it:
+  `install.sh` seeds the age key through `--extra-files` so the secret is
+  decryptable during that first activation, and `deploy.sh` starts
+  `acme-<domain>.service` explicitly after the switch, which is idempotent (the
+  unit checks expiry before contacting LetsEncrypt).
+- Terraform credentials come from `secrets/` via `scripts/tf-env.sh` as
+  `TF_VAR_*`: `oci.env`, `oci_api_key.pem` (the signing key;
+  `oci_api_key_public.pem` is already uploaded to OCI and unread here), and
+  `cloudflare-api-token`, shared with `terraform/cloudflare/`. What the *box*
+  needs is separate — see below.
+
+## Secrets
+
+The box's own two secrets — the tailnet pre-auth key and the Cloudflare token
+ACME does DNS-01 with — are committed, encrypted, in
+`nixos/hosts/oracle-edge/secrets.sops.yaml`, and decrypted on the box at
+activation by **sops-nix**. `secrets.nix` declares them; `tailscale.nix` and
+`acme.nix` reference `config.sops.secrets.*.path` rather than a hardcoded
+location.
+
+**One age key opens everything in this repo** — the same key `apps/.sops.yaml`
+encrypts to, kept in 1Password. That is the whole point: there is one thing to
+back up and one thing to rotate, rather than a per-host key, a vault credential
+and a bootstrap key that opens the vault.
+
+The tradeoff is accepted rather than unnoticed: this box is the only publicly
+addressable machine in the setup, and it now holds a key that decrypts the
+cluster's secrets too. sops-nix's usual answer is to derive a recipient from
+each host's SSH host key, which would contain the blast radius — but `install`
+is a one-shot that erases the box, so every reinstall would mean re-encrypting
+every file to a new recipient. Rotation is the mitigation: re-key on suspicion,
+which is one `sops updatekeys` per file.
+
+`scripts/push-age-key.sh` puts `secrets/age.key` at `/var/lib/sops-nix/key.txt`.
+`deploy.sh` calls it before the switch, because activation installs the secrets
+and fails without it. `install.sh` seeds the same file through nixos-anywhere's
+`--extra-files`, which is what stops the first activation from failing.
+
+- **`sops` resolves `.sops.yaml` from the working directory, not from the file
+  it is encrypting.** Run it from `apps/` against a path in here and it picks up
+  `apps/.sops.yaml`, whose `encrypted_regex: ^(data|stringData)$` matches
+  nothing in a file that is not a Kubernetes Secret — sops reports success and
+  writes the values **in plaintext**, with a `sops:` metadata block on the end
+  that makes it look encrypted. Use `mise run secrets:edit` from `00-cloud-edge/`,
+  which is why this directory pins its own `sops` rather than borrowing the one
+  in `apps/`.
+- The encrypted file is committed and lands in the Nix store, which is
+  world-readable. That is fine — it is ciphertext — but it is why the age key
+  itself is pushed out of band and never enters the store.
 
 ## Gotchas
 

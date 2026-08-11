@@ -11,7 +11,7 @@ ip=$("$here/scripts/edge-addr.sh" "${1:-}")
 
 ssh_opts=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null)
 
-"$here/scripts/push-secrets.sh" "$ip"
+"$here/scripts/push-age-key.sh" "$ip"
 
 echo "==> $ip: copying the flake -> /etc/nixos-edge"
 tar -C "$here" -cf - flake.nix flake.lock edge.json nixos \

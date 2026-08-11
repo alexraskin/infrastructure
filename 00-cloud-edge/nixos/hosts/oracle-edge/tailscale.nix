@@ -1,4 +1,9 @@
-{ pkgs, unstable, ... }:
+{
+  config,
+  pkgs,
+  unstable,
+  ...
+}:
 let
 
   flags = [
@@ -15,7 +20,7 @@ in
 
     openFirewall = true;
 
-    authKeyFile = "/var/lib/tailscale-authkey";
+    authKeyFile = config.sops.secrets.tailscale_authkey.path;
 
     useRoutingFeatures = "server";
 
