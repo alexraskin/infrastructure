@@ -4,6 +4,21 @@ The operator (chart `0.29.0` = operator `1.30.0`) plus one `Cluster`: three
 Postgres instances, one per db node. That is what the three tainted db nodes and
 the three `db-local` PVs exist for.
 
+## Two Kustomizations, not one
+
+`cluster/` is a separate directory with its own Flux Kustomization
+(`cnpg-cluster`, `dependsOn: cnpg`) purely because the `Cluster` CRD arrives
+with the operator's chart. In one Kustomization, Flux server-side dry-runs every
+resource in the set before applying any of it, so the `Cluster` fails validation
+against an API that does not have the kind yet:
+
+```
+Cluster/cnpg-system/postgres dry-run failed: no matches for kind "Cluster" in version "postgresql.cnpg.io/v1"
+```
+
+`dependsOn` alone would not fix it — the split has to be at the Kustomization
+boundary. Same shape as `tailscale-operator` / `tailscale-router`.
+
 ## Scheduling is the point
 
 The db nodes carry `dedicated=database:NoSchedule`, set by kubelet in
