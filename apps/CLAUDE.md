@@ -6,6 +6,14 @@ manifests. Secrets are SOPS-encrypted to an age key in `secrets/age.key`
 The repo is public — encrypted `*.sops.yaml` is meant to be committed; the age
 key is not. `flux bootstrap` pushes commits, so do not run it casually.
 
+**That one key opens the edge too.** `00-cloud-edge/` encrypts to the same
+recipient and decrypts on the box with sops-nix, so there is a single key to
+keep in 1Password and a single thing to rotate. It has its own `.sops.yaml` with
+*no* `encrypted_regex`, because its secrets are plain YAML rather than
+Kubernetes Secrets — and sops picks that file up from the working directory, so
+running `sops` from here against a path over there silently encrypts nothing.
+See `00-cloud-edge/CLAUDE.md`.
+
 Image tags in `apps/base/*/deployment.yaml` are **owned by
 image-automation-controller**, not by hand: `apps/base/image-automation/` scans
 GHCR, picks the newest semver tag and pushes a commit rewriting the line marked

@@ -46,6 +46,21 @@ fi
 
 echo "==> $ip: nixos-anywhere (kexec, disko, install, reboot)"
 
+# The age key has to be on the disk before the installer activates the config,
+# or sops-nix fails and takes the whole install with it. --extra-files copies
+# this tree to / on the target. It lives under secrets/ so it is gitignored, and
+# under the repo so scripts/nix.sh's container can see it.
+key="$repo/secrets/age.key"
+[ -s "$key" ] || {
+  echo "missing secrets/age.key — restore it from 1Password" >&2
+  exit 1
+}
+extra="$repo/secrets/.extra-files"
+rm -rf "$extra"
+install -d -m 0755 "$extra/var/lib/sops-nix"
+install -m 0400 "$key" "$extra/var/lib/sops-nix/key.txt"
+trap 'rm -rf "$extra"' EXIT
+
 # scripts/nix.sh mounts $HOME/.ssh into the container read-only, which is right
 # for every other consumer — they only read keys. nixos-anywhere writes: it
 # generates a throwaway keypair for the post-kexec reconnect and hands it to
@@ -65,6 +80,7 @@ echo "==> $ip: nixos-anywhere (kexec, disko, install, reboot)"
   nix run github:nix-community/nixos-anywhere -- \
     --flake 'path:./00-cloud-edge#$host' \
     --build-on-remote \
+    --extra-files './secrets/.extra-files' \
     --ssh-option StrictHostKeyChecking=accept-new \
     --target-host 'ubuntu@$ip'
 "

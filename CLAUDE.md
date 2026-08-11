@@ -57,6 +57,7 @@ mise run tf:apply       # Oracle instance, public IP, DNS records — retries ev
 mise run install        # nixos-anywhere: kexec + disko + install. One shot, erases the box
 mise run deploy         # push the flake and switch; repeatable
 mise run status         # tailscale, haproxy, certs, backend reachability
+mise run secrets:edit   # the box's own SOPS secrets — run it from there, not apps/
 ```
 
 Validation without touching infrastructure:

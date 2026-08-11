@@ -8,6 +8,7 @@
     ./disk-config.nix
     ./hardware.nix
     ./ssh-keys.nix
+    ./secrets.nix
     ./tailscale.nix
     ./acme.nix
     ./haproxy.nix
