@@ -70,15 +70,15 @@ spec:
       alerting:
         discord:
           webhook-url: "${DISCORD_WEBHOOK_URL}"
-          title: "k3s"
+          title: "Infrastructure"
           default-alert:
             failure-threshold: 3
             success-threshold: 2
             send-on-resolved: true
 
       ui:
-        title: "Infra status"
-        header: "k3s - plex - edge"
+        title: "Infrastructure Status"
+        header: "Status"
 
       endpoints:
         - name: "API (VIP)"
