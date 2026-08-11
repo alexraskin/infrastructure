@@ -4,9 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-The repo root is an HA k3s cluster: 3 servers (control plane + embedded etcd) and
-3 agents, running as NixOS VMs on a single Proxmox host. Terraform creates the
-VMs, NixOS owns everything inside them, Flux deploys workloads from `apps/`.
+The repo root is an HA Kubernetes cluster on **Talos Linux**: 3 control plane
+nodes (embedded etcd), 3 workers and 3 tainted database workers, running as VMs
+on a single Proxmox host. Terraform creates the VMs *and* the cluster — Talos
+takes its whole configuration through its own API, so there is no second
+configuration-management step. Flux deploys workloads from `apps/`.
+
+It used to be k3s on NixOS. `docs/talos-migration.md` records why it is not.
 
 ## Where explanations go
 
@@ -23,25 +27,27 @@ short enough that a comment block twice the length of the config is noise.
 edge). `mise trust` is needed once per directory.
 
 ```bash
-mise run preflight      # validate Proxmox API token, node, datastores, VM IDs, IPs, SSH — do this first
-mise run image          # build the golden NixOS qcow2 into build/
+mise run preflight      # validate Proxmox API token, node, datastores, VM IDs, IPs, SSH, capacity
 mise run tf:plan        # terraform, from terraform/proxmox/
-mise run tf:apply       # create the six VMs
-mise run push-token     # generate secrets/k3s-token and scp it to every node
-mise run push-tailscale-key   # scp secrets/tailscale-authkey to every node (no-op without one)
-mise run deploy         # nixos-rebuild every node in the right order
-mise run deploy-node k3s-agent-2   # one node
-mise run kubeconfig     # fetch ./kubeconfig, rewritten to point at the VIP
+mise run tf:apply       # VMs, machine configs, bootstrap — the whole cluster
+mise run talosconfig    # write secrets/talosconfig from Terraform state
+mise run kubeconfig     # write ./kubeconfig, pointed at the VIP
+mise run cilium         # install/upgrade the CNI — REQUIRED within ~10min of bootstrap
+mise run health         # talosctl health
 mise run status         # kubectl get nodes + kube-system pods
-mise run ts:status      # tailnet name/address/primary routes per node
+mise run upgrade        # talosctl upgrade every node to the pinned talos_version
+mise run upgrade-k8s    # talosctl upgrade-k8s to the pinned kubernetes_version
+mise run ts:status      # the in-cluster subnet router and the operator's proxies
 mise run ts:plan        # terraform, from tailscale/ (the tailnet policy file)
 mise run ts:apply       # same, applied — CI does this on push to main
 mise run cf:plan        # terraform, from terraform/cloudflare/ (tunnel + DNS)
 mise run cf:apply       # same, applied — CI does this on push to main
-mise run reset          # DESTRUCTIVE: wipe k3s state cluster-wide (typed confirmation)
+mise run bootstrap      # tf:apply -> talosconfig -> kubeconfig -> cilium -> status
+mise run tf:destroy     # DESTRUCTIVE: the VMs only, targeted (see below)
+mise run reset          # DESTRUCTIVE: talosctl reset every node (typed confirmation)
 ```
 
-From `00-cloud-edge/` (its own mise config):
+From `00-cloud-edge/` (its own mise config, still NixOS):
 
 ```bash
 mise run tf:apply       # Oracle instance, public IP, DNS records — retries every AD on capacity errors
@@ -57,109 +63,130 @@ terraform -chdir=terraform/proxmox validate && terraform fmt -recursive terrafor
 terraform -chdir=terraform/cloudflare validate
 terraform -chdir=00-cloud-edge/terraform validate
 terraform -chdir=tailscale init -backend=false && terraform -chdir=tailscale validate
-./scripts/nix.sh 'nix eval ".#nixosConfigurations.k3s-server-1.config.networking.hostName"'
-# path:, or nix resolves to the enclosing git repo — which is the cluster flake
 ./scripts/nix.sh 'nix eval "path:./00-cloud-edge#nixosConfigurations.cloud-edge.config.system.build.toplevel.drvPath"'
 cd apps && mise exec -- kustomize build base/alexraskin-com
 cd apps && mise exec -- kustomize build base/monitoring
+cd apps && mise exec -- kustomize build base/local-path
 cd apps && mise exec -- kustomize build base/tailscale-operator
+cd apps && mise exec -- kustomize build base/tailscale-router
 cd apps && mise exec -- kustomize build base/loki && mise exec -- kustomize build base/alloy
 ```
 
 There is no test suite. "Does it work" means `mise run preflight`, a `terraform
-plan`, a `nix eval` of the affected node, and finally `mise run status`.
+plan`, and finally `mise run health` and `mise run status`.
 
 ## Architecture
 
-### hosts.json is the single source of truth
+### terraform/proxmox/cluster.auto.tfvars.json is the single source of truth
 
-Both `flake.nix` (`builtins.fromJSON`) and `terraform/proxmox/main.tf` (`jsondecode`) read
-it. Node IPs, VM IDs, sizes, the VIP, the NIC name and the disk device all live
-there. Changing a node's cores/memory/disk is a `tf:apply`; changing its IP needs
-both `tf:apply` and `deploy`.
+What used to be `hosts.json` at the repo root is now a **Terraform variables
+file**: `cluster` and `nodes` are declared in `variables.tf` with real types and
+validations, and `cluster.auto.tfvars.json` is auto-loaded because of the
+`.auto.tfvars.json` suffix. No `jsondecode(file(...))`, and a malformed node now
+fails at `terraform plan` instead of at apply.
 
-### Two-phase node lifecycle
+**It is JSON, not HCL, on purpose.** `jq` still reads it, so `scripts/preflight.sh`
+and the `upgrade` / `reset` mise tasks work from exactly the same file Terraform
+does — an HCL `.tfvars` would have needed a second copy of the node list.
 
-1. **Golden image** — `base.nix` + `image.nix`, built by nixos-generators into a
-   compressed qcow2. Carries no node identity; gets hostname, IP and SSH key from
-   the Proxmox cloud-init drive Terraform configures.
-2. **Per-node config** — `nixosConfigurations.<host>` = `base` + `hardware` +
-   `network` + `tools` + a role module. Pushed by `scripts/deploy-node.sh`, which
-   replaces the generic system with a static one. cloud-init is off afterwards.
+It is tracked in git; `.gitignore` excludes the literal name `terraform.tfvars`
+(credentials) and nothing else in that directory. Node IPs, VM IDs, sizes, the
+VIP, the install disk, the Talos and Kubernetes versions and the image-factory
+extension list all live there. Changing cores/memory/disk is a `tf:apply`;
+changing an IP is a `tf:apply` too, because the address is in the machine config
+rather than in cloud-init.
 
-`image.nix` is deliberately **not** in the node configs, which is why
-`hardware.nix` exists: it re-states the root filesystem, `boot.growPartition` and
-grub settings that nixos-generators' qcow format supplies to the image. Without
-it node configs fail to evaluate with "The 'fileSystems' option does not specify
-your root file system".
+### One apply, no second phase
 
-### scripts/nix.sh — the Nix entry point
+There is no golden image and no deploy step. `tf:apply`:
 
-The build host (Debian) has no Nix, so this wrapper runs the given shell script
-against the host's `nix` if present, otherwise inside the `nixos/nix` container
-with a persistent `k3s-nix-store` volume. Every Nix invocation in the repo goes
-through it. Three things it handles that are easy to break:
+1. builds the **image factory schematic** from `cluster.extensions`, resolves
+   the ISO URL, and downloads it to the Proxmox ISO store,
+2. creates the VMs — blank disk, ISO in the CD-ROM, no cloud-init drive,
+3. applies a per-node machine configuration over the Talos API,
+4. bootstraps etcd on `cluster.bootstrap` and pulls out the kubeconfig.
 
-- **Flakes evaluate from the git tree**, which is what keeps `secrets/` and the
-  ~600MB `build/` out of the nix store. Untracked files are invisible to
-  evaluation, so the script refuses to run when `flake.nix`, `flake.lock`,
-  `hosts.json` or `nix/` have untracked changes. **`git add` before deploying.**
-- `/dev/kvm` is passed through and `system-features = kvm` declared — the qcow2 is
-  assembled inside a qemu VM and the build fails without it.
-- A generated gitconfig with `safe.directory = /work` is mounted, because the
-  container is root, the repo is not, and libgit2 (which Nix uses) ignores
-  `GIT_CONFIG_*` environment variables.
+`machine.install.image` points back at the same schematic ID: the installed
+system has to carry the extensions the ISO booted with, or the qemu guest agent
+vanishes on first reboot.
 
-### Deploying is not nixos-rebuild
+### The bootstrap window is real
 
-`scripts/deploy-node.sh` spells out what `nixos-rebuild switch --target-host`
-does — build the closure, `nix copy --to ssh://`, `nix-env -p
-/nix/var/nix/profiles/system --set`, `switch-to-configuration switch` — so it
-works from a build host whose Nix lives in a container.
+With `cluster.network.cni.name: none`, nodes come up **NotReady** and Talos
+reboots to retry after roughly ten minutes. `tf:apply` still finishes — the API
+server is a static pod on the host network and the kubeconfig comes over the
+Talos API — so the sequence is `tf:apply` then **`mise run cilium`, promptly**.
+Missing the window is not damaging, just a reboot loop until the CNI lands.
 
-`mise run deploy` orders it: bootstrap server (`--cluster-init`) → wait for
-`/readyz` → remaining servers (joining the bootstrap's IP directly) → wait for
-the VIP → agents (joining the VIP). Waits are bounded; they fail rather than hang.
+### Cilium is bootstrap infrastructure, not a workload
 
-### Cluster wiring
+`talos/cilium-values.yaml` + `mise run cilium` (`helm template | kubectl
+apply`). It is deliberately **not** a Flux HelmRelease: nothing that reconciles
+from inside the cluster can install the reason the cluster has a pod network.
+Flux also cannot adopt helm-templated resources without ownership conflicts, so
+there is exactly one owner. Upgrades are a bump of `CILIUM_VERSION` in
+`mise.toml` and a re-run.
 
-- The k3s join token is **not** in the Nix config. It is generated into
-  `secrets/k3s-token` and scp'd to `/var/lib/k3s-token` before the first deploy;
-  k3s will not start without it, which is why `deploy` depends on `push-token`.
-- kube-vip provides the control-plane VIP, installed via
-  `services.k3s.manifests` on the bootstrap server only. Do not use
-  systemd-tmpfiles for this — `/var/lib/rancher/k3s/server/manifests` does not
-  exist yet when tmpfiles runs on a fresh node, so the rule silently no-ops.
-- Remote access is Tailscale as a **subnet router**, not per-node tailnet
-  addresses: the three servers advertise `cluster.tailscale.advertise_routes`
-  (`10.0.200.0/24`), so an off-LAN kubectl still targets the VIP and stays HA.
-  `nix/modules/tailscale.nix` is in the node configs but deliberately *not* in
-  the golden image — the image has no identity to log in with, and the closure
-  would be pushed to Proxmox for nothing. `useRoutingFeatures = "server"` on
-  servers only (it enables IP forwarding); routes go in both `extraUpFlags` and
-  `extraSetFlags` or they vanish after the first `tailscale up`. The module sets
-  `package = unstable.tailscale`, and that line is **the only consumer of the
-  `nixpkgs-unstable` input** in the whole repo — 25.05 ships 1.82.5, which the
-  admin console flags as vulnerable. Only the package comes from unstable;
-  everything else on the node stays on 25.05. The pre-auth
-  key follows the k3s-token pattern: `secrets/tailscale-authkey` →
-  `/var/lib/tailscale-authkey`, pushed before `deploy` because
-  `tailscaled-autoconnect` runs during activation. **That key must be a tagged
-  one** (`tag:k3s`): the tag is what the ACL's `autoApprovers` matches to approve
-  `10.0.200.0/24` on its own, and — more importantly — tagged devices have no key
-  expiry, where user-owned ones expire together ~180 days after they were
-  enrolled and take the subnet route with them. Tags come from the auth key or
-  from the admin console, never from the module: `tailscale set` has no
-  `--advertise-tags`, so the flag cannot be handled the way routes are. Clients
-  still need `--accept-routes`, and `--accept-dns` too if they want MagicDNS
-  names like the Grafana Ingress. The tailnet policy file itself is
-  `tailscale/policy.hujson` in this repo, applied by a third Terraform root —
-  `tailscale/CLAUDE.md`.
-- traefik and servicelb are disabled. Traffic enters only through the cloudflared
-  tunnel in `apps/`, which dials out and forwards to Services by cluster DNS.
-  The tunnel itself — its ingress rules and the CNAMEs pointing at it — is a
-  second Terraform root, `terraform/cloudflare/` (`mise run cf:plan` /
-  `cf:apply`), documented there.
+Three values are load-bearing and all three are Talos-specific: `k8sServiceHost:
+localhost` / `k8sServicePort: 7445` (KubePrism, the node-local apiserver load
+balancer — this is what lets a CNI that needs the API server start before there
+is a pod network), `cgroup.autoMount.enabled: false` (Talos already mounts
+cgroupv2 and bpffs), and `SYS_MODULE` dropped from `ciliumAgent` (Talos does not
+let workloads load kernel modules).
+
+### The VIP is Talos', not kube-vip's
+
+`machine.network.interfaces[].vip.ip` on the control plane nodes only. It is
+layer-2 and etcd-elected, so it needs the three CPs on the same switched
+network — they are — and it only answers once etcd is healthy.
+
+- **It is the Kubernetes endpoint, never the Talos endpoint.**
+  `data.talos_client_configuration.endpoints` is the three node addresses on
+  purpose: the VIP is bound to etcd and apiserver health, and a cluster broken
+  badly enough to need `talosctl` is exactly a cluster whose VIP is gone.
+- **In-cluster traffic does not use it.** kubelet, Cilium and everything else on
+  the node talk to KubePrism on `localhost:7445`.
+- Failover is near-instant on a graceful shutdown and up to a minute on a hard
+  failure, which is etcd's election timeout doing its job.
+
+### The db workers
+
+Three nodes labelled `dedicated=database` and tainted
+`dedicated=database:NoSchedule` via `machine.kubelet.extraArgs`
+(`register-with-taints`) — nothing schedules there without a toleration and a
+selector. Each has a second Proxmox disk claimed by a `UserVolumeConfig`
+document, which Talos partitions, labels `u-db` and mounts at **`/var/mnt/db`**.
+That path survives a reinstall or `talosctl upgrade --wipe`; `/var` itself, on
+the EPHEMERAL partition, does not. The `db-local` StorageClass in
+`apps/base/local-path/` is what claims it.
+
+### Storage is static
+
+Talos ships no StorageClass and no provisioner; k3s' `local-path` was a freebie
+that is now hand-written in `apps/base/local-path/` — a `no-provisioner`
+StorageClass with `WaitForFirstConsumer`, plus one `hostPath` PV per claim,
+`type: DirectoryOrCreate`, pinned with `nodeAffinity`. **A new PVC needs a new
+PV committed first**; nothing provisions on demand. A `hostPath` PV is fine
+under Talos' PodSecurity baseline because a pod spec only ever names the PVC.
+
+### Tailnet access is the operator's job now
+
+The nodes are not on the tailnet at all — Talos has no systemd unit to run
+tailscaled in, and the subnet-router model went with it.
+
+- **`apps/base/tailscale-router/`** holds a `Connector` advertising
+  `10.0.200.0/24`, so off-LAN kubectl still reaches the VIP. This is circular
+  and accepted: the route into the cluster's subnet lives in the cluster. On-LAN
+  and the Proxmox console are the break-glass path.
+- **`apps/base/gatus/egress.yaml`** holds egress proxies for the two off-cluster
+  probes. Under k3s those dialled tailnet addresses directly, because pod egress
+  was SNAT'd to the node's tailnet address; there is no such path now.
+- The ACL follows: `tag:k3s` is gone, `tag:k8s-router` owns the route in
+  `autoApprovers`, and the gatus grants are `src: tag:k8s`.
+  `tailscale/policy.hujson`, applied by its own Terraform root.
+- traefik and servicelb were k3s' to disable; Talos ships neither. Traffic still
+  enters only through the cloudflared tunnel in `apps/`, whose ingress rules and
+  CNAMEs are `terraform/cloudflare/`.
 
 ### Terraform state lives in R2
 
@@ -178,6 +205,11 @@ not the `cloudflare-api-token` the provider uses; the two are unrelated and
 neither works in place of the other. `skip_*` and `use_path_style` are there
 because R2 is S3-compatible but not AWS.
 
+**The cluster PKI is in that state.** `talos_machine_secrets` is a resource, so
+the machine secrets and the client CA live in R2 exactly like the ACME plugin
+token does. Treat R2 state as a secret store; keep `secrets/talosconfig` as the
+copy that matters if state is ever lost.
+
 Terraform 1.9 is pinned, which predates `use_lockfile` (1.10+), so there is **no
 state locking** — two concurrent applies would corrupt state. Single operator, so
 this is accepted rather than solved; bumping the pin and setting
@@ -190,7 +222,7 @@ This file covers the cluster as a whole: the pieces below own their own
 
 | directory | what it documents |
 |---|---|
-| `terraform/proxmox/` | the six VMs, the nightly vzdump job, and the Proxmox provider's sharp edges |
+| `terraform/proxmox/` | the nine VMs, the Talos resources, the nightly vzdump job, and the Proxmox provider's sharp edges |
 | `terraform/cloudflare/` | the cloudflared tunnel, its ingress rules and DNS |
 | `tailscale/` | the tailnet policy file and the Terraform root that applies it |
 | `apps/` | Flux GitOps, SOPS, image automation |
@@ -199,24 +231,35 @@ This file covers the cluster as a whole: the pieces below own their own
 | `apps/base/loki/` | Loki + Alloy, R2 chunk storage, the edge's push path |
 | `apps/base/gatus/` | the tailnet-only status page and what it probes |
 | `00-cloud-edge/` | the public Oracle edge: HAProxy, ACME, its own flake |
+| `docs/talos-migration.md` | how this stopped being k3s on NixOS |
 
 ## Gotchas discovered the hard way
 
-- **The NIC is `eth0`**, not `ens18`. `network.nix` matches `"en* eth*"`; getting
-  this wrong strands a node with no route and no SSH, recoverable only from the
-  Proxmox console.
-- **k3s node names are pinned with `--node-name`.** `networking.hostName` only
-  writes `/etc/hostname`, which systemd reads at boot — a `switch` leaves the live
-  hostname stale, so without the flag every node registers as `nixos` and the
-  second one dies with "duplicate node name found". An activation script also
-  writes `/proc/sys/kernel/hostname` so the live name matches immediately.
-- **Never pass `--node-label=node-role.kubernetes.io/*`.** kubelet rejects
-  self-assigned labels in that namespace and refuses to start. Set roles with
-  `kubectl label` instead.
-- **Plumbing a package set into `specialArgs` changes nothing on its own.**
-  `flake.nix` passed `unstable` to every node, with a comment explaining that
-  tailscale comes from it because 25.05's 1.82.5 is vulnerable — but no module
-  ever took the argument or set `services.tailscale.package`, so all six nodes
-  quietly ran 1.82.5 until the admin console flagged them. Docs describing a fix
-  are not the fix. The check is an eval, not a grep:
-  `./scripts/nix.sh 'nix eval --raw ".#nixosConfigurations.k3s-server-1.config.services.tailscale.package.version"'`
+- **`mise run tf:destroy` is targeted, and has to stay that way.**
+  `terraform/proxmox/` owns the PVE host as well as the VMs — the ACME
+  certificate, the NFS storages, the management bridge. A bare `terraform
+  destroy` in that directory takes the host apart, not the cluster.
+- **Nothing names the NIC.** The machine config matches it with
+  `deviceSelector: {driver: virtio_net}`. Under NixOS this was `eth0` vs `ens18`
+  and getting it wrong stranded a node with no route and no SSH; a selector
+  removes the question. Talos would also have no SSH to recover over.
+- **Talos has no SSH.** Recovery is `talosctl` or the Proxmox console, and
+  `talosctl` needs `secrets/talosconfig`. Fetch it (`mise run talosconfig`)
+  before you need it.
+- **kube-proxy is gone for good.** `kubeProxy.enabled: false` in the monitoring
+  chart is permanent, not a workaround — Cilium replaces it, and a ServiceMonitor
+  for it would sit DOWN forever.
+- **The service CIDR moved.** Talos defaults to `10.96.0.0/12`, where k3s used
+  `10.43.0.0/16`; CoreDNS is at `10.96.0.10`. Anything with a hard-coded cluster
+  IP — the gatus DNS probe was the only one — has to move with it.
+- **Adding a PVC means adding a PV.** See "Storage is static" above. The symptom
+  is a pod Pending forever on a claim that never binds.
+- **`mise run cilium` is not optional and not deferrable.** Ten minutes after
+  bootstrap, nodes start rebooting to retry.
+- **The backend key moved** from `promox-k3-nix/` to `talos-proxmox/` at the
+  Talos rebuild. `terraform init` notices and offers to migrate; take it. Refuse,
+  and the root starts from empty state — which does not just forget the VMs, it
+  forgets the eight *adopted* host resources (ACME plugin and certificate, the
+  two storages, the NFS exports, the bridge, the apt repository, the backup job)
+  and the next apply tries to create things that already exist. Re-importing them
+  by hand is the recovery, and `terraform/proxmox/CLAUDE.md` lists the ID shapes.

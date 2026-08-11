@@ -1,6 +1,6 @@
 # apps/ — Flux GitOps
 
-`apps/clusters/k3s/apps.yaml` lists what Flux reconciles; `apps/base/*` holds the
+`apps/clusters/talos/apps.yaml` lists what Flux reconciles; `apps/base/*` holds the
 manifests. Secrets are SOPS-encrypted to an age key in `secrets/age.key`
 (gitignored, outside `apps/`) and decrypted in-cluster via the `sops-age` secret.
 The repo is public — encrypted `*.sops.yaml` is meant to be committed; the age

@@ -28,11 +28,6 @@ spec:
       type: daemonset
 
     alloy:
-      # Mounts /var/log from the host, which is what makes /var/log/journal
-      # reachable for loki.source.journal below.
-      mounts:
-        varlog: true
-
       resources:
         requests:
           cpu: 50m
@@ -79,16 +74,10 @@ spec:
             forward_to = [loki.write.default.receiver]
           }
 
-          // The half that earns its keep: k3s, tailscaled, sshd and kernel
-          // messages, visible in Grafana without SSHing to a node.
-          loki.source.journal "host" {
-            max_age    = "12h"
-            path       = "/var/log/journal"
-            labels     = {
-              job = "systemd-journal",
-            }
-            forward_to = [loki.write.default.receiver]
-          }
+          // No host-log source: Talos has no systemd and no /var/log/journal.
+          // Node-level logs are `talosctl logs <service>` and `talosctl dmesg`,
+          // or machine.logging.destinations pointing at a receiver that speaks
+          // Talos' json_lines — which nothing here does yet.
 
           loki.write "default" {
             endpoint {

@@ -8,22 +8,24 @@ GHCR images). helm-controller is already there — it is a default component of
 Every setting lives in `spec.values` in `helmrelease.yaml`, and four of them are
 load-bearing:
 
-- **The k3s control-plane scrapes are off.** `kubeControllerManager`,
-  `kubeScheduler`, `kubeProxy` and `kubeEtcd` are `enabled: false`, because k3s
-  runs all of them inside one process bound to `127.0.0.1`; the chart's
-  ServiceMonitors for them would sit permanently DOWN. Turning them on is a
-  `k3s-server.nix` change (`--kube-controller-manager-arg=bind-address=0.0.0.0`
-  and friends, `--etcd-expose-metrics=true`) plus firewall ports, not a values
-  edit.
+- **The control-plane scrapes are on, except kube-proxy.** Talos runs the
+  controller-manager, scheduler and etcd as real static pods, and the machine
+  config in `terraform/proxmox/talos.tf` binds their metrics outward
+  (`bind-address: 0.0.0.0`, `listen-metrics-urls`). Enabling these without those
+  arguments puts the targets permanently DOWN, so the two changes travel
+  together. `kubeProxy` stays `enabled: false` forever: there is no kube-proxy —
+  `cluster.proxy.disabled` is set and Cilium replaces it.
 - **`*SelectorNilUsesHelmValues: false`** on all four selectors. Left at the
   default, Prometheus only picks up ServiceMonitors labelled with this release's
   name, and a monitor written anywhere else in the repo is ignored *silently* —
   no error, the target simply never appears.
 - **Alertmanager is disabled.** Nothing routes alerts yet; the rules still
   evaluate and fire in the Prometheus and Grafana UIs.
-- **Storage is `local-path`**, the k3s default StorageClass, which is node-local:
-  Prometheus is pinned to whichever node its PVC landed on and the history dies
-  with that node. Dashboards, rules and datasources come from git, so a rebuild
+- **Storage is `local-path`**, which on Talos is a static, no-provisioner
+  StorageClass with hand-written PVs in `apps/base/local-path/`. It is
+  node-local: Prometheus is pinned to the node its PV names and the history dies
+  with that node. Growing the claim means editing the PV too — nothing
+  provisions on demand. Dashboards, rules and datasources come from git, so a rebuild
   costs history and nothing else.
 
 The Grafana admin login is `grafana-admin.sops.yaml`, not the chart's generated
@@ -42,7 +44,7 @@ load as a second copy.
 Off-cluster targets go in `prometheus.prometheusSpec.additionalScrapeConfigs` as
 plain `scrape_config` syntax — currently the `plex-exporter` job at
 `10.0.200.87:9001`. Prometheus dials it straight from its pod, so the source
-address is in the flannel range and reachability is the exporter host's
+address is in the Cilium pod CIDR and reachability is the exporter host's
 firewall's business, not this repo's.
 
 Access is over the tailnet only, at `https://grafana.<tailnet>.ts.net`, served by
@@ -62,12 +64,12 @@ install lays down CRDs, five workloads and a PVC.
 
 ## Gotchas
 
-- **node-exporter needs TCP 9100 open on every node.** It runs with
-  `hostNetwork`, so Prometheus scrapes it at `<node-ip>:9100` and the packet
-  arrives over flannel, not loopback — the NixOS firewall drops it and *every*
-  node target goes DOWN at once. `nix/modules/monitoring.nix` opens it, which
-  means adding monitoring to a node is a `deploy`, not just a Flux reconcile.
-  The symptom reads like a broken exporter; it is the host firewall.
+- **node-exporter needs nothing opened on Talos.** It runs with `hostNetwork`
+  and Prometheus scrapes it at `<node-ip>:9100`; Talos has no host firewall
+  unless a `NetworkRuleConfig` declares one. Under NixOS this was a per-node
+  firewall rule and a redeploy, and forgetting it put *every* node target DOWN
+  at once — if that symptom ever returns here, the cause is a machine config
+  that grew an ingress firewall, not the exporter.
 - **Renaming the Grafana admin in the UI silently breaks provisioning reloads.**
   The sidecars write dashboards and datasources into an emptyDir and then POST
   `/api/admin/provisioning/*/reload`, authenticating as `admin-user` from

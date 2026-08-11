@@ -5,4 +5,5 @@ resources:
   - serviceaccount.yaml
   - helmrepository.yaml
   - discord.sops.yaml
+  - egress.yaml
   - helmrelease.yaml

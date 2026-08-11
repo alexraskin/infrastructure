@@ -18,20 +18,25 @@ Five groups, and the split between them is the point — which group is red says
 where the fault is.
 
 - **Control plane** — `/readyz` on the VIP and on each server's own `:6443`. The
-  VIP alone would stay green with two of three servers dead; the per-server
-  checks are what show that. `client.insecure: true` is because the serving cert
-  is k3s' own CA. These probes carry a bearer token — see below.
-- **Nodes** — `tcp://<ip>:22`, not `icmp://`. `base.nix` opens 22 on every node,
-  and gatus' ICMP probe needs a raw socket the pod does not have: the chart runs
-  it as uid 65534 with no `NET_RAW`. Giving it that capability to ping a host
-  whose sshd already answers is not worth it.
-- **Platform** — CoreDNS (a real DNS query against `10.43.0.10`), Grafana,
+  VIP alone would stay green with two of three control plane nodes dead; the
+  per-node checks are what show that. `client.insecure: true` is because the
+  serving cert is the cluster's own CA. These probes carry a bearer token — see below.
+- **Nodes** — `tcp://<ip>:50000`, the Talos API, not `icmp://` and no longer
+  `:22`: Talos runs no sshd at all. gatus' ICMP probe needs a raw socket the pod
+  does not have — the chart runs it as uid 65534 with no `NET_RAW` — and a node
+  whose apid answers is a node that is up.
+- **Platform** — CoreDNS (a real DNS query against `10.96.0.10`; Talos' service
+  CIDR is `10.96.0.0/12`, where k3s used `10.43.0.0/16`), Grafana,
   Prometheus, Loki, Alloy, by cluster DNS.
 - **Apps** — the in-cluster Services, i.e. the same origins the tunnel dials.
 - **Off-cluster** — the Oracle edge (`100.79.150.123`) and the NAS, *chronos*
   (`100.109.167.97`), both over the tailnet on `tcp:443`; and Plex on *morpheus*
-  over the LAN. See below; the first two are not reachable without a grant in
-  `tailscale/policy.hujson`.
+  over the LAN. The two tailnet ones are dialled through **egress proxies**
+  (`egress.yaml`), not at their tailnet addresses: the Talos nodes do not run
+  tailscaled, so there is no node to SNAT pod egress onto the tailnet the way
+  there was under NixOS. Each is an ExternalName Service annotated
+  `tailscale.com/tailnet-ip`, which the operator turns into a proxy with its own
+  device — so the ACL grant is `src: tag:k8s`, not the old `tag:k3s`.
 - **Public** — `https://alexraskin.com` end to end, with a cert-expiry
   condition. Red here with its **Apps** twin green means cloudflared, DNS or the
   tunnel, not the workload.
@@ -47,7 +52,7 @@ what this one cannot.
 
 ## The apiserver token
 
-**k3s runs the apiserver with anonymous auth off**, so an unauthenticated
+**The apiserver runs with anonymous auth off**, so an unauthenticated
 `/readyz` is a 401 with a `Status` body, not `ok` — the first version of this
 config had no token and every control-plane check failed on exactly that. Any
 *authenticated* caller gets `ok`, through the default `system:public-info-viewer`
@@ -78,15 +83,19 @@ constraints stacked, none of them arbitrary.
   Its tailnet address answers on 80/443/5000/5001. The edge has no LAN address
   at all.
 - **TCP, not ICMP.** Same reason as the Nodes group: the pod has no `NET_RAW`.
+- **Each one needs an egress proxy**, declared in `egress.yaml`. The probe
+  targets a ClusterIP inside the cluster; the operator carries it onto the
+  tailnet from a proxy pod with its own device. Deleting the Service breaks the
+  probe, not the ACL.
 - **The tailnet ACL has to grant it.** `policy.hujson` is default-deny
-  (`acls: []`, everything through `grants`) and `tag:k3s` was the src of no
-  grant at all — the cluster nodes could reach nothing on the tailnet. Two
-  grants now cover exactly these two probes, `tag:k3s → tag:cloud-edge:443` and
-  `tag:k3s → 100.109.167.97:443`, and the `tests` block pins both the accepts
-  and what stays denied (`tag:cloud-edge:22`, the NAS' `:5001`, Plex, the VIP).
-  **`tag:k3s` is the right src, not `tag:k8s`**: the gatus pod is not one of the
-  operator's tailnet proxies, its egress leaves through a node and tailscale
-  SNATs it to that node's tailnet address.
+  (`acls: []`, everything through `grants`). Two grants cover exactly these two
+  probes, `tag:k8s → tag:cloud-edge:443` and `tag:k8s → 100.109.167.97:443`,
+  and the `tests` block pins both the accepts and what stays denied
+  (`tag:cloud-edge:22`, the NAS' `:5001`, Plex, the VIP).
+  **`tag:k8s` is the src because the proxies are the ones dialling.** Under k3s
+  it was `tag:k3s` — pod egress left through a node and was SNAT'd to that
+  node's tailnet address. Talos nodes are not on the tailnet, so that path does
+  not exist and the tag went with it.
 
 Until that policy is applied the edge and NAS checks are red, and red for a
 reason that has nothing to do with either box being down.
@@ -94,7 +103,7 @@ reason that has nothing to do with either box being down.
 **Plex is the exception: it is probed over the LAN**, `http://10.0.200.87:32400/identity`
 on *morpheus*, which is on the cluster's own subnet and answers unauthenticated
 with an XML `MediaContainer` — a real health signal, unlike a TCP connect. No
-grant is involved, and the ACL's `tag:k3s → 100.73.219.120:32400` deny is
+grant is involved, and the ACL's `tag:k8s → 100.73.219.120:32400` deny is
 deliberately left in place. The cost is that `10.0.200.87` is a **DHCP lease**:
 if it moves, this check goes red and the address here has to follow. Switching
 it to the tailnet address instead means adding a grant *and* flipping that line

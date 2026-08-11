@@ -1,0 +1,38 @@
+# Cilium on Talos, kube-proxy-free. Applied by `mise run cilium`, not by Flux —
+# see "Cilium is bootstrap infrastructure" in the root CLAUDE.md.
+ipam:
+  mode: kubernetes
+
+# There is no kube-proxy: cluster.proxy.disabled is set in the machine config.
+# localhost:7445 is KubePrism, Talos' node-local apiserver load balancer, which
+# is what breaks the circularity of a CNI that needs the API server to start.
+kubeProxyReplacement: true
+k8sServiceHost: localhost
+k8sServicePort: 7445
+
+# Talos mounts cgroupv2 and bpffs itself and will not let Cilium do it again.
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+# The stock list minus SYS_MODULE: Talos does not allow workloads to load
+# kernel modules, and the agent crash-loops if it asks for the capability.
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE

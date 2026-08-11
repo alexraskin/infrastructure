@@ -38,10 +38,16 @@ being handed R2 admin to create one bucket.
 
 Alloy reads pod logs through the Kubernetes API (`loki.source.kubernetes`) rather
 than tailing `/var/log/pods`, so there is no CRI log-format parsing and no
-symlink chasing; the chart's ClusterRole already grants `pods/log`. It also runs
-`loki.source.journal` against `/var/log/journal` — the nodes set
-`Storage=persistent`, so k3s, tailscaled, sshd and kernel messages are queryable
-in Grafana as `{job="systemd-journal"}` without SSHing anywhere.
+symlink chasing; the chart's ClusterRole already grants `pods/log`.
+
+**Node logs are not collected.** Under NixOS Alloy also ran
+`loki.source.journal` against `/var/log/journal`; Talos has no systemd and no
+journal, so `{job="systemd-journal"}` is gone and node-level troubleshooting is
+`talosctl logs <service>` / `talosctl dmesg`. Closing that gap means
+`machine.logging.destinations` in the machine config plus a receiver that speaks
+Talos' `json_lines` over UDP — Alloy's syslog source will not parse it, so this
+is a real piece of work rather than a values edit. The edge's journal still
+arrives: it is NixOS and pushes to Loki itself.
 
 The Grafana datasource is a ConfigMap in `logging` labelled
 `grafana_datasource: "1"`. The monitoring stack's sidecar runs with

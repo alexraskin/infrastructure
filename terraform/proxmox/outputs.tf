@@ -9,22 +9,37 @@ output "nodes" {
   }
 }
 
-output "servers" {
-  description = "Control-plane node names, bootstrap first (deploy order)"
-  value = concat(
-    [local.cluster.bootstrap],
-    sort([for n, v in local.nodes : n if v.role == "server" && n != local.cluster.bootstrap])
-  )
-}
-
-output "agents" {
-  description = "Worker node names"
-  value       = sort([for n, v in local.nodes : n if v.role == "agent"])
-}
-
 output "control_plane_endpoint" {
-  description = "kube-vip VIP fronting the API servers"
-  value       = "https://${local.cluster.vip}:6443"
+  description = "The Talos VIP fronting the API servers"
+  value       = local.cluster_endpoint
+}
+
+output "talos_endpoints" {
+  description = "Talos API endpoints — node addresses, deliberately not the VIP"
+  value       = data.talos_client_configuration.this.endpoints
+}
+
+output "talos_image" {
+  description = "Factory schematic and the installer image the nodes run"
+  value = {
+    schematic_id = talos_image_factory_schematic.this.id
+    extensions   = local.cluster.extensions
+    installer    = local.install_image
+    iso          = proxmox_virtual_environment_download_file.talos_iso.id
+  }
+}
+
+# Written to secrets/ by `mise run talosconfig` and `mise run kubeconfig`.
+output "talosconfig" {
+  description = "Client configuration for talosctl"
+  value       = data.talos_client_configuration.this.talos_config
+  sensitive   = true
+}
+
+output "kubeconfig" {
+  description = "Cluster admin kubeconfig, pointed at the VIP"
+  value       = talos_cluster_kubeconfig.this.kubeconfig_raw
+  sensitive   = true
 }
 
 output "backup_job" {

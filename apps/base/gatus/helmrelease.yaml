@@ -95,7 +95,7 @@ spec:
           alerts:
             - type: discord
 
-        - name: "k3s-server-1"
+        - name: "talos-cp-1"
           group: "Control plane"
           url: "https://10.0.200.41:6443/readyz"
           interval: 60s
@@ -109,7 +109,7 @@ spec:
           alerts:
             - type: discord
 
-        - name: "k3s-server-2"
+        - name: "talos-cp-2"
           group: "Control plane"
           url: "https://10.0.200.42:6443/readyz"
           interval: 60s
@@ -123,7 +123,7 @@ spec:
           alerts:
             - type: discord
 
-        - name: "k3s-server-3"
+        - name: "talos-cp-3"
           group: "Control plane"
           url: "https://10.0.200.43:6443/readyz"
           interval: 60s
@@ -137,49 +137,73 @@ spec:
           alerts:
             - type: discord
 
-        - name: "k3s-server-1"
+        - name: "talos-cp-1"
           group: "Nodes"
-          url: "tcp://10.0.200.41:22"
+          url: "tcp://10.0.200.41:50000"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
 
-        - name: "k3s-server-2"
+        - name: "talos-cp-2"
           group: "Nodes"
-          url: "tcp://10.0.200.42:22"
+          url: "tcp://10.0.200.42:50000"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
 
-        - name: "k3s-server-3"
+        - name: "talos-cp-3"
           group: "Nodes"
-          url: "tcp://10.0.200.43:22"
+          url: "tcp://10.0.200.43:50000"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
 
-        - name: "k3s-agent-1"
+        - name: "talos-worker-1"
           group: "Nodes"
-          url: "tcp://10.0.200.51:22"
+          url: "tcp://10.0.200.51:50000"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
 
-        - name: "k3s-agent-2"
+        - name: "talos-worker-2"
           group: "Nodes"
-          url: "tcp://10.0.200.52:22"
+          url: "tcp://10.0.200.52:50000"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
 
-        - name: "k3s-agent-3"
+        - name: "talos-worker-3"
           group: "Nodes"
-          url: "tcp://10.0.200.53:22"
+          url: "tcp://10.0.200.53:50000"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
+
+        - name: "talos-db-1"
+          group: "Nodes"
+          url: "tcp://10.0.200.61:50000"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
+
+        - name: "talos-db-2"
+          group: "Nodes"
+          url: "tcp://10.0.200.62:50000"
+          interval: 60s
+          conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
+
+        - name: "talos-db-3"
+          group: "Nodes"
+          url: "tcp://10.0.200.63:50000"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
           alerts:
@@ -187,7 +211,7 @@ spec:
 
         - name: "cloud-edge"
           group: "Off-cluster"
-          url: "tcp://100.79.150.123:443"
+          url: "tcp://cloud-edge-egress.gatus.svc.cluster.local:443"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
           alerts:
@@ -195,7 +219,7 @@ spec:
 
         - name: "chronos (NAS)"
           group: "Off-cluster"
-          url: "tcp://100.109.167.97:443"
+          url: "tcp://chronos-egress.gatus.svc.cluster.local:443"
           interval: 60s
           conditions: ["[CONNECTED] == true"]
           alerts:
@@ -214,7 +238,7 @@ spec:
 
         - name: "CoreDNS"
           group: "Platform"
-          url: "10.43.0.10"
+          url: "10.96.0.10"
           interval: 60s
           dns:
             query-name: "kubernetes.default.svc.cluster.local"

@@ -79,16 +79,17 @@
 			"ip":  ["tcp:3100"],
 		},
 
-		// Gatus probes. tag:k3s is the src because pod egress leaves through a
-		// node and is SNAT'd to its tailnet address.
+		// Gatus probes. The src is tag:k8s — the operator's proxies — because the
+		// Talos nodes are not on the tailnet at all: each probe leaves through an
+		// egress proxy declared in apps/base/gatus/egress.yaml.
 		{
-			"src": ["tag:k3s"],
+			"src": ["tag:k8s"],
 			"dst": ["tag:cloud-edge"],
 			"ip":  ["tcp:443"],
 		},
 		{
-			"src": ["tag:k3s"],
-			"dst": ["100.109.167.97"], // chronos, the NAS
+			"src": ["tag:k8s"],
+			"dst": ["100.109.167.97"],
 			"ip":  ["tcp:443"],
 		},
 	],
@@ -101,14 +102,16 @@
 
 		"tag:k8s-loki": ["tag:k8s-operator"],
 
-		"tag:k3s": [],
+		// The in-cluster subnet router (apps/base/tailscale-router/). Split out
+		// from tag:k8s so only it can advertise the LAN route.
+		"tag:k8s-router": ["tag:k8s-operator"],
 
 		"tag:cloud-edge": [],
 	},
 
 	"autoApprovers": {
 		"routes": {
-			"10.0.200.0/24": ["tag:k3s"],
+			"10.0.200.0/24": ["tag:k8s-router"],
 		},
 
 		// Without this the edge advertises 0.0.0.0/0 and waits for a human.
@@ -134,8 +137,9 @@
 			],
 		},
 		{
-			// Subnet routers. Only what gatus probes, nothing else.
-			"src":    "tag:k3s",
+			// The operator's proxies, which now carry the gatus probes too.
+			// Only what gatus probes, nothing else.
+			"src":    "tag:k8s",
 			"proto":  "tcp",
 			"accept": ["tag:cloud-edge:443", "100.109.167.97:443"],
 			"deny": [
@@ -146,10 +150,10 @@
 			],
 		},
 		{
-			// Same for the operator's proxies.
-			"src":   "tag:k8s",
+			// The subnet router advertises the route; it does not get to use it.
+			"src":   "tag:k8s-router",
 			"proto": "tcp",
-			"deny":  ["100.73.219.120:32400", "10.0.200.40:6443"],
+			"deny":  ["100.73.219.120:32400", "tag:cloud-edge:22"],
 		},
 	],
 
@@ -157,7 +161,7 @@
 	"sshTests": [
 		{
 			"src":  "tag:cloud-edge",
-			"dst":  ["tag:k3s"],
+			"dst":  ["tag:k8s"],
 			"deny": ["root", "autogroup:nonroot"],
 		},
 	],

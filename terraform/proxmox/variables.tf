@@ -1,3 +1,46 @@
+# The cluster itself, in cluster.auto.tfvars.json — auto-loaded, and JSON rather
+# than HCL so `jq` can still read it: mise tasks and preflight.sh work from the
+# same file Terraform does, exactly as they did when it was hosts.json.
+variable "cluster" {
+  description = "Cluster-wide settings: addressing, versions, install disk, image extensions"
+  type = object({
+    name               = string
+    domain             = string
+    vip                = string
+    gateway            = string
+    prefix             = number
+    nameservers        = list(string)
+    bootstrap          = string
+    install_disk       = string
+    talos_version      = string
+    kubernetes_version = string
+    extensions         = list(string)
+  })
+}
+
+variable "nodes" {
+  description = "Node name -> role, address, VM ID and size. data_disk is the db nodes' second disk."
+  type = map(object({
+    role      = string
+    ip        = string
+    vmid      = number
+    cores     = number
+    memory    = number
+    disk      = number
+    data_disk = optional(number)
+  }))
+
+  validation {
+    condition     = contains(keys(var.nodes), var.cluster.bootstrap)
+    error_message = "cluster.bootstrap must name one of the nodes."
+  }
+
+  validation {
+    condition     = alltrue([for n in var.nodes : contains(["controlplane", "worker", "db"], n.role)])
+    error_message = "node role must be controlplane, worker or db."
+  }
+}
+
 variable "pve_endpoint" {
   description = "Proxmox VE API endpoint, e.g. https://pve2.lan:8006/"
   type        = string
@@ -33,33 +76,15 @@ variable "pve_ssh_private_key_path" {
 }
 
 variable "image_datastore" {
-  description = "Datastore holding the uploaded NixOS disk image (needs 'iso' content type)"
+  description = "Datastore the Talos ISO is downloaded to (needs 'iso' content type)"
   type        = string
   default     = "local"
 }
 
 variable "vm_datastore" {
-  description = "Datastore for VM disks and cloud-init drives"
+  description = "Datastore for VM disks"
   type        = string
   default     = "local-lvm"
-}
-
-variable "nixos_image_path" {
-  description = "Path to the qcow2 built by `mise run image`"
-  type        = string
-  default     = "../../build/nixos.qcow2"
-}
-
-variable "upload_image" {
-  description = "Let Terraform push the image through the PVE HTTP API. Set false and use `mise run push-image` for large images or slow links."
-  type        = bool
-  default     = true
-}
-
-variable "image_upload_timeout" {
-  description = "Seconds allowed for the API upload of the image (a 2GB image over a WAN link needs well over the 1800s default)"
-  type        = number
-  default     = 7200
 }
 
 variable "disk_format" {
@@ -83,12 +108,6 @@ variable "vlan_id" {
   description = "VLAN tag for the VM NIC, null for untagged"
   type        = number
   default     = null
-}
-
-variable "ssh_public_key_path" {
-  description = "Public key injected via cloud-init for first-boot access"
-  type        = string
-  default     = "~/.ssh/id_ed25519.pub"
 }
 
 variable "cpu_type" {

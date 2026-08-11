@@ -40,3 +40,57 @@ bucket as the other two roots, `key = "tailscale/terraform.tfstate"`.
 mise run ts:plan     # from the repo root; needs secrets/tailscale-oauth.env
 mise run ts:apply    # CI does this on push to main
 ```
+
+## The five Tailscale credentials, and which is which
+
+They are all different, none substitutes for another, and the names are close
+enough to confuse. A cluster rebuild touches exactly one of them.
+
+| credential | lives in | what it is | on a rebuild |
+| --- | --- | --- | --- |
+| `secrets/tailscale-oauth.env` | build host | OAuth client, scope `policy_file:write`. Only `ts:plan` / `ts:apply` by hand use it. | keep |
+| `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_AUDIENCE` | GitHub repo *variables* | federated identity for CI, same scope, no stored secret | keep |
+| `oauth.sops.yaml` → Secret `operator-oauth` | the cluster | OAuth client with **Devices Core (write)** and **Auth Keys (write)**, tagged `tag:k8s-operator`. The operator mints its own device keys from it. | keep — Flux re-applies it |
+| `secrets/tailscale-authkey` | was pushed to every node | tagged pre-auth key for the k3s subnet routers | **dead.** Revoke it and delete the file |
+| `secrets/tailscale-authkey-edge` | the Oracle edge | tagged `tag:cloud-edge`, still NixOS | keep, unrelated |
+
+Nothing has to be re-minted. The operator's client keeps working because tags,
+not clients, are what a rebuild changes.
+
+## The tags
+
+`tagOwners` is the whole mechanism: an OAuth client may create a device with any
+tag its own tag **owns**. The operator is `tag:k8s-operator`, and everything it
+creates is a tag that names `tag:k8s-operator` as owner — which is why adding a
+new proxy kind needs a policy change, not a new credential.
+
+| tag | worn by | owned by |
+| --- | --- | --- |
+| `tag:k8s-operator` | the operator itself (`talos-operator`) | nobody — admins only |
+| `tag:k8s` | every Ingress and egress proxy it spawns | `tag:k8s-operator` |
+| `tag:k8s-loki` | Loki's operator-served LoadBalancer, split out so the edge's grant stays narrow | `tag:k8s-operator` |
+| `tag:k8s-router` | the `Connector` subnet router — **new**; `autoApprovers` gives it `10.0.200.0/24` | `tag:k8s-operator` |
+| `tag:cloud-edge` | the Oracle box | nobody |
+| ~~`tag:k3s`~~ | the old NixOS nodes | removed |
+
+## What the policy file cannot do
+
+Four things live only in the admin console, and a cluster rebuild is when they
+bite:
+
+- **Delete the old devices.** Nothing here reaps them. After a rebuild the
+  tailnet still lists whatever the previous cluster registered, and a stale
+  device holding the same *hostname* makes the new one come up as
+  `name-1`, `name-2`, … — which breaks MagicDNS names that other config hard-codes
+  (`00-cloud-edge`'s Loki push URL, the Grafana `GF_SERVER_*` values). Remove
+  them before or immediately after the rebuild.
+- **The operator's OAuth client** (`secrets/…` → `operator-oauth`), needing the
+  Devices Core and Auth Keys **write** scopes and the `tag:k8s-operator` tag.
+  Its tag must own every tag it hands out — `tag:k8s`, `tag:k8s-loki`,
+  `tag:k8s-router` — which the `tagOwners` block here declares but the console
+  is what enforces at device-creation time.
+- **MagicDNS and HTTPS Certificates**, both on the DNS page. Without them the
+  operator has no cert to fetch and an Ingress never goes ready.
+- **Nothing else needs approving.** `autoApprovers` covers the Connector's
+  `10.0.200.0/24` (`tag:k8s-router`) and the edge's exit node, so neither waits
+  on a human — provided this policy is applied *before* the devices appear.

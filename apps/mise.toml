@@ -76,7 +76,7 @@ if [ -s "$key" ]; then
   echo "$key already exists, reusing it"
 else
   mkdir -p "$(dirname "$key")"
-  ssh-keygen -t ed25519 -N '' -C 'flux@k3s' -f "$key" >/dev/null
+  ssh-keygen -t ed25519 -N '' -C 'flux@talos' -f "$key" >/dev/null
   chmod 600 "$key"
   echo "wrote $key"
 fi
@@ -105,7 +105,7 @@ kubectl -n flux-system get secret flux-git-auth >/dev/null 2>&1 || {
   exit 1
 }
 
-kubectl apply -f clusters/k3s/flux-system.yaml
+kubectl apply -f clusters/talos/flux-system.yaml
 
 # Fails until the deploy key is registered on GitHub, which is a manual step.
 flux reconcile source git flux-system || {
@@ -116,7 +116,7 @@ flux reconcile source git flux-system || {
 }
 
 echo
-echo "Flux is installed and syncing apps/clusters/k3s from main."
+echo "Flux is installed and syncing apps/clusters/talos from main."
 """
 
 [tasks.status]

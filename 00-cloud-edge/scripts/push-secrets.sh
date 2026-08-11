@@ -1,11 +1,3 @@
-#!/usr/bin/env bash
-# The two credentials the box needs on disk before a switch can succeed.
-#
-# Same pattern as the cluster's push-token / push-tailscale-key: activation runs
-# tailscaled-autoconnect, and the ACME DNS-01 challenge needs a token, so both
-# have to be there first rather than "eventually".
-#
-#   mise run push-secrets
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)

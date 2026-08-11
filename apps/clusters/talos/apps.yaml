@@ -19,6 +19,23 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: local-path
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/local-path
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  # Everything with a PVC depends on this: Talos ships no StorageClass and no
+  # provisioner, so the volumes have to exist before the claims do.
+  wait: true
+  timeout: 2m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: cloudflared
   namespace: flux-system
 spec:
@@ -134,6 +151,26 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: tailscale-router
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/tailscale-router
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  # Separate from tailscale-operator only because the Connector CRD arrives
+  # with the operator's chart: applied in the same Kustomization it would fail
+  # the first reconcile every time the cluster is rebuilt.
+  dependsOn:
+    - name: tailscale-operator
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: monitoring
   namespace: flux-system
 spec:
@@ -148,6 +185,7 @@ spec:
     secretRef:
       name: sops-age
   dependsOn:
+    - name: local-path
     - name: tailscale-operator
   wait: true
   timeout: 15m
@@ -174,6 +212,7 @@ spec:
   # tailscale-operator is an ordering dependency: service.yaml needs its
   # loadBalancerClass, or the Service sits <pending> forever.
   dependsOn:
+    - name: local-path
     - name: tailscale-operator
   wait: true
   # Chart install plus a local-path PVC for the WAL.
@@ -219,6 +258,7 @@ spec:
   # cloudflared — and none on monitoring either: gatus probing a Grafana that
   # is still starting is exactly what it is for.
   dependsOn:
+    - name: local-path
     - name: tailscale-operator
   wait: true
   timeout: 5m

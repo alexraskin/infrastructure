@@ -1,0 +1,158 @@
+# Static PVs, one per claim in the cluster. `hostPath` with DirectoryOrCreate
+# is what the Talos local-storage guide documents: kubelet creates the
+# directory, and nodeAffinity is what makes the volume honest about being
+# node-local. A PV in a pod spec is only ever a PVC reference, so this does not
+# meet Talos' PodSecurity baseline, which would reject a hostPath volume.
+#
+# Adding a claim means adding a PV here first — nothing provisions on demand.
+# /var is the Talos EPHEMERAL partition: it survives reboots and upgrades, but
+# not `talosctl reset` or a reinstall.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-path-prometheus
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-path
+  hostPath:
+    path: /var/mnt/local-path/prometheus
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [talos-worker-1]
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-path-grafana
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-path
+  hostPath:
+    path: /var/mnt/local-path/grafana
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [talos-worker-2]
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-path-loki
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-path
+  hostPath:
+    path: /var/mnt/local-path/loki
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [talos-worker-3]
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-path-gatus
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-path
+  hostPath:
+    path: /var/mnt/local-path/gatus
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [talos-worker-1]
+---
+# The db nodes' second disk, mounted by Talos at /var/mnt/db. Nothing claims
+# these yet: a workload has to tolerate dedicated=database:NoSchedule and ask
+# for storageClassName: db-local.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: db-local-1
+spec:
+  capacity:
+    storage: 90Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: db-local
+  hostPath:
+    path: /var/mnt/db/data
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [talos-db-1]
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: db-local-2
+spec:
+  capacity:
+    storage: 90Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: db-local
+  hostPath:
+    path: /var/mnt/db/data
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [talos-db-2]
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: db-local-3
+spec:
+  capacity:
+    storage: 90Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: db-local
+  hostPath:
+    path: /var/mnt/db/data
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [talos-db-3]
