@@ -157,6 +157,15 @@ Things worth knowing before changing it:
   the old field invites drift against whatever PVE normalises it to.
 - Import is by job id, which is ours rather than PVE's generated one:
   `terraform import proxmox_backup_job.cluster talos-nightly`.
+- **Destroying every guest in the job destroys the job.** PVE prunes vmids from
+  `jobs.cfg` as their guests go away and deletes the entry once the list is
+  empty, so a full cluster teardown takes the backup job with it. The provider
+  does not treat that as "gone, recreate" — it reads by the id in state and
+  fails the whole apply with `received an HTTP 400 response - Reason: Parameter
+  verification failed. (id: No such job '<id>')`. Recovery is
+  `terraform state rm proxmox_backup_job.cluster` and then apply, which creates
+  it fresh. Check what PVE actually has first:
+  `pvesh get /cluster/backup --output-format json`.
 - **Keep `notes_template` ASCII.** An em dash in it fails the apply with
   "Provider produced inconsistent result after apply" — the provider writes
   UTF-8 and reads the response back double-encoded, so the value it returns

@@ -28,7 +28,6 @@ locals {
           }
         }
         network = {
-          hostname    = name
           nameservers = local.cluster.nameservers
           interfaces = [
             merge(
@@ -45,6 +44,20 @@ locals {
           ]
         }
       }
+    })
+  }
+
+  # Hostname is a document, not a v1alpha1 field. Talos 1.13 always generates a
+  # `HostnameConfig` with `auto: stable`, and it refuses a config that also sets
+  # machine.network.hostname ("static hostname is already set in v1alpha1
+  # config"). `auto` and `hostname` are mutually exclusive within the document
+  # too, so turning auto off is part of setting a static name, not an extra.
+  hostname_patch = {
+    for name, node in local.nodes : name => yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "HostnameConfig"
+      auto       = "off"
+      hostname   = name
     })
   }
 
@@ -91,9 +104,15 @@ locals {
     filesystem = { type = "xfs" }
   })
 
+  # cluster_patch is control-plane only: etcd, the scheduler and the
+  # controller-manager do not exist on a worker, and Talos rejects the whole
+  # config rather than ignoring them ("etcd config is only allowed on control
+  # plane machines"). The CNI and proxy settings in it are read when the control
+  # plane renders its manifests, so workers need no copy.
   node_patches = {
     for name, node in local.nodes : name => concat(
-      [local.common_patch[name], local.cluster_patch],
+      [local.common_patch[name], local.hostname_patch[name]],
+      node.role == "controlplane" ? [local.cluster_patch] : [],
       node.role == "db" ? [local.db_patch, local.db_volume_patch] : [],
     )
   }
@@ -127,19 +146,50 @@ data "talos_client_configuration" "this" {
   nodes                = [for n, v in local.nodes : v.ip]
 }
 
+# Where a node answers *before* it has been configured. Addressing is static and
+# lives in the machine config, so a node booted from the ISO sits in maintenance
+# mode on whatever DHCP gave it — not on the address below in `local.nodes`.
+# The qemu-guest-agent extension is in the factory schematic, so Proxmox already
+# knows that address; this reads it back rather than guessing.
+locals {
+  maintenance_ip = {
+    for name, vm in proxmox_virtual_environment_vm.node : name => try(
+      [
+        for addr in flatten(vm.ipv4_addresses) : addr
+        if addr != "127.0.0.1" && !startswith(addr, "169.254.")
+      ][0],
+      local.nodes[name].ip, # fall back to the static address once configured
+    )
+  }
+}
+
 resource "talos_machine_configuration_apply" "node" {
   for_each = local.nodes
 
   client_configuration        = talos_machine_secrets.this.client_configuration
   machine_configuration_input = data.talos_machine_configuration.node[each.key].machine_configuration
-  node                        = each.value.ip
-  endpoint                    = each.value.ip
+  node                        = local.maintenance_ip[each.key]
+  endpoint                    = local.maintenance_ip[each.key]
 
   depends_on = [proxmox_virtual_environment_vm.node]
 
   lifecycle {
+    # The address here is a one-shot: the node applies this config, installs and
+    # reboots onto its static IP, and the DHCP lease it was reached at becomes
+    # meaningless. Without this, every later plan wants to replace the resource
+    # — which is a reinstall — because the address it was created with is gone.
+    ignore_changes = [endpoint, node]
+
     replace_triggered_by = [proxmox_virtual_environment_vm.node[each.key].id]
   }
+}
+
+# The control plane has to finish installing and come back on its static address
+# before etcd can be bootstrapped. The apply above returns as soon as the config
+# is accepted, which is well before the node has rebooted onto it.
+resource "time_sleep" "install" {
+  depends_on      = [talos_machine_configuration_apply.node]
+  create_duration = "180s"
 }
 
 resource "talos_machine_bootstrap" "this" {
@@ -147,7 +197,7 @@ resource "talos_machine_bootstrap" "this" {
   node                 = local.bootstrap_ip
   endpoint             = local.bootstrap_ip
 
-  depends_on = [talos_machine_configuration_apply.node]
+  depends_on = [time_sleep.install]
 }
 
 # Retrieved over the Talos API, so this succeeds while every node is still
