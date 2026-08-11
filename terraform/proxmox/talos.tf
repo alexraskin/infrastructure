@@ -78,6 +78,30 @@ locals {
     }
   })
 
+  # One Talos user volume per static PV in apps/base/local-path/, mounted at
+  # /var/mnt/<name>. Two Talos facts force this shape:
+  #
+  #   - /var/mnt is read-only, so a hostPath PV with DirectoryOrCreate cannot
+  #     create its own directory — only a user volume puts one there.
+  #   - kubelet applies fsGroup ownership to `local` volumes but not to
+  #     hostPath ones, so a hostPath PV stays root-owned and every chart that
+  #     runs as a non-root uid fails on it. Prometheus is the loud one:
+  #     "open /prometheus/queries.active: permission denied".
+  #
+  # `directory` is the no-extra-disk volume type — it carves the path out of the
+  # EPHEMERAL partition. One per claim rather than one shared parent, because a
+  # `local` PV binds a directory and two claims cannot share one.
+  pv_volumes = ["prometheus", "grafana", "loki", "gatus"]
+
+  pv_volume_patches = [
+    for volume in local.pv_volumes : yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "UserVolumeConfig"
+      name       = volume
+      volumeType = "directory"
+    })
+  ]
+
   # db nodes: labelled and tainted, so nothing lands there without asking for it.
   db_patch = yamlencode({
     machine = {
@@ -112,7 +136,7 @@ locals {
   node_patches = {
     for name, node in local.nodes : name => concat(
       [local.common_patch[name], local.hostname_patch[name]],
-      node.role == "controlplane" ? [local.cluster_patch] : [],
+      node.role == "controlplane" ? [local.cluster_patch] : local.pv_volume_patches,
       node.role == "db" ? [local.db_patch, local.db_volume_patch] : [],
     )
   }
@@ -152,13 +176,21 @@ data "talos_client_configuration" "this" {
 # The qemu-guest-agent extension is in the factory schematic, so Proxmox already
 # knows that address; this reads it back rather than guessing.
 locals {
-  maintenance_ip = {
-    for name, vm in proxmox_virtual_environment_vm.node : name => try(
-      [
+  apply_ip = {
+    for name, vm in proxmox_virtual_environment_vm.node : name => (
+      # Configured already: it answers on its own static address, which is the
+      # only stable one. Preferring it explicitly matters because a control
+      # plane node also reports the VIP, and every node reports a Cilium
+      # address — picking "the first non-loopback" would eventually grab one.
+      contains(flatten(vm.ipv4_addresses), local.nodes[name].ip)
+      ? local.nodes[name].ip
+      # Still in maintenance mode: wherever DHCP put it.
+      : try([
         for addr in flatten(vm.ipv4_addresses) : addr
-        if addr != "127.0.0.1" && !startswith(addr, "169.254.")
-      ][0],
-      local.nodes[name].ip, # fall back to the static address once configured
+        if addr != "127.0.0.1"
+        && !startswith(addr, "169.254.")
+        && addr != local.cluster.vip
+      ][0], local.nodes[name].ip)
     )
   }
 }
@@ -168,18 +200,12 @@ resource "talos_machine_configuration_apply" "node" {
 
   client_configuration        = talos_machine_secrets.this.client_configuration
   machine_configuration_input = data.talos_machine_configuration.node[each.key].machine_configuration
-  node                        = local.maintenance_ip[each.key]
-  endpoint                    = local.maintenance_ip[each.key]
+  node                        = local.apply_ip[each.key]
+  endpoint                    = local.apply_ip[each.key]
 
   depends_on = [proxmox_virtual_environment_vm.node]
 
   lifecycle {
-    # The address here is a one-shot: the node applies this config, installs and
-    # reboots onto its static IP, and the DHCP lease it was reached at becomes
-    # meaningless. Without this, every later plan wants to replace the resource
-    # — which is a reinstall — because the address it was created with is gone.
-    ignore_changes = [endpoint, node]
-
     replace_triggered_by = [proxmox_virtual_environment_vm.node[each.key].id]
   }
 }
