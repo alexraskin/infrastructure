@@ -1,4 +1,9 @@
+# Talos enforces the PodSecurity `baseline` profile on every namespace it does not exempt
 apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
