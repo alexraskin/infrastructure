@@ -164,10 +164,34 @@ the EPHEMERAL partition, does not. The `db-local` StorageClass in
 
 Talos ships no StorageClass and no provisioner; k3s' `local-path` was a freebie
 that is now hand-written in `apps/base/local-path/` — a `no-provisioner`
-StorageClass with `WaitForFirstConsumer`, plus one `hostPath` PV per claim,
-`type: DirectoryOrCreate`, pinned with `nodeAffinity`. **A new PVC needs a new
-PV committed first**; nothing provisions on demand. A `hostPath` PV is fine
-under Talos' PodSecurity baseline because a pod spec only ever names the PVC.
+StorageClass with `WaitForFirstConsumer`, plus one **`local`** PV per claim,
+pinned with `nodeAffinity`. **A new PVC needs a new PV committed first**;
+nothing provisions on demand. PodSecurity is not in the way — a pod spec only
+ever names the PVC.
+
+**Every PV path is a Talos user volume**, declared in
+`terraform/proxmox/talos.tf` and mounted at `/var/mnt/<name>`:
+
+- one `volumeType: directory` volume per claim (`prometheus`, `grafana`,
+  `loki`, `gatus`) on every non-control-plane node, carved out of the EPHEMERAL
+  partition, needing no extra disk;
+- `/var/mnt/db`, a `volumeType: disk` volume on the db nodes — a real partition
+  on their second disk.
+
+So adding a claim is **two** changes: a PV here, and a user volume there. The
+volume is a `tf:apply`, not a Flux reconcile.
+
+Two Talos facts make that the only shape that works, and both were learned by
+watching it fail:
+
+- **`/var/mnt` is read-only.** A `hostPath` PV with `DirectoryOrCreate` cannot
+  make its own directory — kubelet fails with `mkdir /var/mnt/…: read-only file
+  system` and the pod sits in ContainerCreating forever.
+- **kubelet applies `fsGroup` to `local` volumes but not to `hostPath` ones.** A
+  hostPath PV stays root-owned, so every chart running as a non-root uid fails
+  on it: Prometheus exits with `open /prometheus/queries.active: permission
+  denied`. This is why one shared parent directory is not enough either — a
+  `local` PV binds a directory, and two claims cannot share one.
 
 ### Tailnet access is the operator's job now
 
@@ -254,6 +278,14 @@ This file covers the cluster as a whole: the pieces below own their own
   IP — the gatus DNS probe was the only one — has to move with it.
 - **Adding a PVC means adding a PV.** See "Storage is static" above. The symptom
   is a pod Pending forever on a claim that never binds.
+- **A `Retain` PV never rebinds after its claim is deleted.** It goes `Released`
+  and keeps a `claimRef` to the dead PVC's UID, so even a new claim of the
+  identical name will not bind — the pod stays Pending with "didn't find
+  available persistent volumes to bind". This is not hypothetical: a HelmRelease
+  whose *install* fails is uninstalled before retry (`install.remediation`), and
+  Helm deletes the PVCs it created on the way out, stranding all three PVs at
+  once. Recovery is to clear the reference:
+  `kubectl patch pv <name> --type=merge -p '{"spec":{"claimRef":null}}'`.
 - **`mise run cilium` is not optional and not deferrable.** Ten minutes after
   bootstrap, nodes start rebooting to retry.
 - **The backend key moved** from `promox-k3-nix/` to `talos-proxmox/` at the

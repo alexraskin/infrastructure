@@ -6,8 +6,6 @@ on Proxmox. Terraform creates the VMs *and* bootstraps the cluster, Talos' own
 VIP floats the API endpoint across the control plane, Cilium is the CNI, and
 Flux deploys the workloads in `apps/`.
 
-It used to be k3s on NixOS; `docs/talos-migration.md` says why it is not.
-
 ```
 terraform/proxmox/    the nine VMs, the machine configs, the bootstrap
   cluster.auto.tfvars.json  single source of truth: IPs, VM IDs, sizes, VIP, versions
@@ -19,18 +17,6 @@ apps/                 GitOps — what Flux deploys (see apps/README.md)
 mise.toml             the task runner
 ```
 
-## How a node comes to exist
-
-There is no image to build and no deploy step. `mise run tf:apply` asks the
-Talos image factory for an ISO carrying the extensions in
-`cluster.auto.tfvars.json`, has
-Proxmox download it, creates the VMs with a blank disk and that ISO in the
-CD-ROM, then applies a machine configuration to each node over the Talos API and
-bootstraps etcd on the first control plane node.
-
-Nodes come up **NotReady** — `cni: none` is set, because Cilium is not Talos' to
-install — and Talos reboots to retry after about ten minutes. `mise run cilium`
-inside that window is what completes the cluster.
 
 ```mermaid
 flowchart LR
@@ -60,12 +46,6 @@ flowchart LR
     REPO --> KS
     IAC --> REPO
 ```
-
-The node list is a Terraform variables file now, not a hand-parsed JSON blob:
-typed and validated in `variables.tf`, auto-loaded by its `.auto.tfvars.json`
-suffix, and still `jq`-readable so the mise tasks share it. Cores, memory and
-disk are a `tf:apply`; so is an IP, because the address is in the machine config
-rather than in cloud-init.
 
 ## Runtime
 
