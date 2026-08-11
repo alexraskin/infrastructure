@@ -16,7 +16,7 @@
   ],
 
   "instance": {
-    "hostname": "edge-1",
+    "hostname": "cloud-edge",
     "shape": "VM.Standard.A1.Flex",
     "ocpus": 2,
     "memory_gb": 12,

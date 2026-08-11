@@ -103,7 +103,7 @@ and NAS got.
 
 The public path to Plex (`plex.relay.alexraskin.com` → the edge → morpheus) is
 not probed. Those hostnames live in the gitignored `00-cloud-edge/edge.json` for
-the same reason the tunnel's do; the `edge-1:443` check covers the hop that is
+the same reason the tunnel's do; the `cloud-edge:443` check covers the hop that is
 actually in this repo's control.
 
 ## Storage and the strategy

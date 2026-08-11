@@ -66,6 +66,6 @@ resource "oci_core_instance" "edge" {
       availability_domain,
       metadata,
     ]
-    replace_triggered_by = [oci_core_vcn.edge]
+    replace_triggered_by = [terraform_data.vcn_cidr_marker]
   }
 }
