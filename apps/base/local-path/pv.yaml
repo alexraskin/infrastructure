@@ -67,29 +67,6 @@ spec:
               operator: In
               values: [talos-worker-3]
 ---
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: local-path-gatus
-spec:
-  capacity:
-    storage: 1Gi
-  accessModes: [ReadWriteOnce]
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: local-path
-  claimRef:
-    namespace: gatus
-    name: gatus
-  local:
-    path: /var/mnt/gatus
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values: [talos-worker-1]
----
 # The db nodes' second disk — a real partition, not a directory volume, mounted
 # by Talos at /var/mnt/db. CloudNativePG claims these: three interchangeable
 # volumes for three interchangeable Postgres instances.

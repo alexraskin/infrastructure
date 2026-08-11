@@ -184,7 +184,7 @@ ever names the PVC.
 `terraform/proxmox/talos.tf` and mounted at `/var/mnt/<name>`:
 
 - one `volumeType: directory` volume per claim (`prometheus`, `grafana`,
-  `loki`, `gatus`) on every non-control-plane node, carved out of the EPHEMERAL
+  `loki`) on every non-control-plane node, carved out of the EPHEMERAL
   partition, needing no extra disk;
 - `/var/mnt/db`, a `volumeType: disk` volume on the db nodes — a real partition
   on their second disk.

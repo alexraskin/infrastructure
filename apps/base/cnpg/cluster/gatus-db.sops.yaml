@@ -1,0 +1,55 @@
+# The gatus database credential, in both namespaces that need it.
+#
+# One file rather than two so the password cannot drift: CNPG reads the
+# cnpg-system copy to set the role's password, gatus reads its own copy to build
+# a connection URL. Both are applied by the cnpg-cluster Kustomization, which is
+# why gatus dependsOn it.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: gatus-db
+    namespace: cnpg-system
+# CNPG requires basic-auth for a managed role, and username must match the role.
+type: kubernetes.io/basic-auth
+stringData:
+    username: ENC[AES256_GCM,data:pCmM8Pg=,iv:fKSDOTxKiOhnfCyBV2ZZrcXqTAMBJX5oU7d6kb8k8fA=,tag:/eNlzQNqbMyChN8h0D9hrw==,type:str]
+    password: ENC[AES256_GCM,data:wbu1oJvncBx+8TOk8F9DoG5x/jRLvTBEoN2O8WCB7KbFRjclOHDs/A==,iv:oTwHiee2RcRwyBmyP3l0KChTHZ2fO3JaWGErlYt5fu8=,tag:vv6Fj32/loXh7UknxoivXA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBSYit2dURDZWtMUzJ2SG4w
+            aEJXZ1VzRStLVEdLRmxsbnBVYnBWblpWUDFjClpZN3ZQVUpSclZabm5rT1J2SDcy
+            aDEyT3NoM3J4dkdvbVBBZ1JiZHNZc2cKLS0tIDZvSVBnZDgzMWFyNnpwMGw1OU0w
+            MXF6M0srYWlxcXcvOFdhZ01YNVBTamMKBUm1XQs0bx/HPVUviPvY8OHT1+JdcD+K
+            f40jqajhLUcfWANh17xyIKV+IWn3VIifSPiN9JvYTzXZcFbfVt9arA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-11T19:27:55Z"
+    mac: ENC[AES256_GCM,data:OGJeH1P8iGMiOj1mpLXLEB327kGbSKfVHvdIvzIMF0KAG2ZuTBkKYJZnqhv9+JHnXnOLWlzawXD71xhJ2Dqdnln/ZdACv3+gRbaSM/PHAe14sRGcC80PtULbkr1nNENKyaUYBoB2++fYfrpplabN1WcrfZXe5NVvlrBTMzjGQ+M=,iv:kUy00ZUL9/49YWoTLwppR1GI8ZK8Jf62U03rlbVWnkQ=,tag:R4TbAc0AT3fIrmc1rhLkGA==,type:str]
+    version: 3.13.3
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: gatus-db
+    namespace: gatus
+type: Opaque
+stringData:
+    password: ENC[AES256_GCM,data:yUgFao7yH9MWTgSt0RQ2PpQAuVpPimeAO+G9dJmAB9phTX4RRmClXQ==,iv:RnUZhtzHuepR91AJlYv1OvgrvTXVaUa7Kg//S1UKeA4=,tag:cELgJB+tzPjA1SeQoUDR3w==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBSYit2dURDZWtMUzJ2SG4w
+            aEJXZ1VzRStLVEdLRmxsbnBVYnBWblpWUDFjClpZN3ZQVUpSclZabm5rT1J2SDcy
+            aDEyT3NoM3J4dkdvbVBBZ1JiZHNZc2cKLS0tIDZvSVBnZDgzMWFyNnpwMGw1OU0w
+            MXF6M0srYWlxcXcvOFdhZ01YNVBTamMKBUm1XQs0bx/HPVUviPvY8OHT1+JdcD+K
+            f40jqajhLUcfWANh17xyIKV+IWn3VIifSPiN9JvYTzXZcFbfVt9arA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-11T19:27:55Z"
+    mac: ENC[AES256_GCM,data:OGJeH1P8iGMiOj1mpLXLEB327kGbSKfVHvdIvzIMF0KAG2ZuTBkKYJZnqhv9+JHnXnOLWlzawXD71xhJ2Dqdnln/ZdACv3+gRbaSM/PHAe14sRGcC80PtULbkr1nNENKyaUYBoB2++fYfrpplabN1WcrfZXe5NVvlrBTMzjGQ+M=,iv:kUy00ZUL9/49YWoTLwppR1GI8ZK8Jf62U03rlbVWnkQ=,tag:R4TbAc0AT3fIrmc1rhLkGA==,type:str]
+    version: 3.13.3

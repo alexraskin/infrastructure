@@ -1,3 +1,8 @@
+# What Flux reconciles on this cluster. flux bootstrap writes flux-system/ next
+# to this file; everything else the cluster runs is listed here.
+# Kept separate from the app Kustomizations, and depended on by none of them:
+# it needs the two extra controllers, and if those are missing this is the only
+# thing that fails.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -23,6 +28,8 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  # Everything with a PVC depends on this: Talos ships no StorageClass and no
+  # provisioner, so the volumes have to exist before the claims do.
   wait: true
   timeout: 2m
 ---
@@ -116,6 +123,7 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # No dependsOn cloudflared: the bot dials Discord out, nothing dials in.
   wait: true
   timeout: 3m
 ---
@@ -135,6 +143,8 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # Owns the `tailscale` IngressClass and the proxies that back it. monitoring
+  # depends on this; nothing here depends on cloudflared.
   wait: true
   timeout: 5m
 ---
@@ -150,6 +160,9 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  # Separate from tailscale-operator only because the Connector CRD arrives
+  # with the operator's chart: applied in the same Kustomization it would fail
+  # the first reconcile every time the cluster is rebuilt.
   dependsOn:
     - name: tailscale-operator
   wait: true
@@ -167,6 +180,8 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  # The StorageClass here points at the NFS LXC in terraform/proxmox/nfs.tf.
+  # Terraform builds that; this only consumes it.
   wait: true
   timeout: 5m
 ---
@@ -197,6 +212,14 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  # gatus-db.sops.yaml carries the role password into both namespaces that need it.
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  # Separate from cnpg only because the Cluster CRD arrives with the operator's
+  # chart: in one Kustomization, Flux dry-runs the Cluster before the chart has
+  # ever been installed and the whole set fails.
   dependsOn:
     - name: cnpg
     - name: local-path
@@ -241,10 +264,16 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # Logs go to R2, not through the tunnel, so no dependsOn cloudflared. The
+  # Grafana datasource ConfigMap here is read by the monitoring stack's sidecar,
+  # which is a label lookup, not an ordering dependency.
+  # tailscale-operator is an ordering dependency: service.yaml needs its
+  # loadBalancerClass, or the Service sits <pending> forever.
   dependsOn:
     - name: local-path
     - name: tailscale-operator
   wait: true
+  # Chart install plus a local-path PVC for the WAL.
   timeout: 10m
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -259,6 +288,8 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  # Ships into Loki's push endpoint; starting first just fills its buffer with
+  # failed sends.
   dependsOn:
     - name: loki
   wait: true
@@ -280,8 +311,14 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  # tailscale-operator owns the `tailscale` IngressClass the status page is
+  # published on; cnpg-cluster owns the database the history lives in and the
+  # Secret holding its password — no local-path, the PVC is gone. Nothing here
+  # goes through the tunnel, so no dependsOn cloudflared — and none on
+  # monitoring either: gatus probing a Grafana that is still starting is
+  # exactly what it is for.
   dependsOn:
-    - name: local-path
+    - name: cnpg-cluster
     - name: tailscale-operator
   wait: true
   timeout: 5m
