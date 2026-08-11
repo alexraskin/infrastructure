@@ -42,10 +42,15 @@ resource "proxmox_virtual_environment_container" "nfs" {
   # locked down, which is also why it exports to the cluster subnet only.
   unprivileged = false
 
-  features {
-    nesting = true
-    mount   = ["nfs"]
-  }
+  # No `features {}` block, deliberately. PVE refuses to set feature flags on a
+  # privileged container for anyone but root@pam:
+  #
+  #   403 Permission check failed (changing feature flags for privileged
+  #   container is only allowed for root@pam)
+  #
+  # and an API token is not root@pam, however privileged — the same wall the
+  # ACME account hits in acme.tf. scripts/nfs-provision.sh sets
+  # `nesting=1,mount=nfs` with `pct set` over SSH, where root really is root.
 
   cpu {
     cores = var.nfs.cores
@@ -118,6 +123,8 @@ resource "proxmox_virtual_environment_container" "nfs" {
       # which never matches the datastore name given here.
       mount_point[0].volume,
       operating_system[0].template_file_id,
+      # Set by the provisioner, not by Terraform — see above.
+      features,
     ]
   }
 }
