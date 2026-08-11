@@ -74,11 +74,11 @@ Terraform root and not `terraform/cloudflare/` — the value only exists here.
 ## Layout
 
 ```text
-edge.json            shape, zone, wildcards, sites — read by the flake and by terraform
-flake.nix            nixosConfigurations.edge-1 (aarch64)
-nixos/hosts/edge-1/  default, hardware, disk-config, ssh-keys, tailscale, acme, haproxy, logging
-terraform/           providers, backend, network, compute, dns, outputs
-scripts/             install.sh, deploy.sh, push-secrets.sh, tf-env.sh
+edge.json                 shape, zone, wildcards, sites — read by the flake and by terraform
+flake.nix                 nixosConfigurations.cloud-edge (aarch64)
+nixos/hosts/oracle-edge/  default, hardware, disk-config, ssh-keys, tailscale, acme, haproxy, logging
+terraform/                providers, backend, network, compute, dns, outputs
+scripts/                  install.sh, deploy.sh, push-secrets.sh, tf-env.sh
 ```
 
 TLS terminates here rather than passing SNI through, because there is no reverse
@@ -104,4 +104,3 @@ All in `secrets/` at the repo root. Start from `terraform/oci.env.example`.
 | `oci_api_key.pem`        | OCI API signing key (`_public.pem` is already uploaded to OCI)   |
 | `cloudflare-api-token`   | Shared with `terraform/cloudflare/`; also on the box for DNS-01  |
 | `tailscale-authkey-edge` | Tagged pre-auth key; falls back to `tailscale-authkey`           |
-

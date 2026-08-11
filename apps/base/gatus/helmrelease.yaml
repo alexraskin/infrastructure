@@ -185,7 +185,7 @@ spec:
           alerts:
             - type: discord
 
-        - name: "edge-1"
+        - name: "cloud-edge"
           group: "Off-cluster"
           url: "tcp://100.79.150.123:443"
           interval: 60s

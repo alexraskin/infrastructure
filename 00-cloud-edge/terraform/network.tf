@@ -107,6 +107,6 @@ resource "oci_core_subnet" "public" {
   prohibit_public_ip_on_vnic = false
 
   lifecycle {
-    replace_triggered_by = [oci_core_vcn.edge]
+    replace_triggered_by = [terraform_data.vcn_cidr_marker]
   }
 }

@@ -152,6 +152,6 @@ run = """
 set -euo pipefail
 terraform -chdir=terraform fmt -recursive .
 terraform -chdir=terraform validate
-../scripts/nix.sh 'nix eval --raw "path:./00-cloud-edge#nixosConfigurations.edge-1.config.system.build.toplevel.drvPath"'
+../scripts/nix.sh 'nix eval --raw "path:./00-cloud-edge#nixosConfigurations.cloud-edge.config.system.build.toplevel.drvPath"'
 echo
 """

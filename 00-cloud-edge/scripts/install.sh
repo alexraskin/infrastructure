@@ -2,7 +2,7 @@
 # Phase 2: install NixOS over the Ubuntu instance Terraform created.
 #
 # nixos-anywhere kexecs into a NixOS installer, runs disko against
-# nixos/hosts/edge-1/disk-config.nix, installs the closure and reboots. Nothing
+# nixos/hosts/oracle-edge/disk-config.nix, installs the closure and reboots. Nothing
 # of the Ubuntu image survives.
 #
 # --build-on-remote is what makes this work at all from here: the build host is

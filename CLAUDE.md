@@ -59,7 +59,7 @@ terraform -chdir=00-cloud-edge/terraform validate
 terraform -chdir=tailscale init -backend=false && terraform -chdir=tailscale validate
 ./scripts/nix.sh 'nix eval ".#nixosConfigurations.k3s-server-1.config.networking.hostName"'
 # path:, or nix resolves to the enclosing git repo — which is the cluster flake
-./scripts/nix.sh 'nix eval "path:./00-cloud-edge#nixosConfigurations.edge-1.config.system.build.toplevel.drvPath"'
+./scripts/nix.sh 'nix eval "path:./00-cloud-edge#nixosConfigurations.cloud-edge.config.system.build.toplevel.drvPath"'
 cd apps && mise exec -- kustomize build base/alexraskin-com
 cd apps && mise exec -- kustomize build base/monitoring
 cd apps && mise exec -- kustomize build base/tailscale-operator

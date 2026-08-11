@@ -51,7 +51,7 @@
         };
         modules = [
           disko.nixosModules.disko
-          ./nixos/hosts/edge-1
+          ./nixos/hosts/oracle-edge
         ];
       };
 

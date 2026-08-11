@@ -19,6 +19,10 @@
     efi.canTouchEfiVariables = true;
   };
 
+  system.activationScripts.liveHostname.text = ''
+    echo "${edge.instance.hostname}" > /proc/sys/kernel/hostname
+  '';
+
   networking = {
     hostName = edge.instance.hostname;
     useDHCP = false;

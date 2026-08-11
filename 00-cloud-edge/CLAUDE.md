@@ -208,6 +208,26 @@ under `edge-compute/terraform.tfstate`.
 
 ## Gotchas
 
+- **`replace_triggered_by` on a whole resource fires on *any* change to it, not
+  just replacement.** `oci_core_subnet.public` and `oci_core_instance.edge` both
+  used to reference `oci_core_vcn.edge`, so editing the VCN's `display_name` —
+  which is derived from `instance.hostname` — planned a destroy/recreate of the
+  subnet *and* the box: new public IP, fresh Ubuntu, a full `install`, a new
+  tailnet node, re-issued certs. All three now track
+  `terraform_data.vcn_cidr_marker`, the thing that actually forces the VCN to be
+  replaced. Behaviour on a real CIDR change is unchanged, and it is belt-and-
+  braces anyway: `vcn_id` and `subnet_id` are ForceNew, so a replaced VCN
+  cascades on its own.
+- **Renaming `instance.hostname` reaches further than the OCI display names.**
+  It is `networking.hostName`, so it is also the Loki `host` label in
+  `logging.nix` (old logs keep the old value — a query pinned to one name goes
+  quiet rather than erroring) and the tailnet machine name, which tailscaled
+  updates on its next start *only* while the admin console's "auto-generate"
+  box is still checked; a machine renamed by hand there stays put. And the
+  rename is self-referential: `scripts/edge-addr.sh` looks up the **new** name,
+  which does not exist until the deploy that applies it lands. Pass the old
+  address explicitly for that one run.
+
 - **Enabling `--ssh` makes the policy file load-bearing for SSH.** tailscaled
   intercepts port 22 on the tailnet address unconditionally once the flag is
   set, and if no `ssh` rule matches it **refuses** the connection rather than
