@@ -1,11 +1,42 @@
-# terraform/proxmox/ — the six cluster VMs
+# terraform/proxmox/ — the nine cluster VMs, and the cluster
 
-Creates the VMs and nothing inside them. Node identity comes from `hosts.json`
-(`jsondecode`) and reaches the guest through the cloud-init drive configured
-here; everything after first boot ships via `mise run deploy`, never Terraform.
+Creates the VMs **and** the Kubernetes cluster inside them. Node identity comes
+from `cluster.auto.tfvars.json` and reaches the guest as a Talos machine
+configuration applied over Talos' own API — there is no cloud-init drive and no
+second configuration-management step. `mise run tf:apply` is the whole thing.
+
+The root also owns the PVE host itself: its ACME certificate, storages, bridge
+and apt repositories, adopted from a host that already existed. **That is why
+`mise run tf:destroy` is targeted at the VM and Talos resources** — a bare
+`terraform destroy` here dismantles the host, not the cluster.
 
 State is in R2 — see "Terraform state lives in R2" in the root `CLAUDE.md`, and
-use `mise run tf:init` rather than a bare `terraform init`.
+use `mise run tf:init` rather than a bare `terraform init`. Note that the
+cluster PKI (`talos_machine_secrets`) is in there too.
+
+## The Talos half
+
+- **`image.tf`** — `talos_image_factory_schematic` turns `cluster.extensions`
+  into a schematic ID, `data.talos_image_factory_urls` resolves the ISO, and
+  `proxmox_virtual_environment_download_file` pulls it onto the node. The same
+  schematic ID goes into `machine.install.image` in `talos.tf`: the installed
+  system has to carry the extensions the ISO booted with, or the qemu guest
+  agent disappears at the first reboot.
+- **`main.tf`** — a blank system disk, the ISO in the CD-ROM, `boot_order =
+  ["scsi0", "ide3"]` so an installed node prefers its disk and a fresh one falls
+  through to the ISO. The db nodes get a second disk from a `dynamic "disk"`
+  block keyed on `data_disk` in `cluster.auto.tfvars.json`.
+- **`talos.tf`** — the machine configs are assembled as `yamlencode` patches in
+  `locals`, one list per node: identity and addressing, then the cluster-wide
+  CNI/proxy/metrics settings, then the db-only label, taint and
+  `UserVolumeConfig`. The last of those is a *separate configuration document*,
+  passed as its own element of `config_patches`.
+- `replace_triggered_by` on the ISO means bumping `talos_version` recreates the
+  VMs. That is a rebuild of the cluster, not an upgrade — for an upgrade in
+  place use `mise run upgrade`, which is `talosctl upgrade` node by node.
+- **The VIP is only on the control plane nodes**, and the Talos client endpoints
+  are deliberately the node addresses instead. Reasoning is in the root
+  `CLAUDE.md` under "The VIP is Talos', not kube-vip's".
 
 ## What is adopted, and what cannot be
 
@@ -97,7 +128,7 @@ configurable.
 `proxmox_backup_job.cluster` is a PVE *backup job* (`/etc/pve/jobs.cfg`), not a
 backup: Terraform declares the schedule and PVE runs it. Nightly at **02:30 in
 the host's timezone** (`America/Denver` — a systemd calendar event carries no
-zone of its own), covering exactly the guests in `hosts.json`, to the `backups`
+zone of its own), covering exactly the guests in `cluster.auto.tfvars.json`, to the `backups`
 storage, which is an NFS export on the NAS.
 
 Things worth knowing before changing it:
@@ -110,21 +141,22 @@ Things worth knowing before changing it:
 - **`prune_backups` has to be set here, on the job.** Without a job-level
   policy vzdump falls back to the storage's, and `backups` is configured
   `prune-backups keep-all=1` — nothing would ever be pruned. Retention prunes
-  per-guest as each guest finishes, so it only ever touches the six VMIDs in
+  per-guest as each guest finishes, so it only ever touches the nine VMIDs in
   this job, never the other host's dumps sharing the export.
 - **`mode = "snapshot"` costs no downtime** because the guest agent is enabled
   on every VM (`agent { enabled = true }` in `main.tf`). etcd is consistent
   across it — this is a qemu-level snapshot with the guest fsfrozen, not a
   crash-consistent copy. `stop` mode would be a nightly cluster outage.
 - **Restores are manual and stay that way.** `qmrestore <dump> <vmid>` from the
-  PVE side, or throw the VM away and rebuild it: `tf:apply` + `mise run deploy`
-  + Flux. Only node-local PVC data (Loki WAL, gatus history, Prometheus TSDB)
-  has no other copy, which is the whole reason the job exists.
+  PVE side, or throw the VM away and rebuild it: `tf:apply` re-applies the
+  machine config and Flux repopulates it. Only node-local PV data (Loki WAL,
+  gatus history, Prometheus TSDB) has no other copy, which is the whole reason
+  the job exists.
 - `mailnotification` is deliberately unset. PVE 8.3+ routes backup results
   through the notification system (`/etc/pve/notifications.cfg`), and setting
   the old field invites drift against whatever PVE normalises it to.
 - Import is by job id, which is ours rather than PVE's generated one:
-  `terraform import proxmox_backup_job.cluster k3s-nightly`.
+  `terraform import proxmox_backup_job.cluster talos-nightly`.
 - **Keep `notes_template` ASCII.** An em dash in it fails the apply with
   "Provider produced inconsistent result after apply" — the provider writes
   UTF-8 and reads the response back double-encoded, so the value it returns
@@ -143,8 +175,10 @@ short-named resource or nothing.
   lists by permission rather than returning 403, so datastores and bridges come
   back as empty arrays. `pveum user token modify <userid> <tokenid> --privsep 0`
   (two separate arguments, not `user!token`).
-- `iso` content always uploads over the PVE HTTP API — no SSH, no resume. For a
-  slow link use `mise run push-image root@<pve-host>` (rsync, resumable) plus
-  `upload_image = false`.
-- `disk[0].file_id` is in `lifecycle.ignore_changes`, so rebuilding the image does
-  not recreate running VMs. Node changes ship via `deploy`, never Terraform.
+- **The ISO is downloaded by the node, not uploaded by Terraform.**
+  `proxmox_virtual_environment_download_file` makes PVE fetch it from
+  factory.talos.dev, so the build host's uplink is irrelevant — but the PVE host
+  needs egress to the internet, which the old image-upload path did not require.
+- **`overwrite = false` on the ISO** keeps a re-apply from re-downloading it.
+  The file name carries the Talos version and a schematic prefix, so a genuine
+  change is a new file rather than a mutation of the old one.

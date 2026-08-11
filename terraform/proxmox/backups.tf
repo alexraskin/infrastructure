@@ -1,5 +1,5 @@
 resource "proxmox_backup_job" "cluster" {
-  id      = "k3s-nightly"
+  id      = "talos-nightly"
   node    = var.pve_node
   storage = var.backup_storage
   enabled = var.backup_enabled

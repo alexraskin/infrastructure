@@ -2,49 +2,19 @@
 terraform = "1.9"
 jq = "latest"
 kubectl = "latest"
+talosctl = "latest"
+helm = "latest"
 
 [env]
-TOKEN_FILE = "secrets/k3s-token"
-TS_KEY_FILE = "secrets/tailscale-authkey"
-IMAGE_OUT = "build/nixos.qcow2"
 KUBECONFIG = "{{config_root}}/kubeconfig"
-NIX_SSHOPTS = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
-
-# ---------------------------------------------------------------- image ----
-
-[tasks.image]
-description = "Build the golden NixOS qcow2 (host nix, or the nixos/nix container)"
-shell = "bash -c"
-run = """
-set -euo pipefail
-mkdir -p "$(dirname "$IMAGE_OUT")"
-scripts/nix.sh '
-  set -eu
-  out=$(nix build ".#image" --no-link --print-out-paths)
-  # Compressed qcow2: roughly a third of the bytes to push to Proxmox, and
-  # qemu-img decompresses transparently when the disk is imported.
-  nix shell nixpkgs#qemu -c \
-    qemu-img convert -c -O qcow2 "$out"/*.qcow2 /tmp/nixos.qcow2 >&2
-  cat /tmp/nixos.qcow2
-  rm -f /tmp/nixos.qcow2
-' > "$IMAGE_OUT"
-ls -lh "$IMAGE_OUT"
-"""
+TALOSCONFIG = "{{config_root}}/secrets/talosconfig"
+# Pinned alongside talos/cilium-values.yaml. 1.20 is the line e2e-tested
+# against Kubernetes 1.36, which is what Talos 1.13 ships.
+CILIUM_VERSION = "1.20.0"
 
 [tasks.preflight]
-description = "Check API token, privileges, node, datastores, VM IDs, IPs, SSH"
+description = "Check API token, privileges, node, datastores, VM IDs, IPs, SSH, capacity"
 run = "scripts/preflight.sh"
-
-[tasks."push-image"]
-description = "rsync the image to the PVE node, bypassing the HTTP API: mise run push-image root@pve"
-shell = "bash -c"
-run = """
-set -euo pipefail
-target=${1:?usage: mise run push-image root@pve-host}
-# --partial so an interrupted multi-GB transfer resumes instead of restarting
-rsync --partial --progress --sparse "$IMAGE_OUT" "$target:/var/lib/vz/template/iso/nixos-k3s-base.img"
-echo "now set upload_image = false in terraform/proxmox/terraform.tfvars"
-"""
 
 # ------------------------------------------------------------ terraform ----
 
@@ -68,15 +38,25 @@ depends = ["tf:init"]
 run = "terraform plan"
 
 [tasks."tf:apply"]
-description = "Create/update the six Proxmox VMs"
+description = "Create the VMs, apply machine configs, bootstrap the cluster"
 dir = "terraform/proxmox"
 depends = ["tf:init"]
 run = "terraform apply"
 
 [tasks."tf:destroy"]
-description = "Destroy the cluster VMs"
+description = "DESTRUCTIVE: destroy the cluster VMs only — this root also owns the PVE host"
 dir = "terraform/proxmox"
-run = "terraform destroy"
+shell = "bash -c"
+# Targeted on purpose. A bare `terraform destroy` here would also take the
+# host's ACME certificate, its NFS storages and the management bridge with it.
+run = """
+set -euo pipefail
+terraform destroy \
+  -target='proxmox_virtual_environment_vm.node' \
+  -target='talos_machine_configuration_apply.node' \
+  -target='talos_machine_bootstrap.this' \
+  -target='talos_cluster_kubeconfig.this'
+"""
 
 # ------------------------------------------------------------ cloudflare ----
 #
@@ -118,136 +98,99 @@ export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
 terraform apply
 """
 
-# --------------------------------------------------------------- secret ----
+# ----------------------------------------------------------------- talos ----
 
-[tasks.token]
-description = "Generate the shared k3s join token (once, never commit it)"
+[tasks.talosconfig]
+description = "Write secrets/talosconfig from Terraform state"
+dir = "terraform/proxmox"
 shell = "bash -c"
 run = """
 set -euo pipefail
-if [ -s "$TOKEN_FILE" ]; then
-  echo "$TOKEN_FILE already exists, leaving it alone"
-  exit 0
-fi
-mkdir -p "$(dirname "$TOKEN_FILE")"
-openssl rand -hex 32 > "$TOKEN_FILE"
-chmod 600 "$TOKEN_FILE"
-echo "wrote $TOKEN_FILE"
+mkdir -p ../../secrets
+umask 077
+terraform output -raw talosconfig > ../../secrets/talosconfig
+echo "wrote secrets/talosconfig (TALOSCONFIG is already set by mise in this repo)"
 """
 
-[tasks."push-token"]
-description = "Copy the join token to every node before the first deploy"
-depends = ["token"]
+[tasks.kubeconfig]
+description = "Write ./kubeconfig from Terraform state, pointed at the VIP"
+dir = "terraform/proxmox"
 shell = "bash -c"
 run = """
 set -euo pipefail
-for ip in $(jq -r '.nodes[].ip' hosts.json); do
+umask 077
+terraform output -raw kubeconfig > ../../kubeconfig
+echo "wrote kubeconfig (KUBECONFIG is already set by mise in this repo)"
+"""
+
+[tasks.cilium]
+description = "Install/upgrade Cilium — required within ~10min of bootstrap or nodes reboot"
+shell = "bash -c"
+# Deliberately not a Flux HelmRelease: the cluster has no working pod network
+# until this lands, so nothing that reconciles from inside it can install it.
+run = """
+set -euo pipefail
+helm repo add cilium https://helm.cilium.io/ >/dev/null
+helm repo update cilium >/dev/null
+helm template cilium cilium/cilium \
+  --version "$CILIUM_VERSION" \
+  --namespace kube-system \
+  --values talos/cilium-values.yaml \
+  | kubectl apply -f -
+echo
+echo "waiting for nodes to go Ready ..."
+kubectl wait --for=condition=Ready nodes --all --timeout=300s
+"""
+
+[tasks.health]
+description = "talosctl health against the cluster"
+shell = "bash -c"
+run = """
+set -euo pipefail
+node=$(jq -r '.nodes[] | select(.role=="controlplane") | .ip' terraform/proxmox/cluster.auto.tfvars.json | head -1)
+talosctl -n "$node" health
+"""
+
+[tasks.upgrade]
+description = "Upgrade Talos on every node to the version in terraform/proxmox/cluster.auto.tfvars.json, one at a time"
+shell = "bash -c"
+run = """
+set -euo pipefail
+schematic=$(terraform -chdir=terraform/proxmox output -json talos_image | jq -r .schematic_id)
+version=$(jq -r '.cluster.talos_version' terraform/proxmox/cluster.auto.tfvars.json)
+for ip in $(jq -r '.nodes[].ip' terraform/proxmox/cluster.auto.tfvars.json); do
   echo "==> $ip"
-  scp $NIX_SSHOPTS "$TOKEN_FILE" "root@$ip:/var/lib/k3s-token"
-  ssh $NIX_SSHOPTS "root@$ip" 'chmod 600 /var/lib/k3s-token'
+  talosctl -n "$ip" upgrade --image "factory.talos.dev/installer/$schematic:$version" --wait
 done
 """
 
-[tasks."push-tailscale-key"]
-description = "Copy the tailnet pre-auth key to every node (no-op if there is none)"
+[tasks."upgrade-k8s"]
+description = "Upgrade Kubernetes to the version in terraform/proxmox/cluster.auto.tfvars.json"
 shell = "bash -c"
 run = """
 set -euo pipefail
-if [ ! -s "$TS_KEY_FILE" ]; then
-  echo "no $TS_KEY_FILE — skipping."
-  echo "create a reusable pre-auth key at https://login.tailscale.com/admin/settings/keys"
-  echo "then: umask 077 && echo tskey-auth-... > $TS_KEY_FILE && mise run push-tailscale-key"
-  exit 0
-fi
-for ip in $(jq -r '.nodes[].ip' hosts.json); do
-  echo "==> $ip"
-  scp $NIX_SSHOPTS "$TS_KEY_FILE" "root@$ip:/var/lib/tailscale-authkey"
-  ssh $NIX_SSHOPTS "root@$ip" 'chmod 600 /var/lib/tailscale-authkey'
-done
-"""
-
-# --------------------------------------------------------------- deploy ----
-
-[tasks."deploy-node"]
-description = "Build+switch a single node: mise run deploy-node k3s-agent-2"
-run = "scripts/deploy-node.sh"
-
-[tasks.deploy]
-description = "Deploy the whole cluster in order: bootstrap server, servers, agents"
-# Both secrets have to be on disk before the switch: k3s will not start without
-# its token, and tailscaled-autoconnect runs during activation.
-depends = ["push-token", "push-tailscale-key"]
-shell = "bash -c"
-run = """
-set -euo pipefail
-bootstrap=$(jq -r '.cluster.bootstrap' hosts.json)
-vip=$(jq -r '.cluster.vip' hosts.json)
-bip=$(jq -r --arg h "$bootstrap" '.nodes[$h].ip' hosts.json)
-
-# Bounded, so a component that never comes up fails the run instead of hanging
-# in an until-loop forever.
-wait_for() {
-  local what=$1 deadline=$(( SECONDS + $2 )); shift 2
-  echo "waiting for $what ..."
-  until "$@" >/dev/null 2>&1; do
-    if [ $SECONDS -ge $deadline ]; then
-      echo "timed out waiting for $what" >&2
-      return 1
-    fi
-    sleep 5
-  done
-}
-
-scripts/deploy-node.sh "$bootstrap"
-
-wait_for "the API server on $bootstrap" 300 \
-  ssh $NIX_SSHOPTS "root@$bip" 'k3s kubectl get --raw /readyz'
-
-for host in $(jq -r --arg b "$bootstrap" '.nodes | to_entries[] | select(.value.role=="server" and .key != $b) | .key' hosts.json); do
-  scripts/deploy-node.sh "$host"
-done
-
-wait_for "the kube-vip VIP $vip" 300 ping -c1 -W1 "$vip"
-
-for host in $(jq -r '.nodes | to_entries[] | select(.value.role=="agent") | .key' hosts.json); do
-  scripts/deploy-node.sh "$host"
-done
+node=$(jq -r '.nodes[] | select(.role=="controlplane") | .ip' terraform/proxmox/cluster.auto.tfvars.json | head -1)
+version=$(jq -r '.cluster.kubernetes_version' terraform/proxmox/cluster.auto.tfvars.json | sed 's/^v//')
+talosctl -n "$node" upgrade-k8s --to "$version"
 """
 
 [tasks.reset]
-description = "DESTRUCTIVE: stop k3s everywhere and wipe cluster state (etcd, certs, workloads)"
+description = "DESTRUCTIVE: wipe every node back to maintenance mode"
 shell = "bash -c"
 run = """
 set -euo pipefail
-echo "This erases all k3s state on every node: etcd, certificates, workloads."
+echo "This wipes all state on every node: etcd, certificates, workloads, /var."
 read -r -p "type the cluster name to confirm: " answer
-[ "$answer" = "$(jq -r '.cluster.name' hosts.json)" ] || { echo "aborted"; exit 1; }
+[ "$answer" = "$(jq -r '.cluster.name' terraform/proxmox/cluster.auto.tfvars.json)" ] || { echo "aborted"; exit 1; }
 
-for ip in $(jq -r '.nodes[].ip' hosts.json); do
+for ip in $(jq -r '.nodes[].ip' terraform/proxmox/cluster.auto.tfvars.json); do
   echo "==> $ip"
-  ssh $NIX_SSHOPTS "root@$ip" '
-    systemctl stop k3s k3s-agent 2>/dev/null || true
-    rm -rf /var/lib/rancher/k3s /etc/rancher/k3s /var/lib/kubelet
-  ' || true
+  talosctl -n "$ip" reset --graceful=false --reboot --wait=false || true
 done
-echo "state wiped — run 'mise run deploy' to rebuild the cluster"
+echo "nodes rebooting into maintenance mode — re-run 'mise run tf:apply' to rebuild"
 """
 
-# ----------------------------------------------------------------- kube ----
-
-[tasks.kubeconfig]
-description = "Fetch kubeconfig from the bootstrap server, pointed at the VIP"
-shell = "bash -c"
-run = """
-set -euo pipefail
-bootstrap=$(jq -r '.cluster.bootstrap' hosts.json)
-bip=$(jq -r --arg h "$bootstrap" '.nodes[$h].ip' hosts.json)
-vip=$(jq -r '.cluster.vip' hosts.json)
-ssh $NIX_SSHOPTS "root@$bip" 'cat /etc/rancher/k3s/k3s.yaml' \
-  | sed "s#https://127.0.0.1:6443#https://$vip:6443#" > kubeconfig
-chmod 600 kubeconfig
-echo "wrote kubeconfig (KUBECONFIG is already set by mise in this dir)"
-"""
+# --------------------------------------------------------------- tailnet ----
 
 [tasks."ts:init"]
 description = "terraform init for the tailnet policy root (state lives in R2)"
@@ -287,17 +230,14 @@ terraform apply
 """
 
 [tasks."ts:status"]
-description = "Tailnet address and advertised routes, per node"
+description = "The in-cluster subnet router and the operator's proxies"
 shell = "bash -c"
 run = """
 set -euo pipefail
-for ip in $(jq -r '.nodes[].ip' hosts.json); do
-  printf '%-14s ' "$ip"
-  ssh $NIX_SSHOPTS "root@$ip" \
-    'tailscale status --json 2>/dev/null | jq -r "[.Self.DNSName, (.Self.TailscaleIPs//[]|join(\\",\\")), (.Self.PrimaryRoutes//[]|join(\\",\\"))] | @tsv"' \
-    || echo "unreachable / not logged in"
-done
+kubectl -n tailscale get connector,pods -o wide
 """
+
+# ----------------------------------------------------------------- kube ----
 
 [tasks.status]
 description = "Show nodes and control-plane pods"
@@ -311,12 +251,12 @@ kubectl -n kube-system get pods
 # ------------------------------------------------------------- one-shot ----
 
 [tasks.bootstrap]
-description = "Full path: image -> VMs -> config -> kubeconfig"
+description = "Full path: VMs -> machine configs -> bootstrap -> Cilium -> status"
 shell = "bash -c"
 run = """
-mise run image
 mise run tf:apply
-mise run deploy
+mise run talosconfig
 mise run kubeconfig
+mise run cilium
 mise run status
 """

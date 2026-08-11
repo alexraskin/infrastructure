@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Check everything Terraform is about to depend on: API token, permissions,
-# node, datastores, free VM IDs, free IPs, SSH to the node, local image.
+# node, datastores, free VM IDs, free IPs, SSH to the node, room for the VMs,
+# and a local talosctl.
 #
 # Reads terraform/proxmox/terraform.tfvars. Never prints the token.
 set -uo pipefail
@@ -86,11 +87,11 @@ check_store "$vm_store" images
 # --- VM IDs -----------------------------------------------------------------
 used=$(api /cluster/resources?type=vm | jq -r '.data[]?.vmid' 2>/dev/null)
 clash=()
-for vmid in $(jq -r '.nodes[].vmid' hosts.json); do
+for vmid in $(jq -r '.nodes[].vmid' terraform/proxmox/cluster.auto.tfvars.json); do
   grep -qx "$vmid" <<<"$used" && clash+=("$vmid")
 done
 if [ ${#clash[@]} -eq 0 ]; then
-  ok "VM IDs $(jq -r '[.nodes[].vmid]|join(", ")' hosts.json) are free"
+  ok "VM IDs $(jq -r '[.nodes[].vmid]|join(", ")' terraform/proxmox/cluster.auto.tfvars.json) are free"
 else
   bad "VM IDs already in use: ${clash[*]}"
 fi
@@ -105,14 +106,14 @@ fi
 # --- SSH to the node --------------------------------------------------------
 if ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
      "$ssh_user@$host" true 2>/dev/null; then
-  ok "ssh $ssh_user@$host works (needed for disk import and push-image)"
+  ok "ssh $ssh_user@$host works (the provider shells out for some operations)"
 else
   bad "ssh $ssh_user@$host failed — the provider shells out for disk operations"
 fi
 
 # --- addresses --------------------------------------------------------------
 live=()
-for ip in $(jq -r '.cluster.vip, .nodes[].ip' hosts.json); do
+for ip in $(jq -r '.cluster.vip, .nodes[].ip' terraform/proxmox/cluster.auto.tfvars.json); do
   ping -c1 -W1 "$ip" >/dev/null 2>&1 && live+=("$ip")
 done
 if [ ${#live[@]} -eq 0 ]; then
@@ -121,12 +122,33 @@ else
   bad "already answering ping: ${live[*]}"
 fi
 
-# --- local image ------------------------------------------------------------
-img=${IMAGE_OUT:-build/nixos.qcow2}
-if [ -s "$img" ]; then
-  ok "image present: $img ($(du -h "$img" | cut -f1))"
+# --- room for the VMs -------------------------------------------------------
+# Nine VMs, three of them with a second disk. Discovering the host is full
+# halfway through an apply leaves VMs created and unconfigured.
+want_mem=$(jq -r '[.nodes[].memory]|add' terraform/proxmox/cluster.auto.tfvars.json)
+want_disk=$(jq -r '[.nodes[] | .disk + (.data_disk // 0)]|add' terraform/proxmox/cluster.auto.tfvars.json)
+node_json=$(api "/nodes/$node/status")
+max_mem=$(jq -r '.data.memory.total // 0' <<<"$node_json")
+free_mem=$(( (max_mem / 1048576) ))
+if [ "$free_mem" -gt "$want_mem" ]; then
+  ok "host has ${free_mem}MB RAM, VMs ask for ${want_mem}MB"
 else
-  warn "no image at $img — run 'mise run image'"
+  warn "VMs ask for ${want_mem}MB RAM, host has ${free_mem}MB total"
+fi
+
+avail=$(api "/nodes/$node/storage/$vm_store/status" | jq -r '.data.avail // 0')
+avail_gb=$(( avail / 1073741824 ))
+if [ "$avail_gb" -gt "$want_disk" ]; then
+  ok "$vm_store has ${avail_gb}GB free, VM disks ask for ${want_disk}GB"
+else
+  warn "VM disks ask for ${want_disk}GB, $vm_store has ${avail_gb}GB free (thin pools may still cope)"
+fi
+
+# --- talosctl ---------------------------------------------------------------
+if command -v talosctl >/dev/null 2>&1; then
+  ok "talosctl $(talosctl version --client --short 2>/dev/null | head -1)"
+else
+  bad "no talosctl — 'mise install' provides it"
 fi
 
 echo

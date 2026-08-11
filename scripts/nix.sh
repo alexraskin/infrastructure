@@ -9,8 +9,11 @@ script=${1:?usage: nix.sh <shell script>}
 export NIX_CONFIG="experimental-features = nix-command flakes
 system-features = kvm nixos-test benchmark big-parallel uid-range"
 
+# 00-cloud-edge/ is the only flake left in this repo — the cluster is Talos and
+# owns no Nix. Flakes evaluate from the git tree, so an untracked file there is
+# invisible to the build and the failure is confusing.
 untracked=$(git -C "$repo" ls-files --others --exclude-standard -- \
-  flake.nix flake.lock hosts.json nix || true)
+  00-cloud-edge || true)
 if [ -n "$untracked" ]; then
   echo "error: these files are untracked and would be invisible to the flake:" >&2
   printf '  %s\n' $untracked >&2

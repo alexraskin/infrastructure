@@ -1,10 +1,16 @@
 # apps/base/tailscale-operator/ — the tailnet IngressClass
 
-Puts Services on the tailnet from inside the cluster, which is a different
-mechanism from `nix/modules/tailscale.nix`: the nodes are a **subnet router**
-advertising `10.0.200.0/24`, the operator gives an individual Service its **own
-tailnet device** with a real LetsEncrypt cert. Both are in use; neither replaces
-the other.
+Puts Services on the tailnet from inside the cluster. Since the move to Talos
+this is the **only** way anything here reaches the tailnet: the nodes run no
+tailscaled of their own, where the k3s nodes were a subnet router advertising
+`10.0.200.0/24`. Three things now ride on the operator —
+
+- **Ingress**, giving a Service its own tailnet device with a real LetsEncrypt
+  cert (Grafana, the gatus status page).
+- **Egress**, an ExternalName Service annotated `tailscale.com/tailnet-ip`,
+  which is how gatus probes off-cluster targets (`apps/base/gatus/egress.yaml`).
+- **The subnet router**, a `Connector` in `apps/base/tailscale-router/` that
+  re-advertises `10.0.200.0/24` so off-LAN kubectl still reaches the VIP.
 
 An Ingress opts in with `ingressClassName: tailscale`, and the device name comes
 from `tls.hosts[0]` — *not* from a rule host, which is left unset. The operator
@@ -23,16 +29,18 @@ device creation is rejected outright if it does not own the tag.
 empty means the chart mounts the pre-existing `operator-oauth` Secret, so the
 credentials stay in SOPS rather than in a values block in a public repo.
 
-The API-server proxy (`apiServerProxyConfig.mode`) is off. kubectl already
-reaches the VIP through the subnet router, and enabling it means ACL grants that
-map tailnet identities onto cluster RBAC.
+The API-server proxy (`apiServerProxyConfig.mode`) is off. kubectl reaches the
+VIP through the Connector's subnet route instead, and enabling the proxy means
+ACL grants that map tailnet identities onto cluster RBAC. It is the obvious
+alternative if the Connector's circularity — the route into the cluster's subnet
+living in the cluster — ever stops being acceptable.
 
-Versions here are **not** the ones on the nodes — the operator and its proxies
-run tailscaled from container images, so `nix/modules/tailscale.nix` has no
-effect on them. The stable chart's appVersion is 1.98.9, which the admin console
+Versions here are the only tailscaled versions in the cluster — the operator and
+its proxies run it from container images, and nothing on a Talos node runs it at
+all. The stable chart's appVersion is 1.98.9, which the admin console
 flags as vulnerable, so `proxyConfig.image.tag` is pinned ahead of the chart at
 `v1.102.2`. The operator cannot follow: `tailscale/k8s-operator` has no stable
-tag past `v1.98.9` (only `unstable-v1.10x`), so the `k3s-operator` device stays
+tag past `v1.98.9` (only `unstable-v1.10x`), so the `talos-operator` device stays
 flagged until upstream ships one. Remove the pin when a stable chart carries
 1.102.x or later, or it starts holding proxies back instead of pushing them
 forward.

@@ -10,12 +10,6 @@ disk_format  = "raw"
 network_bridge = "vmbr0"
 # vlan_id      = 200
 
-ssh_public_key_path = "~/.ssh/id_ed25519.pub"
-
-upload_image = true
-
-image_upload_timeout = 7200
-
 backup_storage  = "backups"
 backup_schedule = "*-*-* 02:30"
 backup_enabled  = true

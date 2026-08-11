@@ -37,7 +37,7 @@ spec:
     installCRDs: true
 
     operatorConfig:
-      hostname: k3s-operator
+      hostname: talos-operator
       defaultTags:
         - "tag:k8s-operator"
       resources:

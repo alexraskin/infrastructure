@@ -3,7 +3,7 @@ terraform {
 
   backend "s3" {
     bucket                      = "terraform"
-    key                         = "promox-k3-nix/terraform.tfstate"
+    key                         = "talos-proxmox/terraform.tfstate"
     region                      = "auto"
     skip_credentials_validation = true
     skip_metadata_api_check     = true
@@ -21,6 +21,10 @@ terraform {
     cloudflare = {
       source  = "cloudflare/cloudflare"
       version = "~> 5"
+    }
+    talos = {
+      source  = "siderolabs/talos"
+      version = "~> 0.9"
     }
   }
 }

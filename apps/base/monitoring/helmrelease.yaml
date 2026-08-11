@@ -27,23 +27,21 @@ spec:
     remediation:
       retries: 3
   values:
-    # ------------------------------------------------------------ k3s ----
-    # k3s runs the controller-manager, scheduler, proxy and etcd inside the
-    # single k3s process, and by default they bind their metrics ports to
-    # 127.0.0.1. The chart's ServiceMonitors for them would sit permanently
-    # DOWN, so they are off. To turn them on, add to nix/modules/k3s-server.nix:
-    #   --kube-controller-manager-arg=bind-address=0.0.0.0
-    #   --kube-scheduler-arg=bind-address=0.0.0.0
-    #   --kube-proxy-arg=metrics-bind-address=0.0.0.0
-    #   --etcd-expose-metrics=true
-    # open 10257/10259/10249/2381 in the firewall, redeploy, then flip these.
+    # ---------------------------------------------------------- talos ----
+    # Talos runs these as real static pods, and the machine config in
+    # terraform/proxmox/talos.tf binds them outward — bind-address 0.0.0.0 on
+    # the controller-manager and scheduler, listen-metrics-urls on etcd — so
+    # their ServiceMonitors have something to scrape. Turning these on without
+    # those arguments puts the targets permanently DOWN.
     kubeControllerManager:
-      enabled: false
+      enabled: true
     kubeScheduler:
-      enabled: false
-    kubeProxy:
-      enabled: false
+      enabled: true
     kubeEtcd:
+      enabled: true
+    # There is no kube-proxy at all: cluster.proxy.disabled is set and Cilium
+    # replaces it. This one stays off permanently.
+    kubeProxy:
       enabled: false
 
     # Nothing is wired to route alerts yet. Prometheus still evaluates the
@@ -52,9 +50,10 @@ spec:
       enabled: false
 
     # ----------------------------------------------------- node metrics ----
-    # Runs on every node with hostNetwork, scraped at <node-ip>:9100. That port
-    # is opened in nix/modules/monitoring.nix — without it every node target is
-    # DOWN, because the NixOS firewall drops the scrape arriving over flannel.
+    # Runs on every node with hostNetwork, scraped at <node-ip>:9100. Talos has
+    # no host firewall unless a NetworkRuleConfig declares one, so there is
+    # nothing to open — unlike NixOS, where a closed 9100 put every node target
+    # DOWN at once.
     prometheus-node-exporter:
       hostNetwork: true
 
@@ -101,10 +100,11 @@ spec:
           limits:
             memory: 2Gi
 
-        # local-path is the k3s default StorageClass and is node-local: this
-        # pod is pinned to whichever node the PVC lands on, and the history is
-        # gone if that node is rebuilt. Dashboards and rules come from git, so
-        # only the metric history is at risk.
+        # local-path is a static, node-local StorageClass — the PV it binds is
+        # written by hand in apps/base/local-path/ and pinned to one node. This
+        # pod follows it there, and the history is gone if that node is
+        # rebuilt. Dashboards and rules come from git, so only the metric
+        # history is at risk.
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -174,14 +174,6 @@ spec:
         limits:
           memory: 512Mi
 
-      # The tailnet name is kept out of this public repo, so the two settings
-      # that need it come in as env vars from grafana-tailnet.sops.yaml rather
-      # than from grafana.ini below. Grafana reads GF_<SECTION>_<KEY>, and env
-      # wins over the ini file.
-      #
-      # They must match the name the operator serves Grafana on. Wrong values
-      # and the page still loads while login redirects and static assets break
-      # — a half-working state that reads like a Grafana bug.
       envValueFrom:
         GF_SERVER_DOMAIN:
           secretKeyRef:

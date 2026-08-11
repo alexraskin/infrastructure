@@ -38,10 +38,10 @@ services:
       - PGID=1000
       - TZ=America/Phoenix
     volumes:
-      - ./subtrace-config:/config          # subtrace.toml + subtrace.db
+      - ./subtrace-config:/config
       - type: bind
         source: /mnt/media/Media
-        target: /media                     # read-write: subtrace writes .srt sidecars
+        target: /media
     restart: always
     labels:
       didar.enabled: "true"

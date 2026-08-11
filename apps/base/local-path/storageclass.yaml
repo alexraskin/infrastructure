@@ -1,0 +1,24 @@
+# k3s shipped a local-path StorageClass with a provisioner behind it; Talos
+# ships neither. The name is kept so the HelmReleases that claim it do not
+# change, but this one is static: every PV in pv.yaml is written by hand.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: kubernetes.io/no-provisioner
+# The PVs are pinned to a node, so binding has to wait until the scheduler has
+# picked one — bind first and the pod can end up unschedulable on the wrong node.
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+---
+# Separate class for the db nodes, so an ordinary local-path claim can never
+# land on a database disk.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: db-local
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
