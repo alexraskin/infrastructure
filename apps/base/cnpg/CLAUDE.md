@@ -69,6 +69,40 @@ through `backup-oci.sops.yaml`; `endpointURL` is in `cluster.yaml` in plain text
 because the CRD field takes no secret ref and the tenancy namespace it carries is
 an identifier, not a credential.
 
+### Oracle's S3 layer and boto3 checksums
+
+`spec.env` sets `AWS_REQUEST_CHECKSUM_CALCULATION` and
+`AWS_RESPONSE_CHECKSUM_VALIDATION` to `when_required`, and backups do not work
+without them. botocore 1.36 turned on default data-integrity checksums, which it
+sends using `aws-chunked` content encoding; Oracle Object Storage's S3
+compatibility layer does not implement that and rejects the upload:
+
+```
+NotImplemented ... AWS chunked encoding not supported
+```
+
+It hits `PutObject` and `UploadPart`, so both `backup.info` and the data fail —
+and the same wall stops `aws s3 cp` against the bucket, which is a quick way to
+confirm the credential is not at fault.
+
+### First backup races the operator's RBAC
+
+`immediate: true` on the ScheduledBackup fires as soon as it is created, which on
+the very first apply is before the operator has added `cnpg-backup-oci` to the
+`postgres` Role's `resourceNames`. That backup fails with
+
+```
+secrets "cnpg-backup-oci" is forbidden: User "system:serviceaccount:cnpg-system:postgres"
+cannot get resource "secrets"
+```
+
+and the fix is simply to take another one — the Role is correct within seconds.
+A brand-new OCI Customer Secret Key also takes a few minutes to become valid
+outside the tenancy's home region, reporting `SignatureDoesNotMatch` with the
+misleading hint "The region must be specified", so the first attempts after
+`mise run oci:apply` can fail for that reason too. Both are transient; neither
+means the configuration is wrong.
+
 ### The failure mode that takes the database down
 
 **Postgres will not recycle a WAL segment until `archive_command` succeeds.** So

@@ -44,6 +44,19 @@ spec:
         passwordSecret:
           name: grafana-db
 
+  # barman-cloud talks S3 through boto3, and botocore >= 1.36 sends its default
+  # data-integrity checksums using `aws-chunked` content encoding. Oracle's S3
+  # compatibility layer does not implement that and rejects every upload with
+  # "NotImplemented ... AWS chunked encoding not supported" — on PutObject and
+  # on UploadPart, so both the backup.info file and the data fail. These two put
+  # the checksums back to on-demand. Nothing about them is Oracle-specific; they
+  # are the documented opt-out.
+  env:
+    - name: AWS_REQUEST_CHECKSUM_CALCULATION
+      value: when_required
+    - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+      value: when_required
+
   # Storage is node-local, so replicas cover a lost node but nothing covers a bad
   # DROP or losing all three. This does: continuous WAL archiving plus the weekly
   # base backup in scheduledbackup.yaml, into Oracle Object Storage.
