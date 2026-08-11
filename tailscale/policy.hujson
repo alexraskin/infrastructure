@@ -13,7 +13,7 @@
 		{
 			"action": "accept",
 			"src":    ["autogroup:admin"],
-			"dst":    ["tag:edge"],
+			"dst":    ["tag:edge", "tag:cloud-edge"],
 			"users":  ["root"],
 		},
 	],
@@ -67,14 +67,14 @@
 
 		// (00-cloud-edge). It is the only device on this tailnet with a public IP
 		{
-			"src": ["tag:edge"],
+			"src": ["tag:edge", "tag:cloud-edge"],
 			"dst": ["100.73.219.120"],
 			"ip":  ["tcp:32400"],
 		},
 
 		// Log push. Loki has no auth; this grant is the access control.
 		{
-			"src": ["tag:edge"],
+			"src": ["tag:edge", "tag:cloud-edge"],
 			"dst": ["tag:k8s-loki"],
 			"ip":  ["tcp:3100"],
 		},
@@ -83,7 +83,7 @@
 		// node and is SNAT'd to its tailnet address.
 		{
 			"src": ["tag:k3s"],
-			"dst": ["tag:edge"],
+			"dst": ["tag:edge", "tag:cloud-edge"],
 			"ip":  ["tcp:443"],
 		},
 		{
@@ -103,7 +103,8 @@
 
 		"tag:k3s": [],
 
-		"tag:edge": [],
+		"tag:edge":       [],
+		"tag:cloud-edge": [],
 	},
 
 	"autoApprovers": {
@@ -112,7 +113,7 @@
 		},
 
 		// Without this the edge advertises 0.0.0.0/0 and waits for a human.
-		"exitNode": ["tag:edge"],
+		"exitNode": ["tag:edge", "tag:cloud-edge"],
 	},
 
 	// Evaluated by the API at `terraform plan`, so a widened grant fails the PR.
@@ -134,14 +135,30 @@
 			],
 		},
 		{
+			// Same, for the new name. Both tags are live during the rename.
+			"src":   "tag:cloud-edge",
+			"proto": "tcp",
+			"accept": [
+				"100.73.219.120:32400",
+				"tag:k8s-loki:3100",
+			],
+			"deny": [
+				"100.73.219.120:22",
+				"10.0.200.40:6443",
+				"10.0.200.41:22",
+				"tag:k8s:443",
+			],
+		},
+		{
 			// Subnet routers. Only what gatus probes, nothing else.
 			"src":    "tag:k3s",
 			"proto":  "tcp",
-			"accept": ["tag:edge:443", "100.109.167.97:443"],
+			"accept": ["tag:edge:443", "tag:cloud-edge:443", "100.109.167.97:443"],
 			"deny": [
 				"100.73.219.120:32400",
 				"10.0.200.40:6443",
 				"tag:edge:22",
+				"tag:cloud-edge:22",
 				"100.109.167.97:5001",
 			],
 		},
@@ -157,6 +174,11 @@
 	"sshTests": [
 		{
 			"src":  "tag:edge",
+			"dst":  ["tag:k3s"],
+			"deny": ["root", "autogroup:nonroot"],
+		},
+		{
+			"src":  "tag:cloud-edge",
 			"dst":  ["tag:k3s"],
 			"deny": ["root", "autogroup:nonroot"],
 		},
