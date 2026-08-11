@@ -4,3 +4,5 @@ resources:
   - cluster.yaml
   - gatus-db.sops.yaml
   - gatus-database.yaml
+  - grafana-db.sops.yaml
+  - grafana-database.yaml

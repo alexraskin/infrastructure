@@ -91,7 +91,7 @@ locals {
   # `directory` is the no-extra-disk volume type — it carves the path out of the
   # EPHEMERAL partition. One per claim rather than one shared parent, because a
   # `local` PV binds a directory and two claims cannot share one.
-  pv_volumes = ["prometheus", "grafana", "loki"]
+  pv_volumes = ["prometheus", "loki"]
 
   pv_volume_patches = [
     for volume in local.pv_volumes : yamlencode({

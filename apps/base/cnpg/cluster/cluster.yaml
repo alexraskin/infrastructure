@@ -38,6 +38,11 @@ spec:
         login: true
         passwordSecret:
           name: gatus-db
+      - name: grafana
+        ensure: present
+        login: true
+        passwordSecret:
+          name: grafana-db
 
   # Storage is node-local and there is no backup configured — losing a db node's
   # disk loses that instance's copy. Two replicas remain, so the *cluster*

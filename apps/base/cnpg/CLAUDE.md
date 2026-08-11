@@ -63,12 +63,12 @@ it is a bucket and a token, not a new dependency.
 `initdb` makes `app`, but nothing uses it. Each consumer instead gets a login
 role (`spec.managed.roles` on the Cluster) and a database owned by it (a
 `Database` CR, which is CNPG's declarative form — the CRD ships with the chart).
-Today that is `gatus`, in `cluster/gatus-database.yaml`.
+Today that is `gatus` and `grafana`, in `cluster/*-database.yaml`.
 
 The password is the awkward part, because two namespaces need it: CNPG reads a
 **basic-auth** Secret in `cnpg-system` — the `username` key must equal the role
 name or the operator rejects it — and the consumer reads its own copy to build a
-connection URL. `cluster/gatus-db.sops.yaml` holds **both Secrets in one
+connection URL. `cluster/<name>-db.sops.yaml` holds **both Secrets in one
 encrypted file** so they cannot drift, which is why the `cnpg-cluster`
 Kustomization has a `decryption` block and why `gatus` `dependsOn` it.
 
