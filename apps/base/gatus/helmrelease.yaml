@@ -21,10 +21,12 @@ spec:
     remediation:
       retries: 3
   values:
-    deployment:
-      strategy: Recreate
-
     env:
+      POSTGRES_PASSWORD:
+        valueFrom:
+          secretKeyRef:
+            name: gatus-db
+            key: password
       GATUS_APISERVER_TOKEN:
         valueFrom:
           secretKeyRef:
@@ -37,10 +39,7 @@ spec:
             key: webhook-url
 
     persistence:
-      enabled: true
-      storageClassName: local-path
-      size: 1Gi
-      mountPath: /data
+      enabled: false
 
     resources:
       requests:
@@ -62,8 +61,8 @@ spec:
 
     config:
       storage:
-        type: sqlite
-        path: /data/data.db
+        type: postgres
+        path: "postgres://gatus:${POSTGRES_PASSWORD}@postgres-rw.cnpg-system.svc.cluster.local:5432/gatus?sslmode=require"
         maximum-number-of-results: 100
         maximum-number-of-events: 50
 

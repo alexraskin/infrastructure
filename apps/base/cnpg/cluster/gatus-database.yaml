@@ -1,0 +1,13 @@
+# A database per consumer, owned by that consumer's role — so gatus cannot see
+# anything else in the instance and dropping it drops only its own data.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: gatus
+  namespace: cnpg-system
+spec:
+  cluster:
+    name: postgres
+  name: gatus
+  owner: gatus
+  ensure: present

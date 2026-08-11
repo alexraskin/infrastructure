@@ -58,6 +58,23 @@ The fix when this holds anything worth keeping is `spec.backup.barmanObjectStore
 against R2 — the account already holds Loki's chunks and the Terraform state, so
 it is a bucket and a token, not a new dependency.
 
+## Consumers get their own role and database
+
+`initdb` makes `app`, but nothing uses it. Each consumer instead gets a login
+role (`spec.managed.roles` on the Cluster) and a database owned by it (a
+`Database` CR, which is CNPG's declarative form — the CRD ships with the chart).
+Today that is `gatus`, in `cluster/gatus-database.yaml`.
+
+The password is the awkward part, because two namespaces need it: CNPG reads a
+**basic-auth** Secret in `cnpg-system` — the `username` key must equal the role
+name or the operator rejects it — and the consumer reads its own copy to build a
+connection URL. `cluster/gatus-db.sops.yaml` holds **both Secrets in one
+encrypted file** so they cannot drift, which is why the `cnpg-cluster`
+Kustomization has a `decryption` block and why `gatus` `dependsOn` it.
+
+Generate the password alphanumeric-only. It goes into a `postgres://` URL, and
+anything needing percent-encoding breaks it silently.
+
 ## Bootstrap
 
 `initdb` creates database `app` owned by `app`. The operator generates the

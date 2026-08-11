@@ -115,19 +115,42 @@ not probed. Those hostnames live in the gitignored `00-cloud-edge/edge.json` for
 the same reason the tunnel's do; the `cloud-edge:443` check covers the hop that is
 actually in this repo's control.
 
-## Storage and the strategy
+## Storage — Postgres, not sqlite
 
-sqlite on a 1Gi `local-path` PVC at `/data/data.db`. local-path is node-local,
-so the pod is pinned to whichever node the PVC landed on and the uptime history
-is gone if that node is rebuilt — acceptable, the config is in git and the
-history is not load-bearing. That pinning is also why `deployment.strategy` is
-**`Recreate`**: the chart defaults to `RollingUpdate`, which would start a second
-pod that cannot get the ReadWriteOnce volume and sit there until the rollout
-times out.
+`storage.type: postgres` against the CNPG cluster, at
+`postgres-rw.cnpg-system.svc.cluster.local:5432/gatus`. This replaced sqlite on a
+node-pinned `local-path` PVC once `apps/base/cnpg/` existed, and the PV and its
+Talos user volume went with it — there is no `gatus` entry in
+`apps/base/local-path/pv.yaml` any more and none in `pv_volumes` in
+`terraform/proxmox/talos.tf`.
 
-Postgres would remove both problems and is what the upstream example this was
-modelled on uses. There is no Postgres in this cluster, and standing one up to
-hold a status page's history is the wrong trade.
+Three things followed from dropping the PVC:
+
+- **`deployment.strategy` is back to the chart default.** It was pinned to
+  `Recreate` only because a rolling update would start a second pod that could
+  never get the ReadWriteOnce volume. With no volume, `RollingUpdate` is fine.
+- **The pod is no longer pinned to one node**, and the history survives that node
+  being rebuilt — which the sqlite file did not.
+- **`persistence.enabled: false`.** Left on, the chart claims a PVC nothing
+  writes to, and against a static StorageClass that is a pod Pending forever.
+
+`postgres-rw` is the operator's primary Service and repoints itself on failover,
+which is why it and not a pod IP.
+
+### The credential
+
+Role `gatus`, database `gatus`, both declared in `apps/base/cnpg/cluster/` —
+`spec.managed.roles` on the Cluster and a `Database` CR. The password lives in
+`gatus-db.sops.yaml` **there, not here**: CNPG needs a basic-auth copy in
+`cnpg-system` to set the role's password and gatus needs its own copy to build
+the URL, and one encrypted file holding both Secrets is what stops the two from
+drifting. That is why the Flux Kustomization for `gatus` `dependsOn:
+cnpg-cluster` — it waits on the Secret as much as on the database.
+
+The URL is assembled in the config with `${POSTGRES_PASSWORD}`, the same
+`os.ExpandEnv` pass the apiserver token and the Discord webhook use, so the
+password never appears in a rendered manifest. Generate it alphanumeric-only:
+anything needing percent-encoding breaks the URL silently.
 
 ## Retention — mostly not a knob
 
