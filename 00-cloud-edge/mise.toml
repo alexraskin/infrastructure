@@ -115,7 +115,7 @@ description = "SSH to the edge box"
 shell = "bash -c"
 run = """
 set -euo pipefail
-exec ssh $SSH_OPTS "root@$(terraform -chdir=terraform output -raw public_ip)"
+exec ssh $SSH_OPTS "root@$(scripts/edge-addr.sh "${1:-}")"
 """
 
 [tasks.status]
@@ -123,7 +123,7 @@ description = "Tailscale, HAProxy, certs and backend reachability, as the box se
 shell = "bash -c"
 run = """
 set -euo pipefail
-ip=$(terraform -chdir=terraform output -raw public_ip)
+ip=$(scripts/edge-addr.sh "${1:-}")
 ssh $SSH_OPTS "root@$ip" '
   echo "--- tailscale"
   tailscale status --peers=false || true

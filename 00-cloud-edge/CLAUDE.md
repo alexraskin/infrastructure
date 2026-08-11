@@ -87,8 +87,14 @@ under `edge-compute/terraform.tfstate`.
   own tailnet device, so the backend is a peer address; accepting the cluster's
   `10.0.200.0/24` would give the one machine with a public IP a path to the whole
   LAN, and would hairpin every stream through whichever k3s server owns the
-  route. Its pre-auth key is `secrets/tailscale-authkey-edge` — tagged, so the
-  ACL can grant it exactly the one `host:port` in `edge.json` and nothing else.
+  route. Its pre-auth key is `secrets/tailscale-authkey-edge` — tagged
+  `tag:cloud-edge`, so the ACL can grant it exactly the one `host:port` in
+  `edge.json` and nothing else. **The tag is baked into the key**, not into
+  `tailscale.nix`: the NixOS module feeds one flag list to both `tailscale up`
+  and `tailscale set`, and `set` has no `--advertise-tags`, which is why that
+  line sits commented out in the module. A key minted with the wrong tag brings
+  the box back with no grants at all — no Plex backend, no Loki, no tailnet SSH
+  — and only `install` (or a re-login) would show it, never a `deploy`.
 - **It is also the tailnet's exit node.** `--advertise-exit-node`, and like the
   cluster's subnet routes the flag has to be in **both** `extraUpFlags` and
   `extraSetFlags` or it is gone after the first `tailscale up`. Three pieces
@@ -105,9 +111,9 @@ under `edge-compute/terraform.tfstate`.
     because they are on the iptables backend, which leaves `FORWARD` at accept.
     Established/related is already accepted, so one rule for new inbound from
     `tailscale0` is the whole fix.
-  - **Two policy-file entries.** `autoApprovers.exitNode: ["tag:edge"]`, or the
-    route sits unapproved until someone clicks it in the admin console; and a
-    grant whose `dst` is `autogroup:internet`. The existing
+  - **Two policy-file entries.** `autoApprovers.exitNode: ["tag:cloud-edge"]`,
+    or the route sits unapproved until someone clicks it in the admin console;
+    and a grant whose `dst` is `autogroup:internet`. The existing
     `autogroup:admin → *` grant does **not** cover it — `*` never matches
     `autogroup:internet`, it has to be named. Apply `ts:apply` *before*
     deploying, since auto-approval is evaluated when the route is advertised.
@@ -131,11 +137,31 @@ under `edge-compute/terraform.tfstate`.
   other way in. sshd still owns the public IP, which is what `scripts/deploy.sh`
   and every `mise` task here connect to (`terraform output -raw public_ip`), so
   automation is untouched. The matching rule in `tailscale/policy.hujson` is
-  `autogroup:admin` → `tag:edge`, users `root`, **`accept` not `check`**: check
-  puts a browser re-auth in front of every connection, fine for a human and
+  `autogroup:admin` → `tag:cloud-edge`, users `root`, **`accept` not `check`**:
+  check puts a browser re-auth in front of every connection, fine for a human and
   fatal for anything unattended. It cannot ride on the existing rule, whose
   `dst` is `autogroup:self` — that means devices owned by the calling user, and
   a tagged node has no owner.
+- **The scripts reach the box over the tailnet, not `public_ip`.** 22 is not in
+  the OCI security list — the rule is commented out in `terraform/network.tf` —
+  so the public address answers on 443 and nothing else. `scripts/edge-addr.sh`
+  is the single place that resolves it, with `tailscale ip -4 <hostname>` rather
+  than the MagicDNS name: the build host runs with `--accept-dns` off, where the
+  bare name does not resolve. An explicit argument still wins.
+  - **`install.sh` is the exception** and keeps the public IP. A box that has
+    never been installed is not on the tailnet, which is what its "is 22 open in
+    `ssh_ingress_cidr`" error is about: uncomment that ingress rule for the
+    install window, then close it again.
+  - So this is **Tailscale SSH**, served by tailscaled rather than sshd, and the
+    policy's `autogroup:admin` → `tag:cloud-edge` rule is what admits it. `scp`
+    works unmodified — tailscaled implements the sftp subsystem, so no `-O`.
+  - **`nixos-rebuild` runs detached, under `systemd-run`.** A switch that
+    touches the tailscale unit restarts the very process serving the session:
+    the connection drops and takes an interactive `nixos-rebuild` with it,
+    part-way through activation. The transient unit outlives the drop, and
+    `deploy.sh` polls `ActiveState` across it — a `?` among the progress dots is
+    a reconnect, not an error — then prints the journal and exits on the unit's
+    own result.
 - **`logging.nix` ships the journal to the cluster's Loki**, over the tailnet,
   to the operator-served LoadBalancer in `apps/base/loki/service.yaml`, at the
   bare MagicDNS name `http://loki:3100/loki/api/v1/push`. It is
