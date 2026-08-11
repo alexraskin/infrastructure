@@ -9,6 +9,7 @@
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+repo=$(cd "$here/.." && pwd)
 [ -s "$here/edge.json" ] || {
   echo "missing 00-cloud-edge/edge.json — copy edge.json.example" >&2
   exit 1
