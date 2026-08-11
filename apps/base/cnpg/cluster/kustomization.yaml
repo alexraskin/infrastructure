@@ -6,3 +6,5 @@ resources:
   - gatus-database.yaml
   - grafana-db.sops.yaml
   - grafana-database.yaml
+  - backup-oci.sops.yaml
+  - scheduledbackup.yaml

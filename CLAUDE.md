@@ -42,6 +42,9 @@ mise run ts:plan        # terraform, from tailscale/ (the tailnet policy file)
 mise run ts:apply       # same, applied — CI does this on push to main
 mise run cf:plan        # terraform, from terraform/cloudflare/ (tunnel + DNS)
 mise run cf:apply       # same, applied — CI does this on push to main
+mise run oci:plan       # terraform, from terraform/oracle/ (the CNPG backup bucket)
+mise run oci:apply      # same, applied
+mise run oci:creds      # print the values backup-oci.sops.yaml and cluster.yaml need
 mise run bootstrap      # tf:apply -> talosconfig -> kubeconfig -> cilium -> status
 mise run tf:destroy     # DESTRUCTIVE: the VMs only, targeted (see below)
 mise run reset          # DESTRUCTIVE: talosctl reset every node (typed confirmation)
@@ -225,13 +228,13 @@ tailscaled in, and the subnet-router model went with it.
 
 ### Terraform state lives in R2
 
-Both roots — `terraform/proxmox/` and `terraform/cloudflare/`, one per set of
-credentials — use the `s3` backend against Cloudflare R2 (`bucket = "terraform"`,
-one `key` each). The backend block is deliberately **partial**: `access_key`,
+Every root — `terraform/proxmox/`, `terraform/cloudflare/`, `terraform/oracle/`,
+`tailscale/` and `00-cloud-edge/terraform/`, one per set of credentials — uses
+the `s3` backend against Cloudflare R2 (`bucket = "terraform"`, one `key` each). The backend block is deliberately **partial**: `access_key`,
 `secret_key` and `endpoints.s3` are absent from it, because a backend block takes
 no variables and this repo is public — the endpoint alone carries the account ID.
-They come from `secrets/r2.tfbackend`, which `mise run tf:init` / `cf:init` pass
-with `-backend-config`. `terraform init` run by hand, without that flag, will
+They come from `secrets/r2.tfbackend`, which `mise run tf:init` / `cf:init` /
+`oci:init` pass with `-backend-config`. `terraform init` run by hand, without that flag, will
 prompt for the missing values and then write them into `.terraform/` — use the
 tasks.
 
@@ -259,6 +262,7 @@ This file covers the cluster as a whole: the pieces below own their own
 |---|---|
 | `terraform/proxmox/` | the nine VMs, the Talos resources, the nightly vzdump job, and the Proxmox provider's sharp edges |
 | `terraform/cloudflare/` | the cloudflared tunnel, its ingress rules and DNS |
+| `terraform/oracle/` | the Object Storage bucket CloudNativePG backs up into, and its scoped OCI user |
 | `tailscale/` | the tailnet policy file and the Terraform root that applies it |
 | `apps/` | Flux GitOps, SOPS, image automation |
 | `apps/base/monitoring/` | Prometheus + Grafana |

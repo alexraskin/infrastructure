@@ -1,0 +1,42 @@
+# Template only. The S3-compatible credential CloudNativePG uses to write base
+# backups and WAL into Oracle Object Storage.
+#
+# Every value comes from `mise run oci:creds`, which reads them out of the
+# terraform/oracle/ state. The Customer Secret Key is returned by the OCI API
+# only at creation, so that state is the only copy — losing it means replacing
+# the key, not reading it back.
+#
+# `region` is here only because barmanObjectStore.s3Credentials.region is a
+# SecretKeySelector in the CRD and takes nothing else. It is not a secret — it is
+# already visible in endpointURL in cluster.yaml — but it has to be set: boto3
+# needs a region to sign SigV4 and the one it would otherwise default to is not
+# Oracle's.
+#
+#   cp backup-oci.example.yaml backup-oci.sops.yaml
+#   $EDITOR backup-oci.sops.yaml
+#   cd apps && mise exec -- sops --encrypt --in-place base/cnpg/cluster/backup-oci.sops.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+    name: cnpg-backup-oci
+    namespace: cnpg-system
+type: Opaque
+stringData:
+    access-key-id: ENC[AES256_GCM,data:WDdG+iabLlOR14LubiJAAajRKglgfeHoRyV6DjgMjKxoI9tiNlx8Mw==,iv:e2aCV42aTuMg86Dj0cJ35Ef5PuZf+OiLc2ltul4dKUI=,tag:Erj3dTzU9dZEac4q0q7qqQ==,type:str]
+    secret-access-key: ENC[AES256_GCM,data:l1LkB32juVk487yOBT+PUGVIxIE9suXoYg3KjgT5jO7u8YvDOD4lXRVFNwo=,iv:ZDiblQ6pu0xpCi4nLy3kYl72Io+3QBpXZnFkXUXI1o0=,tag:dbBFo/Ma9IuWanzGdyPYHA==,type:str]
+    region: ENC[AES256_GCM,data:NfmkFjk3Hvl+ZiPy,iv:tKBebAEvMRdBGtsMDjo2q/+OukvjST/Pm/ZQeODqgXA=,tag:IWO68Ttrmmqz2zJI+K7jOA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhVjY2alRPUWdHV2FLM3VC
+            cGN4MTlxVmFDR2hYSGVITmJONGxXMW8wRGpzCjdiOGlrUTBGendQTkx0Q2pMS2ZU
+            SkpJa3hIblY5Z2pZRHRmQUQrNzBYL3cKLS0tIEg4ckdXSUtSWk4yUnJONjA2REZE
+            aGR1WjNJQmprZllZRjBjUUdTbEkyMXcKjeNoolCDuhi+H2oF8rYcfKjr8jfa9/V2
+            Ibdhrsk/r40dPxhy341qzNd1FyqRc8TuJhEQNDdJgN39kouq3sYJ7w==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-11T21:02:41Z"
+    mac: ENC[AES256_GCM,data:piyi0zFC5YASXgzpiEvuvglebIPWG0OK9Js41c7saVcfI91EIoxKkrBc1wxTuR/A3JFL0d8/W9182D6GW/EKyCPOoYi69Vyf4L4nnqWbm7SfVcbn94mBwGRSWDgBawRTOHhr4ODgpMO9ZvrX9VPhqJR0m5NOAaQk/Rtci5LyBcg=,iv:tOizmT6p6TJl4mOSltCmk9j26R1z6XhnlwHjllCFXSM=,tag:1wv8D/K4pIzYSSS106LRKQ==,type:str]
+    version: 3.13.3

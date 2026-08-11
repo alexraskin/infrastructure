@@ -44,10 +44,46 @@ spec:
         passwordSecret:
           name: grafana-db
 
-  # Storage is node-local and there is no backup configured — losing a db node's
-  # disk loses that instance's copy. Two replicas remain, so the *cluster*
-  # survives; a full restore would not. `backup.barmanObjectStore` against R2 is
-  # the fix when this holds anything worth keeping.
+  # Storage is node-local, so replicas cover a lost node but nothing covers a bad
+  # DROP or losing all three. This does: continuous WAL archiving plus the weekly
+  # base backup in scheduledbackup.yaml, into Oracle Object Storage.
+  #
+  # Oracle rather than R2 — which is what this comment used to promise — because
+  # the edge already lives on the Oracle free tier and the intent is to keep more
+  # of this setup there. terraform/oracle/ owns the bucket and the least-privilege
+  # user behind cnpg-backup-oci.
+  #
+  # endpointURL carries the tenancy's Object Storage namespace and is in git in
+  # plain text on purpose: the CRD field is a plain string with no secret ref, and
+  # the namespace is an identifier, not a credential. The Customer Secret Key it
+  # takes to use it is in backup-oci.sops.yaml.
+  #
+  # **Once this is set, a failing upload stops WAL recycling.** Postgres keeps
+  # every segment until archive_command succeeds, so a wrong credential or bucket
+  # policy fills pg_wal on the 90Gi db-local volumes and then stops the database.
+  # Check the ContinuousArchiving condition after any change here.
+  backup:
+    retentionPolicy: 30d
+    barmanObjectStore:
+      destinationPath: s3://cnpg-backups/
+      endpointURL: https://axzx7yxanbks.compat.objectstorage.us-phoenix-1.oraclecloud.com
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-backup-oci
+          key: access-key-id
+        secretAccessKey:
+          name: cnpg-backup-oci
+          key: secret-access-key
+        # Not a secret; a SecretKeySelector is the only shape the CRD accepts.
+        region:
+          name: cnpg-backup-oci
+          key: region
+      data:
+        compression: gzip
+        jobs: 2
+      wal:
+        compression: gzip
+        maxParallel: 2
 
   postgresql:
     parameters:
