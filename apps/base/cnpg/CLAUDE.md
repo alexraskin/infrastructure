@@ -45,18 +45,54 @@ instance lands on which node; reserving a specific volume for a specific claim
 would deadlock as soon as the scheduler disagreed. The three are identical, so
 first-come binding is right.
 
-## No backups yet, and what that means
+## Backups
 
-`spec.backup` is unset. Storage is node-local, so:
+Node-local storage means replicas cover a lost node — the other two carry on and
+CNPG rebuilds the third from the primary — but nothing covers a bad `DROP` or
+losing all three at once. `spec.backup.barmanObjectStore` does, into **Oracle
+Object Storage**:
 
-- losing one db node loses that instance's copy; the other two carry on and CNPG
-  rebuilds the third from the primary. The *cluster* survives.
-- losing the data on all three, or a bad `DROP`, is unrecoverable. There is no
-  point-in-time restore.
+- **continuous WAL archiving**, which is what makes point-in-time recovery
+  possible and starts the moment `barmanObjectStore` is set;
+- **a weekly base backup**, `scheduledbackup.yaml`, Sunday 03:00;
+- **`retentionPolicy: 30d`**, which expires both.
 
-The fix when this holds anything worth keeping is `spec.backup.barmanObjectStore`
-against R2 — the account already holds Loki's chunks and the Terraform state, so
-it is a bucket and a token, not a new dependency.
+Oracle rather than R2, which is what this file used to prescribe: the edge
+already lives on the Oracle free tier and the intent is to consolidate there.
+The "it is a bucket and a token, not a new dependency" argument does not survive
+that change — this genuinely is a second provider — but the cluster already
+egresses to the internet, so it is not a new network path.
+
+`terraform/oracle/` owns the bucket and a dedicated `cnpg-backup` OCI user whose
+policy is scoped to that one bucket. The Customer Secret Key reaches the cluster
+through `backup-oci.sops.yaml`; `endpointURL` is in `cluster.yaml` in plain text
+because the CRD field takes no secret ref and the tenancy namespace it carries is
+an identifier, not a credential.
+
+### The failure mode that takes the database down
+
+**Postgres will not recycle a WAL segment until `archive_command` succeeds.** So
+a wrong credential, a wrong endpoint or a bucket policy that does not permit the
+upload does not merely mean "no backups" — `pg_wal` grows on the 90Gi `db-local`
+volumes until they are full, and a full `pg_wal` stops Postgres.
+
+After any change to the backup config, check the condition rather than assuming:
+
+```bash
+kubectl -n cnpg-system get cluster postgres \
+  -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")]}' | jq
+```
+
+If it is failing and the cause is not obvious, deleting `spec.backup` restores
+the previous behaviour immediately.
+
+### Restoring
+
+A restore is a *new* Cluster bootstrapped from the object store, never an
+in-place operation — `bootstrap.recovery` with an `externalClusters` entry
+carrying the same `barmanObjectStore` and `serverName: postgres`. Worth doing
+once against a throwaway cluster name while nothing is on fire; an untested
+backup is a hypothesis.
 
 ## Consumers get their own role and database
 

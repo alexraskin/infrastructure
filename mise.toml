@@ -98,6 +98,64 @@ export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
 terraform apply
 """
 
+# ---------------------------------------------------------------- oracle ----
+#
+# terraform/oracle/ — the Object Storage bucket CloudNativePG backs up into, and
+# the least-privilege OCI user whose Customer Secret Key it authenticates with.
+# `oci:` rather than `tf:` because that prefix is already the Proxmox root here
+# and the edge root in 00-cloud-edge/mise.toml.
+
+[tasks."oci:init"]
+description = "terraform init for the Oracle backups root"
+dir = "terraform/oracle"
+shell = "bash -c"
+run = """
+set -euo pipefail
+for f in oci.env oci_api_key.pem r2.tfbackend; do
+  [ -s "../../secrets/$f" ] || { echo "missing secrets/$f — see terraform/oracle/CLAUDE.md" >&2; exit 1; }
+done
+terraform init -upgrade -backend-config=../../secrets/r2.tfbackend
+"""
+
+[tasks."oci:plan"]
+description = "Plan the CNPG backup bucket and its IAM user"
+dir = "terraform/oracle"
+depends = ["oci:init"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+source ../../scripts/oci-env.sh
+terraform plan
+"""
+
+[tasks."oci:apply"]
+description = "Create the CNPG backup bucket and its IAM user"
+dir = "terraform/oracle"
+depends = ["oci:init"]
+shell = "bash -c"
+run = """
+set -euo pipefail
+source ../../scripts/oci-env.sh
+terraform apply
+"""
+
+[tasks."oci:creds"]
+description = "Print the values for apps/base/cnpg/cluster/backup-oci.sops.yaml"
+dir = "terraform/oracle"
+shell = "bash -c"
+# The secret is only ever returned by the OCI API at creation, so state is the
+# only copy. Reads state directly — no plan, no provider credentials needed.
+run = """
+set -euo pipefail
+echo "cluster.yaml   endpointURL:     $(terraform output -raw endpoint_url)"
+echo "cluster.yaml   destinationPath: $(terraform output -raw destination_path)"
+echo
+echo "backup-oci.sops.yaml stringData:"
+echo "  access-key-id:     $(terraform output -raw access_key_id)"
+echo "  secret-access-key: $(terraform output -raw secret_access_key)"
+echo "  region:            $(terraform output -raw region)"
+"""
+
 # ----------------------------------------------------------------- talos ----
 
 [tasks.talosconfig]

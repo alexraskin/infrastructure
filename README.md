@@ -10,6 +10,7 @@ Flux deploys the workloads in `apps/`.
 terraform/proxmox/    the nine VMs, the machine configs, the bootstrap
   cluster.auto.tfvars.json  single source of truth: IPs, VM IDs, sizes, VIP, versions
 terraform/cloudflare/ the tunnel, its ingress rules, and the DNS records
+terraform/oracle/     the Object Storage bucket CloudNativePG backs up into
 tailscale/            the tailnet policy file, applied by its own Terraform root
 talos/                Cilium's values — installed outside Flux, on purpose
 apps/                 GitOps — what Flux deploys (see apps/README.md)
@@ -143,6 +144,7 @@ describe:
 | --- | --- |
 | `terraform/proxmox/` | the nine VMs, the Talos resources, and the Proxmox provider's sharp edges |
 | `terraform/cloudflare/` | the cloudflared tunnel, its ingress rules and DNS |
+| `terraform/oracle/` | the CloudNativePG backup bucket and its scoped OCI user |
 | `tailscale/` | the tailnet policy file and the Terraform root that applies it |
 | `apps/` | Flux GitOps, SOPS, image automation |
 | `apps/base/monitoring/` | Prometheus + Grafana |
