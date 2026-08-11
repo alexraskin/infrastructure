@@ -162,10 +162,10 @@ spec:
           enabled: true
           searchNamespace: ALL
 
+      # No PVC: the dashboard/user database lives in the CNPG cluster now, and
+      # nothing else here is worth keeping across a restart.
       persistence:
-        enabled: true
-        storageClassName: local-path
-        size: 5Gi
+        enabled: false
 
       resources:
         requests:
@@ -175,6 +175,13 @@ spec:
           memory: 512Mi
 
       envValueFrom:
+        # Overrides database.password in grafana.ini below — Grafana maps
+        # GF_<SECTION>_<KEY> onto the ini, so the password never lands in a
+        # rendered manifest.
+        GF_DATABASE_PASSWORD:
+          secretKeyRef:
+            name: grafana-db
+            key: password
         GF_SERVER_DOMAIN:
           secretKeyRef:
             name: grafana-tailnet
@@ -185,6 +192,16 @@ spec:
             key: root-url
 
       grafana.ini:
+        # Postgres in the CNPG cluster, not the sqlite file this used to keep on
+        # a node-pinned local-path PVC. postgres-rw is the operator's primary
+        # Service and repoints itself on failover.
+        database:
+          type: postgres
+          host: postgres-rw.cnpg-system.svc.cluster.local:5432
+          name: grafana
+          user: grafana
+          ssl_mode: require
+
         analytics:
           reporting_enabled: false
           check_for_updates: false

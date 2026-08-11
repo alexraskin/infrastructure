@@ -1,0 +1,51 @@
+# The grafana database credential, in both namespaces that need it — same shape
+# and same reasoning as gatus-db.sops.yaml.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: grafana-db
+    namespace: cnpg-system
+# CNPG requires basic-auth for a managed role, and username must match the role.
+type: kubernetes.io/basic-auth
+stringData:
+    username: ENC[AES256_GCM,data:oQ+g2p6yDA==,iv:sm+koi00aH4JvpIYTtqqRhXncBSE1l0CmPcXYDU0pyE=,tag:SSa42h6PRC03RvxgnIdV/w==,type:str]
+    password: ENC[AES256_GCM,data:JMLRaXeuhxiKS3F/DnuBfGhL5GiMtlkXJRCmedY9GlBf9CnLzhBoBA==,iv:7BV0Rlm7aNfWpel6ZiVsLVcoMgNLicLkzISjPXcWFgk=,tag:G7aRp4oz7ET5e7AX/EeC5Q==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA3U2lKdlBxcStLUVhONmFq
+            UDVsU3o2MEo1ZUpGZ3JsdW9oUkVTd09veUYwCnUrOUc4T3FiSzViZ1pubzREcVh5
+            aG82UlRBQWkrUmtiMkxDaFBlQWNOeUkKLS0tIEttdDl1MVpWamY5bldCSW9aVllz
+            MnEraWt6bnIvdGx6b2tLTjN6TEdtZzgKp8nr7t+jo7anRVw7TzZV0se0IbMTlfoL
+            wl7fRX1yaFmr0v8IHE7AqlBxtfQDWti05x7vHNQd+sZttnp181vobQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-11T20:22:31Z"
+    mac: ENC[AES256_GCM,data:i77mmdoARL6/SpWxeTaN+jB5gfQRQPbEJbDbGTOpEUd/edMZRHmHiFCQanO88GiCjjWMkoEFc9/DfEYNTQWCgq3bIoLcSe0pdb96Y9rXDELaUmHrh+H8yvivXgj4rV3UtdNYjD7gllRcMs87RUkH07M8/OP4sQ5IFh+Lzv0JEZE=,iv:giPpy+s6mZL37cdWxq8MlOzNkCWZZQ7poXBLi06pjpM=,tag:0fKtFhWhC21rq57mmDK6gw==,type:str]
+    version: 3.13.3
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: grafana-db
+    namespace: monitoring
+type: Opaque
+stringData:
+    password: ENC[AES256_GCM,data:Wpr0NbDNjX9RIHXzJtZOt9cxH8K/RvzNlYitoc+H+2mAfnP+4DN/hA==,iv:Q2xBf609UxZhUAZOu6yfQlJEUo5X4/Bvewm2Kyga1L4=,tag:XNSWIV0tZfB1C0wIT1VqaQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA3U2lKdlBxcStLUVhONmFq
+            UDVsU3o2MEo1ZUpGZ3JsdW9oUkVTd09veUYwCnUrOUc4T3FiSzViZ1pubzREcVh5
+            aG82UlRBQWkrUmtiMkxDaFBlQWNOeUkKLS0tIEttdDl1MVpWamY5bldCSW9aVllz
+            MnEraWt6bnIvdGx6b2tLTjN6TEdtZzgKp8nr7t+jo7anRVw7TzZV0se0IbMTlfoL
+            wl7fRX1yaFmr0v8IHE7AqlBxtfQDWti05x7vHNQd+sZttnp181vobQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-11T20:22:31Z"
+    mac: ENC[AES256_GCM,data:i77mmdoARL6/SpWxeTaN+jB5gfQRQPbEJbDbGTOpEUd/edMZRHmHiFCQanO88GiCjjWMkoEFc9/DfEYNTQWCgq3bIoLcSe0pdb96Y9rXDELaUmHrh+H8yvivXgj4rV3UtdNYjD7gllRcMs87RUkH07M8/OP4sQ5IFh+Lzv0JEZE=,iv:giPpy+s6mZL37cdWxq8MlOzNkCWZZQ7poXBLi06pjpM=,tag:0fKtFhWhC21rq57mmDK6gw==,type:str]
+    version: 3.13.3

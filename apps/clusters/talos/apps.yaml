@@ -245,6 +245,7 @@ spec:
   dependsOn:
     - name: local-path
     - name: tailscale-operator
+    - name: cnpg-cluster
   wait: true
   timeout: 15m
 ---

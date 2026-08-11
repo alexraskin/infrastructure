@@ -299,6 +299,26 @@ This file covers the cluster as a whole: the pieces below own their own
   Helm deletes the PVCs it created on the way out, stranding all three PVs at
   once. Recovery is to clear the reference:
   `kubectl patch pv <name> --type=merge -p '{"spec":{"claimRef":null}}'`.
+- **A `tf:apply` that changes the user-volume list breaks running pods.**
+  Talos reconciles `/var/mnt/*` when the machine config changes and resets the
+  mountpoint directories to `root:root 0755`. kubelet applies `fsGroup` to a
+  `local` volume **only when the pod starts**, so nothing puts the ownership
+  back and a non-root workload silently loses the ability to *create* files in
+  its volume root — it can still write files that already exist, which is why
+  this does not look like a permissions failure. Grafana surfaced it within
+  seconds (sqlite needs a `-journal` file per write transaction, so login
+  returns a 500 while the page still loads); Loki did not notice at all,
+  because it only writes inside `wal/` and `chunks/`, whose ownership the
+  reconcile leaves alone. The fix is to roll every workload holding one of
+  these PVs after the apply — the chart's chown initContainer and kubelet's
+  fsGroup both run again on start:
+
+  ```bash
+  kubectl -n monitoring rollout restart deploy/kube-prometheus-stack-grafana
+  kubectl -n monitoring rollout restart sts/prometheus-kube-prometheus-stack-prometheus
+  kubectl -n logging rollout restart sts/loki
+  ```
+
 - **`mise run cilium` is not optional and not deferrable.** Ten minutes after
   bootstrap, nodes start rebooting to retry.
 - **The backend key moved** from `promox-k3-nix/` to `talos-proxmox/` at the

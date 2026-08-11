@@ -21,17 +21,45 @@ load-bearing:
   no error, the target simply never appears.
 - **Alertmanager is disabled.** Nothing routes alerts yet; the rules still
   evaluate and fire in the Prometheus and Grafana UIs.
-- **Storage is `local-path`**, which on Talos is a static, no-provisioner
-  StorageClass with hand-written PVs in `apps/base/local-path/`. It is
-  node-local: Prometheus is pinned to the node its PV names and the history dies
-  with that node. Growing the claim means editing the PV too — nothing
-  provisions on demand. Dashboards, rules and datasources come from git, so a rebuild
-  costs history and nothing else.
+- **Prometheus' storage is `local-path`**, which on Talos is a static,
+  no-provisioner StorageClass with hand-written PVs in `apps/base/local-path/`.
+  It is node-local: Prometheus is pinned to the node its PV names and the
+  history dies with that node. Growing the claim means editing the PV too —
+  nothing provisions on demand. Dashboards, rules and datasources come from git,
+  so a rebuild costs history and nothing else.
+- **Grafana has no PVC at all.** Its database is Postgres in the CNPG cluster
+  (`apps/base/cnpg/`), so it is not pinned to a node and survives one being
+  rebuilt. See below.
+
+## Grafana's database
+
+`grafana.ini`'s `database` section points at
+`postgres-rw.cnpg-system.svc.cluster.local:5432/grafana` — the operator's
+primary Service, which repoints itself on failover, never a pod IP. Role
+`grafana` and database `grafana` are declared in `apps/base/cnpg/cluster/`
+(`spec.managed.roles` and a `Database` CR), and the password lives in
+`grafana-db.sops.yaml` **there, not here**: CNPG needs a basic-auth copy in
+`cnpg-system` to set the role's password and Grafana needs one in `monitoring`.
+One encrypted file holds both Secrets so they cannot drift, which is why this
+Kustomization `dependsOn: cnpg-cluster`.
+
+The password reaches the pod as `GF_DATABASE_PASSWORD` rather than appearing in
+`grafana.ini`: Grafana maps `GF_<SECTION>_<KEY>` onto the ini file, so
+`database.password` is overridden without the value ever being in a rendered
+manifest.
+
+This replaced sqlite on a node-pinned `local-path` PVC, and the PV and its Talos
+user volume went with it — there is no `grafana` entry in
+`apps/base/local-path/pv.yaml` or in `pv_volumes` in `terraform/proxmox/talos.tf`.
+That also retires a real failure mode: the volume root's ownership was reset by
+every Talos volume reconcile, and sqlite needs to create a `-journal` file in it
+on every write, so Grafana would return 500 on login while still serving pages.
+See the gotcha in the root `CLAUDE.md`.
 
 The Grafana admin login is `grafana-admin.sops.yaml`, not the chart's generated
 password — the generated one is rewritten on every reconcile. Grafana reads it
 only when it initialises its own DB, so changing the secret afterwards does
-nothing; change it in the UI, or delete the grafana PVC.
+nothing; change it in the UI, or drop and recreate the `grafana` database.
 
 Dashboards are `.json` files under `dashboards/`, turned into ConfigMaps by
 `configMapGenerator` with `disableNameSuffixHash: true` and the label
