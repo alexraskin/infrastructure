@@ -1,0 +1,11 @@
+# The CSI node plugin is a privileged DaemonSet — it performs the mount in the
+# host's mount namespace — so this namespace has to be exempt from the
+# PodSecurity `baseline` profile Talos enforces everywhere by default.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: csi-driver-nfs
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline

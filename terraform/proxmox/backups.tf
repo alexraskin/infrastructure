@@ -6,7 +6,10 @@ resource "proxmox_backup_job" "cluster" {
 
   schedule = var.backup_schedule
 
-  vmid = sort([for node in local.nodes : tostring(node.vmid)])
+  vmid = sort(concat(
+    [for node in local.nodes : tostring(node.vmid)],
+    [tostring(var.nfs.vmid)],
+  ))
 
   mode     = "snapshot"
   compress = "zstd"

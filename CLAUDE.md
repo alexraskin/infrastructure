@@ -160,6 +160,17 @@ That path survives a reinstall or `talosctl upgrade --wipe`; `/var` itself, on
 the EPHEMERAL partition, does not. The `db-local` StorageClass in
 `apps/base/local-path/` is what claims it.
 
+### Three StorageClasses, and only one provisions
+
+| class | backing | shape |
+|---|---|---|
+| `local-path` | a Talos `directory` user volume per claim, on the EPHEMERAL partition | static, node-pinned, `claimRef`-reserved |
+| `db-local` | the db nodes' second disk, a real partition at `/var/mnt/db` | static, node-pinned, claimed by CNPG |
+| `nfs` | the LXC in `terraform/proxmox/nfs.tf` | dynamic, RWX, not node-pinned |
+
+`nfs` is **not** the NAS — the cluster subnet has no route to it. See
+`apps/base/csi-driver-nfs/CLAUDE.md`.
+
 ### Storage is static
 
 Talos ships no StorageClass and no provisioner; k3s' `local-path` was a freebie
@@ -254,6 +265,8 @@ This file covers the cluster as a whole: the pieces below own their own
 | `apps/base/tailscale-operator/` | the `tailscale` IngressClass and proxy tags |
 | `apps/base/loki/` | Loki + Alloy, R2 chunk storage, the edge's push path |
 | `apps/base/gatus/` | the tailnet-only status page and what it probes |
+| `apps/base/cnpg/` | CloudNativePG: the operator and the three-instance cluster on the db nodes |
+| `apps/base/csi-driver-nfs/` | RWX storage, and why it is not the NAS |
 | `00-cloud-edge/` | the public Oracle edge: HAProxy, ACME, its own flake |
 | `docs/talos-migration.md` | how this stopped being k3s on NixOS |
 

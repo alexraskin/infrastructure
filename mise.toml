@@ -190,6 +190,29 @@ done
 echo "nodes rebooting into maintenance mode — re-run 'mise run tf:apply' to rebuild"
 """
 
+[tasks."nfs:status"]
+description = "NFS server: export list, free space, and whether the StorageClass agrees"
+shell = "bash -c"
+# Literal string (''' not """): the sed expression below is full of
+# backslashes, which a TOML basic string would try to interpret as escapes.
+run = '''
+set -euo pipefail
+cfg=terraform/proxmox/cluster.auto.tfvars.json
+ip=$(jq -r '.nfs.ip' $cfg)
+share=$(jq -r '.nfs.export_path' $cfg)
+vmid=$(jq -r '.nfs.vmid' $cfg)
+host=$(sed -n 's|^pve_endpoint *= *"https*://\([^:/]*\).*|\1|p' terraform/proxmox/terraform.tfvars | head -1)
+
+echo "== export ($ip:$share, vmid $vmid)"
+ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "root@$host" \
+  "pct exec $vmid -- sh -c 'exportfs -v; df -h $share | tail -1'"
+
+echo
+echo "== StorageClass"
+kubectl get sc nfs -o jsonpath='{.parameters.server}:{.parameters.share}{"\n"}'
+echo "   expected $ip:$share"
+'''
+
 # --------------------------------------------------------------- tailnet ----
 
 [tasks."ts:init"]

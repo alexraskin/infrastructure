@@ -1,0 +1,45 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: csi-driver-nfs
+  namespace: csi-driver-nfs
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: csi-driver-nfs
+      # Pinned by hand; image automation only tracks our own GHCR images.
+      version: "4.13.4"
+      sourceRef:
+        kind: HelmRepository
+        name: csi-driver-nfs
+        namespace: csi-driver-nfs
+      interval: 24h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # The controller does the provisioning: it mounts the export, creates a
+    # subdirectory per PV and hands that to the pod. Nothing is pre-created.
+    controller:
+      replicas: 1
+      runOnControlPlane: false
+      resources:
+        csiProvisioner:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            memory: 128Mi
+
+    # Runs on every node, including the tainted ones — a database pod on a db
+    # node still needs a driver there to mount anything.
+    node:
+      tolerations:
+        - operator: Exists
+
+    externalSnapshotter:
+      enabled: false

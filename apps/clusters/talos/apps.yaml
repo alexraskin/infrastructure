@@ -171,6 +171,38 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: csi-driver-nfs
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/csi-driver-nfs
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  # The StorageClass here points at the NFS LXC in terraform/proxmox/nfs.tf.
+  # Terraform builds that; this only consumes it.
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cnpg
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/cnpg
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 10m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: monitoring
   namespace: flux-system
 spec:

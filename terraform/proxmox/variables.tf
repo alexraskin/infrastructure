@@ -18,6 +18,20 @@ variable "cluster" {
   })
 }
 
+variable "nfs" {
+  description = "The NFS server LXC: identity, sizing and what it exports. Sizes are GB."
+  type = object({
+    name        = string
+    vmid        = number
+    ip          = string
+    cores       = number
+    memory      = number
+    root_disk   = number
+    data_disk   = number
+    export_path = string
+  })
+}
+
 variable "nodes" {
   description = "Node name -> role, address, VM ID and size. data_disk is the db nodes' second disk."
   type = map(object({
