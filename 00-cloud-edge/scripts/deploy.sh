@@ -7,7 +7,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
   exit 1
 }
 host=$(jq -r '.instance.hostname' "$here/edge.json")
-ip=${1:-$(terraform -chdir="$here/terraform" output -raw public_ip)}
+ip=$("$here/scripts/edge-addr.sh" "${1:-}")
 
 ssh_opts=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null)
 
@@ -22,10 +22,47 @@ tar -C "$here" -cf - flake.nix flake.lock edge.json nixos \
     '
 
 echo "==> $ip: nixos-rebuild switch (building on the box)"
+# Detached, because this session is served by tailscaled: a switch that touches
+# the tailscale unit kills its own connection mid-activation. The unit outlives
+# the drop; the loop below reconnects and waits it out.
 ssh "${ssh_opts[@]}" "root@$ip" "
   set -eu
-  nixos-rebuild switch --flake 'path:/etc/nixos-edge#$host'
+  systemctl reset-failed edge-rebuild.service 2>/dev/null || true
+  systemd-run --no-block --unit=edge-rebuild \
+    --property=Type=oneshot --property=RemainAfterExit=yes \
+    nixos-rebuild switch --flake 'path:/etc/nixos-edge#$host'
 "
+
+deadline=$((SECONDS + 1800))
+printf '    '
+while :; do
+  state=$(ssh "${ssh_opts[@]}" -o ConnectTimeout=5 "root@$ip" \
+    'systemctl show -p ActiveState --value edge-rebuild.service' 2>/dev/null) || state=""
+  case "$state" in
+    active | failed) break ;;
+    "") printf '?' ;;
+    *) printf '.' ;;
+  esac
+  if [ $SECONDS -ge $deadline ]; then
+    echo
+    echo "timed out waiting for edge-rebuild on $ip" >&2
+    echo "check: journalctl -u edge-rebuild.service" >&2
+    exit 1
+  fi
+  sleep 5
+done
+echo
+
+ssh "${ssh_opts[@]}" "root@$ip" '
+  journalctl -u edge-rebuild.service --no-pager -n 40
+  state=$(systemctl show -p ActiveState --value edge-rebuild.service)
+  systemctl stop edge-rebuild.service 2>/dev/null || true
+  systemctl reset-failed edge-rebuild.service 2>/dev/null || true
+  [ "$state" = active ]
+' || {
+  echo "nixos-rebuild failed on $ip" >&2
+  exit 1
+}
 
 echo "==> $ip: acme"
 certs=$(jq -r '

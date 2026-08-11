@@ -9,8 +9,12 @@
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-repo=$(cd "$here/.." && pwd)
-ip=${1:-$(terraform -chdir="$here/terraform" output -raw public_ip)}
+[ -s "$here/edge.json" ] || {
+  echo "missing 00-cloud-edge/edge.json — copy edge.json.example" >&2
+  exit 1
+}
+host=$(jq -r '.instance.hostname' "$here/edge.json")
+ip=$("$here/scripts/edge-addr.sh" "${1:-}")
 
 ssh_opts=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null)
 
