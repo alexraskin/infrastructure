@@ -70,7 +70,7 @@ per-resource and inconsistent — `local`, `bunker:vmbr0`,
 `bunker,no-subscription`, `cloudflare-dns` — the error message tells you the
 expected shape when you get it wrong.
 
-Two things the API token **cannot** manage, and no config change fixes:
+Three things the API token **cannot** manage, and no config change fixes:
 
 - **The ACME account.** `proxmox_acme_account` fails with
   `Permission check failed (user != root@pam)` — PVE reserves the account
@@ -78,6 +78,15 @@ Two things the API token **cannot** manage, and no config change fixes:
   privsep off, is not it. The account (`default`) stays hand-made; the plugin
   and the certificate that reference it are managed. Recreating a host from
   scratch means one `pvenode acme account register default <email>` first.
+- **Feature flags on a privileged container.** Creating the NFS LXC is fine;
+  passing `features { nesting mount }` with it is not —
+  `Permission check failed (changing feature flags for privileged container is
+  only allowed for root@pam)`. PVE compares the username exactly, and a token is
+  `root@pam!terraform`, not `root@pam`; nesting on a *privileged* container is
+  considered dangerous enough to reserve for the real root. So `nfs.tf` omits the
+  block and `scripts/nfs-provision.sh` runs `pct set --features` over SSH, where
+  root is genuinely root. `features` is in `ignore_changes` so Terraform does not
+  try to take it back.
 - **Individual apt repository lines.** `proxmox_apt_repository` has everything
   but `enabled` marked computed — it can toggle a line that exists, not declare
   one. Only `proxmox_apt_standard_repository` actually creates, so
