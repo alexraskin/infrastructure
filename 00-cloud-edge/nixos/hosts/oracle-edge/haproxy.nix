@@ -4,8 +4,6 @@
   ...
 }:
 let
-  # HAProxy selects among several certs by SNI, so one bind line lists them all.
-  # Keyed on cert names, not sites: several sites can share one wildcard.
   certs = lib.concatMapStringsSep " " (name: "crt /var/lib/acme/${name}/full.pem") edge.certNames;
 
   routes = lib.concatMapStringsSep "\n" (
