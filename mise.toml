@@ -17,6 +17,31 @@ CILIUM_VERSION = "1.20.0"
 description = "Check API token, privileges, node, datastores, VM IDs, IPs, SSH, capacity"
 run = "scripts/preflight.sh"
 
+[tasks.tfdocs]
+description = "regenerate the README of every terraform root (CI checks these are current)"
+shell = "bash -c"
+run = """
+set -euo pipefail
+for d in 00-cloud-edge/terraform tailscale terraform/cloudflare terraform/oracle terraform/proxmox; do
+  terraform-docs -c .pre-commit-config.tfdocs.yml "$d"
+done
+"""
+
+[tasks.tflint]
+description = "tflint every terraform root (same set as .github/workflows/terraform_checks.yml)"
+shell = "bash -c"
+env = { TFLINT_CONFIG_FILE = "{{config_root}}/.tflint.hcl" }
+run = """
+set -euo pipefail
+tflint --init
+rc=0
+for d in 00-cloud-edge/terraform tailscale terraform/cloudflare terraform/oracle terraform/proxmox; do
+  echo "== $d"
+  tflint --chdir="$d" --format=compact || rc=$?
+done
+exit $rc
+"""
+
 # ------------------------------------------------------------ terraform ----
 
 [tasks."tf:init"]

@@ -12,9 +12,9 @@ output "nodes" {
 output "network" {
   description = "Cluster addressing other Terraform roots consume"
   value = {
-    vip     = local.cluster.vip
-    gateway = local.cluster.gateway
-    subnet  = "${cidrhost("${local.cluster.gateway}/${local.cluster.prefix}", 0)}/${local.cluster.prefix}"
+    vip      = local.cluster.vip
+    gateway  = local.cluster.gateway
+    subnet   = "${cidrhost("${local.cluster.gateway}/${local.cluster.prefix}", 0)}/${local.cluster.prefix}"
     pve_host = split("/", var.pve_bridge_address)[0]
   }
 }

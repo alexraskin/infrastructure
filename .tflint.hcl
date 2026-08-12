@@ -7,6 +7,22 @@ plugin "terraform" {
   preset  = "recommended"
 }
 
+# Accepted for the single Always Free edge box: no OCI agent, no in-transit
+# encryption on its boot volume.
+rule "oci_compute_instance_in_transit_encryption" {
+  enabled = false
+}
+
+rule "oci_compute_instance_monitoring" {
+  enabled = false
+}
+
+# The CNPG bucket sets versioning = "Disabled" deliberately; CNPG's own
+# retentionPolicy owns backup expiry. See terraform/oracle/objectstorage.tf.
+rule "oci_object_storage_bucket_versioning" {
+  enabled = false
+}
+
 plugin "oci" {
   enabled = true
   version = "0.1.1"

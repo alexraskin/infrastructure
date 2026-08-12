@@ -33,8 +33,8 @@ variable "oci_compartment_ocid" {
 # --------------------------------------------------------------- placement ---
 
 variable "instance_availability_domain" {
-  type        = string
-  default     = ""
+  type    = string
+  default = ""
 }
 
 variable "instance_availability_domain_index" {
@@ -70,12 +70,12 @@ variable "public_subnet_cidr" {
 # ---------------------------------------------------------------------- ssh ---
 
 variable "ssh_public_key" {
-  type        = string
+  type = string
 }
 
 # --------------------------------------------------------------- cloudflare ---
 
 variable "cloudflare_api_token" {
-  type        = string
-  sensitive   = true
+  type      = string
+  sensitive = true
 }

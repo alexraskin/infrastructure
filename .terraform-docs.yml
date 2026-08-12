@@ -1,6 +1,6 @@
 formatter: "markdown" # this is required
 
-version: "~> 0.20.0"
+version: "~> 0.24"
 
 header-from: main.tf
 footer-from: ""
