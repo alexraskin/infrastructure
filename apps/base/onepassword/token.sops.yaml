@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: onepassword-service-account-token
+    namespace: onepassword
+type: Opaque
+stringData:
+    token: ENC[AES256_GCM,data:Jwrt/rSZoGjIOjNqPFb0myI2HK1kkQ3noIyuiJ24JpA34ZpFkn1Cbkkr22CTRxcrA/A2a5OybwQtNQNmhZbSHwMRIpFOhyPCmcaXNQbs1CRfObmZL9OKf91aGxpMLLX949R+LQBKubMFtJUNtdXY824ovvZGhSOXSJs8YgO9y1dDVYU0Q6vQdWhS8/JZGCe+xBbtf++bLgKbfI68nHtfMmxWWyCJKX9ODS3/8LkjXEctdfpyJC/EfEuYXrCt2IjST5Pgn7/2mFaZVSZBQzev+IbkXunD6agnd+iWSnP7p3/2KnX9SOWRdVbzMhek5RW3Xif9h7X/zAk0XoeKRVUFbxn3A1rhze3W7Qkdculht8xaqT6UfAceH403FmaXYAW1ElpVffxwsya++G8IqUiPoMAH7fTTrwBsHTgf5s6GqO8HC8FoPOTS0D5jIq9RBkUzLp6q8u6jUynQqg/4NMtEbfhUAbF30MRNHeenCSLCIAjjzVAp05CTW+wJpGMlCWH8k2pdMXkXHd1hHxGKjaJQErCVtuiK6I3fzb9RFVaWU+5eFJbK2pVeusxp0U3q8D6BnBm80sooJSCAOJT3RePetMpgg+WjmIhPmyMzaTKFbZgRXCGGFWPaeM6z06tFKZSMngyYPuxD3+Ub+mh8FNc/ee99BfIiTMhdiLk8Ni2dPWXom0K8Ifqlr8iuVcW1uTxt7rY1pmaLg2b4qAGNyPMNpMK9mwt/dnNJaT9hhMxzejcL4M/3Xv7c7CVyx/E2tckrq0rSsYyhVMPMGHNbXpgmPWpouBreOTi9KTjp2QMxldIiESRXEhGuis2KpYcWab0cdmAnDu7XwoRuFPNx/RVOmMxqTawfpo3plWDuUZQ/7gi24JLuZcuYlinrArTCbrmLsfh0bbqe16cn3eoQ/92KwT+5VSIRUIGnMs160ZZZJmaVzJ6iiaDm7TG/UfaEt1J3aSTGojmGzawYldYJsTl+/w+fJgBnjM6hpHNzw05/kr1fuf6+Yz+mRQh1ZgMwu/Mz/TsxBeiJT1PPFmG7V3Tkc9ajswxPQzNm1xERJ7nMAfYaeR/aXn9wTm1/1XnnmzK1nHZWfMYu9KlGBvCR/5zg6dQKbRljZZRMh6yJ548UdZXB7arZ,iv:bm6S8qrMuNT8oGl0q3yR11gouGb81TEnO56rFxPPkNE=,tag:qe3Nddu4qrHwanehgumrJw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBHczRXSFBCWFpSdHNHYnBK
+            cHlEaGVFeG1qNE4ydi96a3M3WDVHaDNQd1EwCjc3ZkhTVXBEL2JqMTcyRDVLV2Vk
+            N3JyUExwY3hDVGZnRGZtVjFOU00reDQKLS0tIHRCTjdpbzBMdzd3UVkxbmtxOHNK
+            U0lsZm85WWNZMUZpUjlTaE93dmtCWkkKHkcQlq6T46ORwP/7PrjTJv7MarInNxts
+            Xyf5qlTPuV78Lu/7IL3d2ONNZx2E8i8bQfl69Iy4PWZxqx/uTFIlRg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-12T01:28:15Z"
+    mac: ENC[AES256_GCM,data:f+m4v2EmnUmQpWwZ9IrY/tnwoMv/YImGy9OBmUOj4qXUJmJ+Cp8rKwfhnP2M4o/Nl49YJIl/3nhSaKTWE9a9l8TJI8ho8zVJ7ooo2Qlvq3okCJx8EQen5yoNK3QBeWEvh0Vk8eXNsJBd8LxJ0UkZkgTy85yBJ46slw9O6FRO8so=,iv:ona6TJ6EFMkOj2fYNrAxhcfzGLI4XFyXwlQKLNAiciA=,tag:Ah98K9a2EtdqOJL7a7xOCQ==,type:str]
+    version: 3.13.3
