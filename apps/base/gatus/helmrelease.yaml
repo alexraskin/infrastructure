@@ -84,6 +84,10 @@ spec:
           group: "Control plane"
           url: "https://10.0.200.40:6443/readyz"
           interval: 30s
+          ui: &hide-details
+            hide-hostname: true
+            hide-url: true
+            hide-port: true
           client:
             insecure: true
           headers:
@@ -98,6 +102,7 @@ spec:
           group: "Control plane"
           url: "https://10.0.200.41:6443/readyz"
           interval: 60s
+          ui: *hide-details
           client:
             insecure: true
           headers:
@@ -112,6 +117,7 @@ spec:
           group: "Control plane"
           url: "https://10.0.200.42:6443/readyz"
           interval: 60s
+          ui: *hide-details
           client:
             insecure: true
           headers:
@@ -126,6 +132,7 @@ spec:
           group: "Control plane"
           url: "https://10.0.200.43:6443/readyz"
           interval: 60s
+          ui: *hide-details
           client:
             insecure: true
           headers:
@@ -140,6 +147,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.41:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -148,6 +156,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.42:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -156,6 +165,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.43:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -164,6 +174,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.51:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -172,6 +183,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.52:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -180,6 +192,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.53:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -188,6 +201,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.61:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -196,6 +210,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.62:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -204,6 +219,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.63:50000"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -212,6 +228,7 @@ spec:
           group: "Nodes"
           url: "tcp://10.0.200.30:2049"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -220,6 +237,7 @@ spec:
           group: "Off-cluster"
           url: "tcp://cloud-edge-egress.gatus.svc.cluster.local:443"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -228,6 +246,7 @@ spec:
           group: "Off-cluster"
           url: "tcp://chronos-egress.gatus.svc.cluster.local:443"
           interval: 60s
+          ui: *hide-details
           conditions: ["[CONNECTED] == true"]
           alerts:
             - type: discord
@@ -236,6 +255,7 @@ spec:
           group: "Off-cluster"
           url: "http://10.0.200.87:32400/identity"
           interval: 60s
+          ui: *hide-details
           conditions:
             - "[STATUS] == 200"
             - "[BODY] == pat(*machineIdentifier*)"
@@ -247,6 +267,7 @@ spec:
           group: "Platform"
           url: "10.96.0.10"
           interval: 60s
+          ui: *hide-details
           dns:
             query-name: "kubernetes.default.svc.cluster.local"
             query-type: "A"
@@ -259,6 +280,7 @@ spec:
           group: "Platform"
           url: "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local/api/health"
           interval: 60s
+          ui: *hide-details
           conditions:
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 2000"
@@ -269,6 +291,7 @@ spec:
           group: "Platform"
           url: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/-/healthy"
           interval: 60s
+          ui: *hide-details
           conditions:
             - "[STATUS] == 200"
           alerts:
@@ -278,6 +301,7 @@ spec:
           group: "Platform"
           url: "http://loki.logging.svc.cluster.local:3100/ready"
           interval: 60s
+          ui: *hide-details
           conditions:
             - "[STATUS] == 200"
           alerts:
@@ -287,6 +311,7 @@ spec:
           group: "Platform"
           url: "http://alloy.logging.svc.cluster.local:12345/-/ready"
           interval: 60s
+          ui: *hide-details
           conditions:
             - "[STATUS] == 200"
           alerts:
@@ -296,6 +321,7 @@ spec:
           group: "Apps"
           url: "http://alexraskin-com.web.svc.cluster.local/ping"
           interval: 60s
+          ui: *hide-details
           conditions:
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 2000"
@@ -306,6 +332,7 @@ spec:
           group: "Apps"
           url: "http://lastfm-now-playing.lastfm.svc.cluster.local/ping"
           interval: 60s
+          ui: *hide-details
           conditions:
             - "[STATUS] == 200"
           alerts:
