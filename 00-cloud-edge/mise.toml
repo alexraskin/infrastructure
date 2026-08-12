@@ -127,17 +127,19 @@ run = "scripts/deploy.sh"
 [tasks.ssh]
 description = "SSH to the edge box"
 shell = "bash -c"
+usage = 'arg "[host]" help="tailscale name or IP; defaults to the terraform output"'
 run = """
 set -euo pipefail
-exec ssh $SSH_OPTS "root@$(scripts/edge-addr.sh "${1:-}")"
+exec ssh $SSH_OPTS "root@$(scripts/edge-addr.sh "${usage_host:-}")"
 """
 
 [tasks.status]
 description = "Tailscale, HAProxy, certs and backend reachability, as the box sees them"
 shell = "bash -c"
+usage = 'arg "[host]" help="tailscale name or IP; defaults to the terraform output"'
 run = """
 set -euo pipefail
-ip=$(scripts/edge-addr.sh "${1:-}")
+ip=$(scripts/edge-addr.sh "${usage_host:-}")
 ssh $SSH_OPTS "root@$ip" '
   echo "--- tailscale"
   tailscale status --peers=false || true
@@ -159,13 +161,12 @@ ssh $SSH_OPTS "root@$ip" '
 
 # ---------------------------------------------------------------- validate ---
 
+# terraform fmt and validate are the CI workflow's job, for every root at once.
 [tasks.check]
-description = "terraform validate + fmt, and evaluate the flake"
+description = "Evaluate the flake — does this NixOS config build at all"
 shell = "bash -c"
 run = """
 set -euo pipefail
-terraform -chdir=terraform fmt -recursive .
-terraform -chdir=terraform validate
 ../scripts/nix.sh 'nix eval --raw "path:./00-cloud-edge#nixosConfigurations.cloud-edge.config.system.build.toplevel.drvPath"'
 echo
 """

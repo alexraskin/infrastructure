@@ -1,7 +1,4 @@
-# Copy to secrets/r2.tfbackend (gitignored) and fill in.
-#   mise run tf:init        # passes -backend-config for the Proxmox root
-#   mise run cf:init        # same, for the Cloudflare root
-
+secrets/r2.tfbackend
 access_key = "<R2 access key id>"
 secret_key = "<R2 secret access key>"
 endpoints  = { s3 = "https://<account id>.r2.cloudflarestorage.com" }
