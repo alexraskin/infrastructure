@@ -7,12 +7,8 @@ plugin "terraform" {
   preset  = "recommended"
 }
 
-# Accepted for the single Always Free edge box: no OCI agent, no in-transit
-# encryption on its boot volume.
-rule "oci_compute_instance_in_transit_encryption" {
-  enabled = false
-}
-
+# The edge box runs NixOS via nixos-anywhere, so there is no Oracle Cloud Agent
+# to run the monitoring plugin.
 rule "oci_compute_instance_monitoring" {
   enabled = false
 }

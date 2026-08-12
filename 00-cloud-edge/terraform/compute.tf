@@ -36,6 +36,10 @@ resource "oci_core_instance" "edge" {
     boot_volume_size_in_gbs = local.instance.boot_volume_gb
   }
 
+  launch_options {
+    is_pv_encryption_in_transit_enabled = true
+  }
+
   create_vnic_details {
     subnet_id                 = oci_core_subnet.public.id
     display_name              = "${local.instance.hostname}-vnic"
