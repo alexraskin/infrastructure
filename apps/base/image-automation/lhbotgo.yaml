@@ -15,8 +15,6 @@ metadata:
 spec:
   imageRepositoryRef:
     name: lhbotgo
-  # The repo also carries `latest`, `vX`, `vX.Y` and per-commit tags. Only the
-  # full release tags are candidates.
   filterTags:
     pattern: '^v?(?P<version>\d+\.\d+\.\d+)$'
     extract: '$version'

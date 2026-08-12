@@ -1,9 +1,3 @@
-# The gatus database credential, in both namespaces that need it.
-#
-# One file rather than two so the password cannot drift: CNPG reads the
-# cnpg-system copy to set the role's password, gatus reads its own copy to build
-# a connection URL. Both are applied by the cnpg-cluster Kustomization, which is
-# why gatus dependsOn it.
 apiVersion: v1
 kind: Secret
 metadata:

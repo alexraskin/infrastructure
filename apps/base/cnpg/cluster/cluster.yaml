@@ -1,12 +1,5 @@
 # The Postgres cluster: one instance per db node, which is why there are three
 # db nodes and three db-local PVs.
-#
-# Scheduling is the whole reason this file is not generic. The db nodes carry
-# `dedicated=database:NoSchedule` (set by kubelet in terraform/proxmox/talos.tf),
-# so a workload lands there only if it both tolerates the taint *and* selects the
-# label — neither alone is enough. Anti-affinity then keeps the three instances
-# on three separate nodes; without it two could share one node and lose the
-# point of the replicas.
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -16,21 +9,17 @@ spec:
   instances: 3
   imageName: ghcr.io/cloudnative-pg/postgresql:17.6
 
-  # The operator promotes a replica on its own when the primary goes away.
   primaryUpdateStrategy: unsupervised
 
   bootstrap:
     initdb:
       database: app
       owner: app
-      # The operator generates postgres-app with the password; nothing to commit.
 
   storage:
     size: 90Gi
     storageClass: db-local
 
-  # One login role per consumer, so nothing shares the `app` role. CNPG requires
-  # the referenced Secret to be basic-auth with a username matching the role.
   managed:
     roles:
       - name: gatus
@@ -57,24 +46,6 @@ spec:
     - name: AWS_RESPONSE_CHECKSUM_VALIDATION
       value: when_required
 
-  # Storage is node-local, so replicas cover a lost node but nothing covers a bad
-  # DROP or losing all three. This does: continuous WAL archiving plus the weekly
-  # base backup in scheduledbackup.yaml, into Oracle Object Storage.
-  #
-  # Oracle rather than R2 — which is what this comment used to promise — because
-  # the edge already lives on the Oracle free tier and the intent is to keep more
-  # of this setup there. terraform/oracle/ owns the bucket and the least-privilege
-  # user behind cnpg-backup-oci.
-  #
-  # endpointURL carries the tenancy's Object Storage namespace and is in git in
-  # plain text on purpose: the CRD field is a plain string with no secret ref, and
-  # the namespace is an identifier, not a credential. The Customer Secret Key it
-  # takes to use it is in backup-oci.sops.yaml.
-  #
-  # **Once this is set, a failing upload stops WAL recycling.** Postgres keeps
-  # every segment until archive_command succeeds, so a wrong credential or bucket
-  # policy fills pg_wal on the 90Gi db-local volumes and then stops the database.
-  # Check the ContinuousArchiving condition after any change here.
   backup:
     retentionPolicy: 30d
     barmanObjectStore:

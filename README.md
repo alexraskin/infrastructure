@@ -1,23 +1,30 @@
 # infrastructure
 
-Homelab Infra: an HA Kubernetes cluster on **Talos Linux** — 3 control plane
-nodes (embedded etcd), 3 workers and 3 tainted database workers, running as VMs
-on Proxmox. Terraform creates the VMs *and* bootstraps the cluster, Talos' own
-VIP floats the API endpoint across the control plane, Cilium is the CNI, and
-Flux deploys the workloads in `apps/`.
+My homelab, in full. Nine VMs on a single Proxmox box become a highly-available
+Kubernetes cluster — 3 control plane nodes with embedded etcd, 3 workers, 3
+tainted database workers — and everything that runs on it is in this repo.
 
-```
-terraform/proxmox/    the nine VMs, the machine configs, the bootstrap
-  cluster.auto.tfvars.json  single source of truth: IPs, VM IDs, sizes, VIP, versions
-terraform/cloudflare/ the tunnel, its ingress rules, and the DNS records
-terraform/oracle/     the Object Storage bucket CloudNativePG backs up into
-tailscale/            the tailnet policy file, applied by its own Terraform root
-talos/                Cilium's values — installed outside Flux, on purpose
-apps/                 GitOps — what Flux deploys (see apps/README.md)
-00-cloud-edge/        the public Oracle edge, still NixOS (see its README)
-mise.toml             the task runner
-```
+It is public because there is nothing to hide in it: every secret is either
+encrypted in place or lives outside the tree entirely. It is not a template, and
+you should not try to `terraform apply` it — the addresses, VM IDs and zone IDs
+are mine. It is here as a worked example of one way to do this, and because I am
+quite fond of it.
 
+The whole thing rebuilds from `terraform apply` and a git push. There is no
+golden image, no configuration-management step, and nothing I have SSH'd into to
+fix by hand.
+
+## How it fits together
+
+**One file is the source of truth.** `terraform/proxmox/cluster.auto.tfvars.json`
+holds every address, VM ID, disk size, the VIP and the Talos and Kubernetes
+versions. Terraform reads it as typed, validated variables; `jq` reads the same
+file in shell scripts. There is no second copy.
+
+**Terraform builds the cluster, not just the VMs.** Talos Linux takes its entire
+configuration through its own API, so there is no cloud-init and no Ansible
+afterwards. One `apply` resolves an image-factory ISO, creates the VMs, pushes a
+machine config to each node and bootstraps etcd.
 
 ```mermaid
 flowchart LR
@@ -48,21 +55,28 @@ flowchart LR
     IAC --> REPO
 ```
 
-## Runtime
+**Flux owns everything above the CNI.** Cilium is installed outside Flux on
+purpose — nothing that reconciles from inside the cluster can install the reason
+the cluster has a pod network. After that, `apps/` is the whole story, and image
+tags are rewritten into git by image-automation rather than by me.
 
-The nodes are not on the tailnet at all. Everything tailnet is the operator's:
-an in-cluster `Connector` re-advertises the cluster subnet, and individual
-Services get their **own** tailnet device. Public traffic touches neither — it
-arrives through an outbound cloudflared tunnel, so no port is open to the
-internet.
+## Getting traffic in and out
+
+No port is open to the internet. Public traffic arrives through an **outbound**
+cloudflared tunnel, so the firewall has nothing to forward.
+
+Nothing on the tailnet is a node, either — Talos has no systemd to run
+`tailscaled` in. Instead the Tailscale operator runs *in* the cluster: a
+`Connector` re-advertises the cluster subnet so `kubectl` works from anywhere,
+and individual Services get their own tailnet device with a MagicDNS name.
 
 ```mermaid
 flowchart TB
     USER["Public visitor"]
-    ADMIN["You, off-LAN"]
+    ADMIN["Me, off-LAN"]
 
     subgraph cf["Cloudflare"]
-        DNS["CNAMEs -> tunnel<br/>terraform/cloudflare"]
+        DNS["CNAMEs -> tunnel"]
         TUN["Tunnel ingress rules<br/>hostname -> Service DNS"]
     end
 
@@ -79,21 +93,22 @@ flowchart TB
         subgraph ag["workers - 3 Talos VMs"]
             CFD["cloudflared"]
             APPS["apps"]
-            MON["kube-prometheus-stack<br/>Prometheus + Grafana"]
-            LOG["Loki + Alloy DaemonSet"]
-            TSO["tailscale-operator<br/>IngressClass + Connector + egress"]
+            MON["kube-prometheus-stack"]
+            LOG["Loki + Alloy"]
+            TSO["tailscale-operator"]
         end
         subgraph db["db workers - 3 Talos VMs"]
-            TAINT["dedicated=database:NoSchedule<br/>second disk at /var/mnt/db"]
+            TAINT["CloudNativePG<br/>second disk at /var/mnt/db"]
         end
     end
 
     R2L[("R2 bucket<br/>loki chunks")]
-    PLEX["plex-exporter"]
+    EDGE["Oracle edge<br/>HAProxy, NixOS"]
 
     USER --> DNS --> TUN
     TUN -. "outbound tunnel" .- CFD
     CFD --> APPS
+    USER --> EDGE
 
     ADMIN -- kubectl --> SR --> VIP --> ETCD
     ADMIN -- https --> TSD --> MON
@@ -102,55 +117,32 @@ flowchart TB
 
     APPS -.-> LOG
     LOG --> R2L
-    MON --> PLEX
-    MON -. "node-exporter :9100" .-> cp
+    EDGE -.-> LOG
 ```
 
-## State and secrets
+There is one machine outside the house: a free Oracle ARM box running NixOS and
+HAProxy, in `00-cloud-edge/`. It exists because Plex cannot legally go through
+the Cloudflare tunnel, and it reaches home over Tailscale rather than any open
+port.
 
-Terraform state for every root lives in a Cloudflare R2 bucket. The backend
-blocks are deliberately partial — credentials and the endpoint are absent,
-because a backend block takes no variables and this repo is public, and the
-endpoint alone carries the account ID. They are supplied at `init` time from
-`secrets/r2.tfbackend`.
+## Layout
 
-The cluster's own PKI is a Terraform resource (`talos_machine_secrets`), so it
-lives in that state too. Treat the bucket as a secret store.
+```text
+terraform/proxmox/     the nine VMs, the machine configs, the bootstrap
+terraform/cloudflare/  the tunnel, its ingress rules, the DNS records
+terraform/oracle/      Object Storage — where Postgres backups land
+tailscale/             the tailnet policy file, as code
+talos/                 Cilium's values, installed outside Flux on purpose
+apps/                  everything Flux deploys
+00-cloud-edge/         the public Oracle edge, still NixOS
+docs/                  how this stopped being k3s on NixOS, and other history
+CLAUDE.md              the design notes: why things are the way they are
+```
 
-`secrets/` is gitignored and holds what is not declarative:
+Every command is a `mise` task. State for all five Terraform roots lives in a
+Cloudflare R2 bucket — which also holds the cluster's PKI, so it is treated as a
+secret store. Secrets in `apps/` are SOPS-encrypted to a single age key that also
+decrypts the edge; nothing else in the tree is sensitive.
 
-| file | what it is |
-| --- | --- |
-| `talosconfig` | client credentials for `talosctl`, written by `mise run talosconfig` |
-| `age.key` | what Flux decrypts `apps/` with |
-| `cloudflare-api-token` | the Terraform provider's, and the edge's DNS-01 credential |
-| `r2.tfbackend` | R2 credentials for the state backend |
-
-There is no join token and no node pre-auth key to push any more: Talos machine
-secrets are generated by Terraform, and nothing on a node talks to the tailnet.
-
-## Working on it
-
-Every command is a `mise` task; `mise.toml` is the list, and each directory's
-`CLAUDE.md` explains what the tasks do and what breaks. Three separate configs:
-the root (cluster), `apps/` (GitOps) and `00-cloud-edge/` (the edge), each
-needing `mise trust` once.
-
-The design notes — why a setting is load-bearing, what breaks if it changes, and
-the failure modes found the hard way — live in `CLAUDE.md` beside the thing they
-describe:
-
-| directory | what it documents |
-| --- | --- |
-| `terraform/proxmox/` | the nine VMs, the Talos resources, and the Proxmox provider's sharp edges |
-| `terraform/cloudflare/` | the cloudflared tunnel, its ingress rules and DNS |
-| `terraform/oracle/` | the CloudNativePG backup bucket and its scoped OCI user |
-| `tailscale/` | the tailnet policy file and the Terraform root that applies it |
-| `apps/` | Flux GitOps, SOPS, image automation |
-| `apps/base/monitoring/` | Prometheus + Grafana |
-| `apps/base/tailscale-operator/` | the `tailscale` IngressClass, egress and the Connector |
-| `apps/base/loki/` | Loki + Alloy, R2 chunk storage, the edge's push path |
-| `00-cloud-edge/` | the public Oracle edge: HAProxy, ACME, its own flake |
-
-There is no test suite. "Does it work" is `mise run preflight`, a `terraform
-plan`, `mise run health` and `mise run status`.
+Design notes, failure modes and the things I learned by breaking them are in
+[CLAUDE.md](CLAUDE.md).

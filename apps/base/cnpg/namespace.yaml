@@ -1,6 +1,3 @@
-# No PodSecurity label: CloudNativePG's operator and the Postgres instances it
-# runs are non-root and need no host access, so Talos' default `baseline`
-# enforcement is fine here — unlike monitoring, tailscale and csi-driver-nfs.
 apiVersion: v1
 kind: Namespace
 metadata:

@@ -6,7 +6,6 @@ metadata:
   name: loki-tailnet
   namespace: logging
   annotations:
-    # Fixes the device name, and therefore the URL.
     tailscale.com/hostname: "loki"
     tailscale.com/tags: "tag:k8s-loki"
 spec:

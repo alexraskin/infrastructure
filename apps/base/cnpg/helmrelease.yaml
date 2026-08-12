@@ -7,7 +7,6 @@ spec:
   interval: 1h
   chart:
     spec:
-      # chart 0.29.0 is operator 1.30.0. Pinned by hand, like every chart here.
       chart: cloudnative-pg
       version: "0.29.0"
       sourceRef:
@@ -20,15 +19,11 @@ spec:
     remediation:
       retries: 3
   upgrade:
-    # The chart owns the Cluster/Backup/Pooler CRDs; without this an upgrade
-    # leaves them at whatever version the first install wrote.
     crds: CreateReplace
     remediation:
       retries: 3
   values:
     monitoring:
-      # Prometheus picks this up on its own: the stack sets
-      # podMonitorSelectorNilUsesHelmValues: false, so no release label needed.
       podMonitorEnabled: true
 
     resources:

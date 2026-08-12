@@ -1,18 +1,3 @@
-# Template only. Loki's R2 credentials, injected as environment variables and
-# expanded into the config by `-config.expand-env=true` — the key names here ARE
-# the env var names, so do not rename them.
-#
-# Mint at Cloudflare dashboard -> R2 -> Manage API tokens: a token with
-# **Object Read & Write**, scoped to the `loki` bucket only. Deliberately not the
-# credential in secrets/r2.tfbackend: that one can read and write Terraform
-# state, and this one lives in a Secret any pod-exec in the cluster could read.
-#
-# R2_ENDPOINT contains the account id, which is why it is in here rather than in
-# helmrelease.yaml — this repo is public.
-#
-#   cp r2.example.yaml r2.sops.yaml
-#   $EDITOR r2.sops.yaml
-#   cd apps && mise exec -- sops --encrypt --in-place base/loki/r2.sops.yaml
 apiVersion: v1
 kind: Secret
 metadata:

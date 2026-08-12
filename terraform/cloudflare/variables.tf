@@ -20,13 +20,6 @@ variable "zones" {
 }
 
 variable "ingress" {
-  description = <<-EOT
-    Public hostname -> in-cluster origin, in order. This is the whole tunnel
-    config: the last rule is generated automatically as the required catch-all,
-    so do not add one. `service` is what cloudflared dials, normally the cluster
-    DNS name of a Service: http://<service>.<namespace>.svc.cluster.local:<port>.
-    Each entry also gets its proxied CNAME in the matching zone.
-  EOT
   type = list(object({
     hostname = string
     service  = string
@@ -35,25 +28,18 @@ variable "ingress" {
 }
 
 variable "catch_all_service" {
-  description = "What the tunnel answers with for a hostname no rule matched. http_status:404 refuses; a URL would make every unrouted host hit that origin."
+  description = "What the tunnel answers with for a hostname no rule matched."
   type        = string
   default     = "http_status:404"
 }
 
-variable "extra_dns_records" {
-  description = <<-EOT
-    Records that have nothing to do with the tunnel (MX, verification TXT, an
-    apex A record elsewhere) but should still live in code. Keyed by an
-    arbitrary name used only in state.
-  EOT
+variable "cluster_dns_records" {
   type = map(object({
     zone    = string
     name    = string
-    type    = string
-    content = string
+    source  = string
     ttl     = optional(number, 1)
-    proxied = optional(bool, false)
-    comment = optional(string)
+    comment = optional(string, "terraform: cluster address")
   }))
   default = {}
 }

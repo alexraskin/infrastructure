@@ -8,8 +8,6 @@ spec:
   chart:
     spec:
       chart: kube-prometheus-stack
-      # Pinned by hand. Image automation only tracks our own GHCR images, so
-      # this and the images the chart pulls are bumped deliberately.
       version: "88.2.0"
       sourceRef:
         kind: HelmRepository
@@ -21,39 +19,20 @@ spec:
     remediation:
       retries: 3
   upgrade:
-    # The chart ships the Prometheus Operator CRDs; without this an upgrade
-    # leaves them at the version the first install wrote.
     crds: CreateReplace
     remediation:
       retries: 3
   values:
-    # ---------------------------------------------------------- talos ----
-    # Talos runs these as real static pods, and the machine config in
-    # terraform/proxmox/talos.tf binds them outward — bind-address 0.0.0.0 on
-    # the controller-manager and scheduler, listen-metrics-urls on etcd — so
-    # their ServiceMonitors have something to scrape. Turning these on without
-    # those arguments puts the targets permanently DOWN.
     kubeControllerManager:
       enabled: true
     kubeScheduler:
       enabled: true
     kubeEtcd:
       enabled: true
-    # There is no kube-proxy at all: cluster.proxy.disabled is set and Cilium
-    # replaces it. This one stays off permanently.
     kubeProxy:
       enabled: false
-
-    # Nothing is wired to route alerts yet. Prometheus still evaluates the
-    # rules, so alerts are visible in its UI and in Grafana.
     alertmanager:
       enabled: false
-
-    # ----------------------------------------------------- node metrics ----
-    # Runs on every node with hostNetwork, scraped at <node-ip>:9100. Talos has
-    # no host firewall unless a NetworkRuleConfig declares one, so there is
-    # nothing to open — unlike NixOS, where a closed 9100 put every node target
-    # DOWN at once.
     prometheus-node-exporter:
       hostNetwork: true
 
@@ -65,29 +44,18 @@ spec:
         limits:
           memory: 192Mi
 
-    # -------------------------------------------------------- prometheus ----
     prometheus:
       prometheusSpec:
         retention: 15d
-        # Leaves headroom on the 20Gi PVC so a full disk never wedges the TSDB.
         retentionSize: 15GiB
-
-        # Without these four, the operator only picks up objects labelled with
-        # this release's name — a ServiceMonitor written by hand elsewhere in
-        # the repo would be silently ignored.
         serviceMonitorSelectorNilUsesHelmValues: false
         podMonitorSelectorNilUsesHelmValues: false
         probeSelectorNilUsesHelmValues: false
         ruleSelectorNilUsesHelmValues: false
 
-        # Off-cluster targets. The chart writes this into a Secret and mounts
-        # it; it is plain Prometheus scrape_config syntax.
         additionalScrapeConfigs:
           - job_name: plex-exporter
             metrics_path: /metrics
-            # On the LAN, not in the cluster. Prometheus dials it directly from
-            # its pod, so this depends on the exporter host allowing 9001 from
-            # the pod network — not on anything in this repo.
             static_configs:
               - targets: ["10.0.200.87:9001"]
                 labels:
@@ -99,12 +67,6 @@ spec:
             memory: 1Gi
           limits:
             memory: 2Gi
-
-        # local-path is a static, node-local StorageClass — the PV it binds is
-        # written by hand in apps/base/local-path/ and pinned to one node. This
-        # pod follows it there, and the history is gone if that node is
-        # rebuilt. Dashboards and rules come from git, so only the metric
-        # history is at risk.
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -114,35 +76,13 @@ spec:
                 requests:
                   storage: 20Gi
 
-    # ----------------------------------------------------------- grafana ----
     grafana:
-      # Created from grafana-admin.sops.yaml, not by the chart — the chart's
-      # own generated password would be rewritten on every reconcile.
       admin:
         existingSecret: grafana-admin
         userKey: admin-user
         passwordKey: admin-password
-
-      # ClusterIP only. Nothing on the node listens for Grafana — the tailscale
-      # operator puts it on the tailnet instead, see the Ingress below.
       service:
         type: ClusterIP
-
-      # Handled by the tailscale operator (apps/base/tailscale-operator/). It
-      # watches for this ingressClassName, spawns a proxy StatefulSet that joins
-      # the tailnet as its own device named after tls.hosts[0], fetches a
-      # LetsEncrypt cert for it and terminates TLS there.
-      #
-      #   https://grafana.<tailnet>.ts.net
-      #
-      # No host in the rules and exactly one entry in tls.hosts: that is the
-      # shape the operator expects — the hostname comes from tls.hosts[0], not
-      # from a rule. The proxy is a pod, so losing a node reschedules it; a
-      # NodePort would have been pinned to node IPs instead.
-      #
-      # Needs MagicDNS and HTTPS Certificates enabled in the tailnet admin
-      # console. Without them there is no cert to issue and the Ingress never
-      # becomes ready.
       ingress:
         enabled: true
         ingressClassName: tailscale
@@ -150,9 +90,6 @@ spec:
         tls:
           - hosts:
               - grafana
-
-      # Dashboards from any ConfigMap in the cluster labelled
-      # grafana_dashboard: "1" — that is how the Plex dashboard gets in.
       sidecar:
         dashboards:
           enabled: true
@@ -161,9 +98,6 @@ spec:
         datasources:
           enabled: true
           searchNamespace: ALL
-
-      # No PVC: the dashboard/user database lives in the CNPG cluster now, and
-      # nothing else here is worth keeping across a restart.
       persistence:
         enabled: false
 
@@ -175,9 +109,6 @@ spec:
           memory: 512Mi
 
       envValueFrom:
-        # Overrides database.password in grafana.ini below — Grafana maps
-        # GF_<SECTION>_<KEY> onto the ini, so the password never lands in a
-        # rendered manifest.
         GF_DATABASE_PASSWORD:
           secretKeyRef:
             name: grafana-db
@@ -192,9 +123,6 @@ spec:
             key: root-url
 
       grafana.ini:
-        # Postgres in the CNPG cluster, not the sqlite file this used to keep on
-        # a node-pinned local-path PVC. postgres-rw is the operator's primary
-        # Service and repoints itself on failover.
         database:
           type: postgres
           host: postgres-rw.cnpg-system.svc.cluster.local:5432

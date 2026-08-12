@@ -2,7 +2,7 @@
 #
 # The Customer Secret Key created here ends up in a Kubernetes Secret, which
 # anything with pod-exec in the cluster can read — the same reasoning that scopes
-# Loki's R2 token to one bucket (apps/base/loki/CLAUDE.md). Handing that out with
+# Loki's R2 token to one bucket. Handing that out with
 # the Terraform user's rights would mean handing out the edge instance too.
 #
 # IAM lives in the tenancy, not in a compartment, so the user, group and policy

@@ -1,13 +1,3 @@
-# Template only. Set the Grafana admin login, then encrypt it in place:
-#
-#   cp grafana-admin.example.yaml grafana-admin.sops.yaml
-#   $EDITOR grafana-admin.sops.yaml
-#   mise run sops-encrypt base/monitoring/grafana-admin.sops.yaml
-#
-# grafana-admin.sops.yaml is safe to commit *after* encryption. Changing the
-# password here and reconciling does not reset an already-created Grafana
-# admin — Grafana only reads this on first start. Use the UI, or delete the
-# grafana PVC, to change it afterwards.
 apiVersion: v1
 kind: Secret
 metadata:
