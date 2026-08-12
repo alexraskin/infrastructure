@@ -144,7 +144,7 @@ spec:
             - type: discord
 
         - name: "talos-cp-1"
-          group: "Nodes"
+          group: "Control plane nodes"
           url: "tcp://10.0.200.41:50000"
           interval: 60s
           ui: *hide-details
@@ -153,7 +153,7 @@ spec:
             - type: discord
 
         - name: "talos-cp-2"
-          group: "Nodes"
+          group: "Control plane nodes"
           url: "tcp://10.0.200.42:50000"
           interval: 60s
           ui: *hide-details
@@ -162,7 +162,7 @@ spec:
             - type: discord
 
         - name: "talos-cp-3"
-          group: "Nodes"
+          group: "Control plane nodes"
           url: "tcp://10.0.200.43:50000"
           interval: 60s
           ui: *hide-details
@@ -171,7 +171,7 @@ spec:
             - type: discord
 
         - name: "talos-worker-1"
-          group: "Nodes"
+          group: "Worker nodes"
           url: "tcp://10.0.200.51:50000"
           interval: 60s
           ui: *hide-details
@@ -180,7 +180,7 @@ spec:
             - type: discord
 
         - name: "talos-worker-2"
-          group: "Nodes"
+          group: "Worker nodes"
           url: "tcp://10.0.200.52:50000"
           interval: 60s
           ui: *hide-details
@@ -189,7 +189,7 @@ spec:
             - type: discord
 
         - name: "talos-worker-3"
-          group: "Nodes"
+          group: "Worker nodes"
           url: "tcp://10.0.200.53:50000"
           interval: 60s
           ui: *hide-details
@@ -198,7 +198,7 @@ spec:
             - type: discord
 
         - name: "talos-db-1"
-          group: "Nodes"
+          group: "Database nodes"
           url: "tcp://10.0.200.61:50000"
           interval: 60s
           ui: *hide-details
@@ -207,7 +207,7 @@ spec:
             - type: discord
 
         - name: "talos-db-2"
-          group: "Nodes"
+          group: "Database nodes"
           url: "tcp://10.0.200.62:50000"
           interval: 60s
           ui: *hide-details
@@ -216,7 +216,7 @@ spec:
             - type: discord
 
         - name: "talos-db-3"
-          group: "Nodes"
+          group: "Database nodes"
           url: "tcp://10.0.200.63:50000"
           interval: 60s
           ui: *hide-details
@@ -225,7 +225,7 @@ spec:
             - type: discord
 
         - name: "nfs-server"
-          group: "Nodes"
+          group: "Storage"
           url: "tcp://10.0.200.30:2049"
           interval: 60s
           ui: *hide-details
@@ -234,7 +234,7 @@ spec:
             - type: discord
 
         - name: "cloud-edge"
-          group: "Off-cluster"
+          group: "Edge"
           url: "tcp://cloud-edge-egress.gatus.svc.cluster.local:443"
           interval: 60s
           ui: *hide-details
@@ -243,23 +243,11 @@ spec:
             - type: discord
 
         - name: "chronos (NAS)"
-          group: "Off-cluster"
+          group: "Storage"
           url: "tcp://chronos-egress.gatus.svc.cluster.local:443"
           interval: 60s
           ui: *hide-details
           conditions: ["[CONNECTED] == true"]
-          alerts:
-            - type: discord
-
-        - name: "Plex"
-          group: "Off-cluster"
-          url: "http://10.0.200.87:32400/identity"
-          interval: 60s
-          ui: *hide-details
-          conditions:
-            - "[STATUS] == 200"
-            - "[BODY] == pat(*machineIdentifier*)"
-            - "[RESPONSE_TIME] < 2000"
           alerts:
             - type: discord
 
@@ -335,5 +323,17 @@ spec:
           ui: *hide-details
           conditions:
             - "[STATUS] == 200"
+          alerts:
+            - type: discord
+
+        - name: "Plex"
+          group: "Apps"
+          url: "http://10.0.200.87:32400/identity"
+          interval: 60s
+          ui: *hide-details
+          conditions:
+            - "[STATUS] == 200"
+            - "[BODY] == pat(*machineIdentifier*)"
+            - "[RESPONSE_TIME] < 2000"
           alerts:
             - type: discord
