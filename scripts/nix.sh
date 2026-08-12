@@ -9,9 +9,6 @@ script=${1:?usage: nix.sh <shell script>}
 export NIX_CONFIG="experimental-features = nix-command flakes
 system-features = kvm nixos-test benchmark big-parallel uid-range"
 
-# 00-cloud-edge/ is the only flake left in this repo — the cluster is Talos and
-# owns no Nix. Flakes evaluate from the git tree, so an untracked file there is
-# invisible to the build and the failure is confusing.
 untracked=$(git -C "$repo" ls-files --others --exclude-standard -- \
   00-cloud-edge || true)
 if [ -n "$untracked" ]; then
@@ -39,10 +36,6 @@ args=(
   --env "NIX_SSHOPTS=${NIX_SSHOPTS:-}"
 )
 
-# The container runs as root but the repo is owned by the invoking user, and git
-# refuses to read a repo it does not own — "repository path '/work' is not owned
-# by current user". Nix evaluates flakes through libgit2, which only honours this
-# from a config file, not GIT_CONFIG_* environment variables.
 gitconfig=${XDG_CACHE_HOME:-$HOME/.cache}/nix-container-gitconfig
 if [ ! -f "$gitconfig" ]; then
   mkdir -p "$(dirname "$gitconfig")"
@@ -54,7 +47,6 @@ if [ -e /dev/kvm ]; then
   args+=(--device /dev/kvm)
 fi
 
-# Forward the SSH agent when there is one, so passphrase-protected keys work.
 if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "${SSH_AUTH_SOCK}" ]; then
   args+=(--volume "$SSH_AUTH_SOCK:/ssh-agent" --env "SSH_AUTH_SOCK=/ssh-agent")
 fi

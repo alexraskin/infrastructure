@@ -1,5 +1,3 @@
-# The Postgres cluster: one instance per db node, which is why there are three
-# db nodes and three db-local PVs.
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:

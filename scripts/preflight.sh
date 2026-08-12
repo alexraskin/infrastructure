@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Check everything Terraform is about to depend on: API token, permissions,
-# node, datastores, free VM IDs, free IPs, SSH to the node, room for the VMs,
-# and a local talosctl.
-#
-# Reads terraform/proxmox/terraform.tfvars. Never prints the token.
 set -uo pipefail
 
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)

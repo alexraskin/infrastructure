@@ -10,6 +10,8 @@ resource "proxmox_acme_certificate" "host" {
   node_name = var.pve_node
   account   = var.acme_account
 
+  force = true
+
   domains = [
     {
       domain = var.pve_fqdn
