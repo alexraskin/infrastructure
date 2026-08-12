@@ -62,10 +62,10 @@ variable "public_subnet_cidr" {
   default     = "10.80.1.0/24"
 }
 
-variable "ssh_ingress_cidr" {
-  type        = string
-  default     = "0.0.0.0/0"
-}
+# variable "ssh_ingress_cidr" {
+#   type        = string
+#   default     = "0.0.0.0/0"
+# }
 
 # ---------------------------------------------------------------------- ssh ---
 
