@@ -165,6 +165,12 @@ and the other roots keep seeing the old state until `tf:apply` runs.
   bridges come back as empty arrays. `pveum user token modify <userid> <tokenid>
   --privsep 0`. The provider also ignores `~/.ssh/config` and fails *partway*
   through an apply, after the VMs exist.
+- **`proxmox_acme_certificate` needs `force = true`.** PVE will not order over a
+  certificate it did not place itself, and fails the apply with `Parameter
+  verification failed. (force: Custom certificate exists but 'force' is not
+  set.)`. "Custom" means anything at `/etc/pve/nodes/<node>/pveproxy-ssl.pem`
+  that ACME did not write — including the installer's self-signed one, so this
+  bites on the very first order as well as after any manual cert.
 - **Three things the Proxmox token cannot manage at all**: the ACME account,
   feature flags on a privileged container, and individual apt repository lines.
   PVE reserves them for the real `root@pam`, and a token is not it.

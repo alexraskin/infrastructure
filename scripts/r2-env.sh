@@ -1,13 +1,3 @@
-# R2 credentials as AWS_* environment variables. Source it, do not run it.
-#
-# The backend block gets these through `-backend-config=secrets/r2.tfbackend`,
-# but a `terraform_remote_state` data source has no such flag — its config is
-# plain HCL in a public repo, so the credentials and the endpoint (which carries
-# the account id) have to arrive out of band. Both CI workflows already export
-# exactly these three names.
-#
-#   source scripts/r2-env.sh
-
 _r2_repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 _r2_file="$_r2_repo/secrets/r2.tfbackend"
 
@@ -16,7 +6,6 @@ _r2_file="$_r2_repo/secrets/r2.tfbackend"
   return 1 2>/dev/null || exit 1
 }
 
-# key = "value", and the endpoint out of `endpoints = { s3 = "..." }`.
 _r2_value() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$_r2_file"; }
 
 AWS_ACCESS_KEY_ID=$(_r2_value access_key)
