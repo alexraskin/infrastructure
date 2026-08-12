@@ -50,7 +50,6 @@ No modules.
 | <a name="input_oci_tenancy_ocid"></a> [oci\_tenancy\_ocid](#input\_oci\_tenancy\_ocid) | OCID of the tenancy | `string` | n/a | yes |
 | <a name="input_oci_user_ocid"></a> [oci\_user\_ocid](#input\_oci\_user\_ocid) | OCID of the user the API signing key belongs to | `string` | n/a | yes |
 | <a name="input_public_subnet_cidr"></a> [public\_subnet\_cidr](#input\_public\_subnet\_cidr) | CIDR for the public subnet | `string` | `"10.80.1.0/24"` | no |
-| <a name="input_ssh_ingress_cidr"></a> [ssh\_ingress\_cidr](#input\_ssh\_ingress\_cidr) | n/a | `string` | `"0.0.0.0/0"` | no |
 | <a name="input_ssh_public_key"></a> [ssh\_public\_key](#input\_ssh\_public\_key) | n/a | `string` | n/a | yes |
 | <a name="input_vcn_cidr"></a> [vcn\_cidr](#input\_vcn\_cidr) | CIDR for the VCN. Must not overlap 10.0.200.0/24 (the home LAN reached over Tailscale) or the flannel range. | `string` | `"10.80.0.0/16"` | no |
 
