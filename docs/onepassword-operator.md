@@ -105,3 +105,44 @@ The operator is worth it for secrets that also live in 1Password for a human to
 use, or that rotate often enough that editing an encrypted file is friction.
 That is a pull rather than a push: the vault becomes the source of truth and git
 holds only the item path.
+
+## What has moved, and what has not
+
+Five application secrets are `OnePasswordItem`s, all in the `kubernetes` vault,
+all with the item title equal to the Secret name:
+
+| Item | Namespace | Fields |
+| --- | --- | --- |
+| `lastfm-api-key` | `lastfm` | `api-key` |
+| `gatus-discord` | `gatus` | `webhook-url` |
+| `grafana-admin` | `monitoring` | `admin-user`, `admin-password` |
+| `lhbotgo-config` | `lhbotgo` | `bot-token`, `mongo-uri`, `lhcloudy-id`, `command-channel-ids` |
+| `loki-r2` | `logging` | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` |
+
+Create these as **API Credential** or **Secure Note** items with custom fields.
+A **Login** item carries `username` and `password` fields whether or not you
+fill them, and every field on the item becomes a key in the Secret — which
+`loki-r2` in particular would notice, because Loki consumes it with `envFrom`
+and so turns every key into an environment variable.
+
+These stay on SOPS, on purpose:
+
+- `onepassword-service-account-token` — the operator's own credential.
+- `cloudflared-token` and the tailscale `operator-oauth` — the two ways into the
+  cluster from outside. Putting the remote-access credentials behind a workload
+  that needs the network to work is how a bad afternoon starts.
+- `gatus-db`, `grafana-db`, `cnpg-backup-oci` — database bootstrap. The CNPG
+  cluster reads these while it is being created, `gatus-db` and `grafana-db` are
+  each *two* Secrets (a `kubernetes.io/basic-auth` in `cnpg-system` plus an
+  `Opaque` in the consuming namespace), and a wrong value in `cnpg-backup-oci`
+  fills the database disks rather than failing loudly — see the CNPG note in
+  `CLAUDE.md`. Movable later: the CRD's top-level `type` field can produce a
+  `basic-auth` Secret, and the paired Secret needs a second CR pointing at the
+  same item.
+- `grafana-tailnet` — `domain` and `root-url` are not secret at all. It wants to
+  become a ConfigMap, not a vault item.
+
+Each migration is three edits: a CR next to the app, the `*.sops.yaml` swapped
+out of that app's `kustomization.yaml`, and `dependsOn: [onepassword]` on the
+Flux Kustomization. The old SOPS files are left on disk but unwired, so a
+rollback is one line in `kustomization.yaml`.
