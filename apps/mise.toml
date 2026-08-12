@@ -47,20 +47,21 @@ echo "secret/sops-age is in place"
 [tasks.sops-encrypt]
 description = "Encrypt a secret file in place: mise run sops-encrypt base/cloudflared/token.sops.yaml"
 shell = "bash -c"
+usage = 'arg "<file>"'
 run = """
 set -euo pipefail
-f=${1:?usage: mise run sops-encrypt <file>}
-grep -q '^sops:' "$f" && { echo "$f is already encrypted"; exit 0; }
-sops --encrypt --in-place "$f"
-echo "encrypted $f — safe to commit"
+grep -q '^sops:' "$usage_file" && { echo "$usage_file is already encrypted"; exit 0; }
+sops --encrypt --in-place "$usage_file"
+echo "encrypted $usage_file — safe to commit"
 """
 
 [tasks.sops-edit]
 description = "Edit an encrypted secret: mise run sops-edit base/cloudflared/token.sops.yaml"
 shell = "bash -c"
+usage = 'arg "<file>"'
 run = """
 set -euo pipefail
-sops "${1:?usage: mise run sops-edit <file>}"
+exec sops "$usage_file"
 """
 
 # --------------------------------------------------------------- bootstrap ----

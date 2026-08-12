@@ -40,7 +40,16 @@ From `00-cloud-edge/`: `tf:apply`, `install` (nixos-anywhere, one shot, erases
 the box), `deploy`, `status`, `secrets:edit`.
 
 There is no test suite. "Does it work" is `mise run preflight`, a `terraform
-plan`, then `mise run health` and `mise run status`.
+plan`, then `mise run health` and `mise run status`. `mise run tflint` and
+`mise run tfdocs` cover every Terraform root at once, which is also what
+`.github/workflows/terraform_checks.yml` runs on a PR; `scripts/tf-roots.sh` is
+the list both read.
+
+**Every root initialises itself.** `scripts/tf-init.sh` checks the secrets the
+root needs and inits it against R2, but returns immediately once
+`.terraform/terraform.tfstate` exists — so `plan` and `apply` call it every time
+without a registry round trip, and `*:init` passes `--force` when providers
+should actually be re-resolved.
 
 ## Source of truth
 
@@ -119,8 +128,7 @@ tag manually is undone within 5 minutes; pin by narrowing the ImagePolicy range.
   Running it from `apps/` against a path in `00-cloud-edge/` picks the wrong
   config, matches nothing, and writes **plaintext** with a `sops:` block that
   makes it look encrypted. Use `mise run secrets:edit` from `00-cloud-edge/`.
-- `mise run sops-encrypt <file>` is broken (does not receive its argument). Use
-  `cd apps && mise exec -- sops --encrypt --in-place <file>`.
+  `mise run sops-encrypt <file>` and `sops-edit` run from `apps/` and are fine.
 
 **The 1Password operator is the second way in, not a replacement.**
 `apps/base/onepassword/` runs the operator alone — no Connect server — against a
@@ -193,3 +201,8 @@ and the other roots keep seeing the old state until `tf:apply` runs.
   on that path and `bpf-lb-external-clusterip` does not change it.
 - **Keep `notes_template` on the backup job ASCII.** An em dash fails the apply
   with "Provider produced inconsistent result after apply".
+- **A `mise` task cannot read `$1`.** Arguments are appended to the *command
+  string*, not passed as positional parameters, so `${1:-}` is always empty and
+  the argument lands on the last command's argv instead — which is how
+  `mise run ssh <host>` used to run `<host>` on the edge box. A task that takes
+  one declares `usage = 'arg "<file>"'` and reads `$usage_file`.

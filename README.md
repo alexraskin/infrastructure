@@ -120,10 +120,8 @@ flowchart TB
     EDGE -.-> LOG
 ```
 
-There is one machine outside the house: a free Oracle ARM box running NixOS and
-HAProxy, in `00-cloud-edge/`. It exists because Plex cannot legally go through
-the Cloudflare tunnel, and it reaches home over Tailscale rather than any open
-port.
+There is one machine outside the cluster: a free Oracle ARM box running NixOS and
+HAProxy, in `00-cloud-edge/`.
 
 ## Layout
 
@@ -134,14 +132,11 @@ terraform/oracle/      Object Storage — where Postgres backups land
 tailscale/             the tailnet policy file, as code
 talos/                 Cilium's values, installed outside Flux on purpose
 apps/                  everything Flux deploys
-00-cloud-edge/         the public Oracle edge, still NixOS
-docs/                  how this stopped being k3s on NixOS, and other history
-CLAUDE.md              the design notes: why things are the way they are
+00-cloud-edge/         the public Oracle edge, NixOS
 ```
 
 Every command is a `mise` task. State for all five Terraform roots lives in a
-Cloudflare R2 bucket — which also holds the cluster's PKI, so it is treated as a
-secret store. Secrets in `apps/` are SOPS-encrypted to a single age key that also
+Cloudflare R2 bucket. Secrets in `apps/` are SOPS-encrypted to a single age key that also
 decrypts the edge; nothing else in the tree is sensitive.
 
 Design notes, failure modes and the things I learned by breaking them are in

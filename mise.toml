@@ -22,7 +22,7 @@ description = "regenerate the README of every terraform root (CI checks these ar
 shell = "bash -c"
 run = """
 set -euo pipefail
-for d in 00-cloud-edge/terraform tailscale terraform/cloudflare terraform/oracle terraform/proxmox; do
+for d in $(scripts/tf-roots.sh); do
   terraform-docs -c .pre-commit-config.tfdocs.yml "$d"
 done
 """
@@ -35,7 +35,7 @@ run = """
 set -euo pipefail
 tflint --init
 rc=0
-for d in 00-cloud-edge/terraform tailscale terraform/cloudflare terraform/oracle terraform/proxmox; do
+for d in $(scripts/tf-roots.sh); do
   echo "== $d"
   tflint --chdir="$d" --format=compact || rc=$?
 done
@@ -45,29 +45,28 @@ exit $rc
 # ------------------------------------------------------------ terraform ----
 
 [tasks."tf:init"]
-description = "terraform init (state lives in R2)"
-dir = "terraform/proxmox"
-shell = "bash -c"
-run = """
-set -euo pipefail
-[ -s ../../secrets/r2.tfbackend ] || {
-  echo "missing secrets/r2.tfbackend — copy terraform/r2.tfbackend.example" >&2
-  exit 1
-}
-terraform init -upgrade -backend-config=../../secrets/r2.tfbackend
-"""
+description = "terraform init, re-resolving providers (state lives in R2)"
+run = "scripts/tf-init.sh --force terraform/proxmox"
 
 [tasks."tf:plan"]
 description = "terraform plan"
 dir = "terraform/proxmox"
-depends = ["tf:init"]
-run = "terraform plan"
+shell = "bash -c"
+run = """
+set -euo pipefail
+../../scripts/tf-init.sh terraform/proxmox
+terraform plan
+"""
 
 [tasks."tf:apply"]
 description = "Create the VMs, apply machine configs, bootstrap the cluster"
 dir = "terraform/proxmox"
-depends = ["tf:init"]
-run = "terraform apply"
+shell = "bash -c"
+run = """
+set -euo pipefail
+../../scripts/tf-init.sh terraform/proxmox
+terraform apply
+"""
 
 [tasks."tf:destroy"]
 description = "DESTRUCTIVE: destroy the cluster VMs only — this root also owns the PVE host"
@@ -88,23 +87,15 @@ terraform destroy \
 
 [tasks."cf:init"]
 description = "terraform init for the Cloudflare root"
-dir = "terraform/cloudflare"
-shell = "bash -c"
-run = """
-set -euo pipefail
-for f in cloudflare-api-token r2.tfbackend; do
-  [ -s "../../secrets/$f" ] || { echo "missing secrets/$f — see README" >&2; exit 1; }
-done
-terraform init -upgrade -backend-config=../../secrets/r2.tfbackend
-"""
+run = "scripts/tf-init.sh --force terraform/cloudflare cloudflare-api-token"
 
 [tasks."cf:plan"]
 description = "Plan the tunnel, ingress rules and DNS records"
 dir = "terraform/cloudflare"
-depends = ["cf:init"]
 shell = "bash -c"
 run = """
 set -euo pipefail
+../../scripts/tf-init.sh terraform/cloudflare cloudflare-api-token
 export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
 source ../../scripts/r2-env.sh
 terraform plan
@@ -113,10 +104,10 @@ terraform plan
 [tasks."cf:apply"]
 description = "Apply the tunnel, ingress rules and DNS records"
 dir = "terraform/cloudflare"
-depends = ["cf:init"]
 shell = "bash -c"
 run = """
 set -euo pipefail
+../../scripts/tf-init.sh terraform/cloudflare cloudflare-api-token
 export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
 source ../../scripts/r2-env.sh
 terraform apply
@@ -128,23 +119,15 @@ terraform apply
 
 [tasks."oci:init"]
 description = "terraform init for the Oracle backups root"
-dir = "terraform/oracle"
-shell = "bash -c"
-run = """
-set -euo pipefail
-for f in oci.env oci_api_key.pem r2.tfbackend; do
-  [ -s "../../secrets/$f" ] || { echo "missing secrets/$f — see terraform/oracle/CLAUDE.md" >&2; exit 1; }
-done
-terraform init -upgrade -backend-config=../../secrets/r2.tfbackend
-"""
+run = "scripts/tf-init.sh --force terraform/oracle oci.env oci_api_key.pem"
 
 [tasks."oci:plan"]
 description = "Plan the CNPG backup bucket and its IAM user"
 dir = "terraform/oracle"
-depends = ["oci:init"]
 shell = "bash -c"
 run = """
 set -euo pipefail
+../../scripts/tf-init.sh terraform/oracle oci.env oci_api_key.pem
 source ../../scripts/oci-env.sh
 terraform plan
 """
@@ -152,10 +135,10 @@ terraform plan
 [tasks."oci:apply"]
 description = "Create the CNPG backup bucket and its IAM user"
 dir = "terraform/oracle"
-depends = ["oci:init"]
 shell = "bash -c"
 run = """
 set -euo pipefail
+../../scripts/tf-init.sh terraform/oracle oci.env oci_api_key.pem
 source ../../scripts/oci-env.sh
 terraform apply
 """
@@ -267,49 +250,21 @@ echo "nodes rebooting into maintenance mode — re-run 'mise run tf:apply' to re
 
 [tasks."nfs:status"]
 description = "NFS server: export list, free space, and whether the StorageClass agrees"
-shell = "bash -c"
-run = '''
-set -euo pipefail
-cfg=terraform/proxmox/cluster.auto.tfvars.json
-ip=$(jq -r '.nfs.ip' $cfg)
-share=$(jq -r '.nfs.export_path' $cfg)
-vmid=$(jq -r '.nfs.vmid' $cfg)
-host=$(sed -n 's|^pve_endpoint *= *"https*://\([^:/]*\).*|\1|p' terraform/proxmox/terraform.tfvars | head -1)
-
-echo "== export ($ip:$share, vmid $vmid)"
-ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "root@$host" \
-  "pct exec $vmid -- sh -c 'exportfs -v; df -h $share | tail -1'"
-
-echo
-echo "== StorageClass"
-kubectl get sc nfs -o jsonpath='{.parameters.server}:{.parameters.share}{"\n"}'
-echo "   expected $ip:$share"
-'''
+run = "scripts/nfs-status.sh"
 
 # --------------------------------------------------------------- tailnet ----
 
 [tasks."ts:init"]
 description = "terraform init for the tailnet policy root (state lives in R2)"
-dir = "tailscale"
-shell = "bash -c"
-run = """
-set -euo pipefail
-for f in tailscale-oauth.env r2.tfbackend; do
-  [ -s "../secrets/$f" ] || {
-    echo "missing secrets/$f — see tailscale/tailscale-oauth.env.example" >&2
-    exit 1
-  }
-done
-terraform init -upgrade -backend-config=../secrets/r2.tfbackend
-"""
+run = "scripts/tf-init.sh --force tailscale tailscale-oauth.env"
 
 [tasks."ts:plan"]
 description = "Plan the tailnet policy file"
 dir = "tailscale"
-depends = ["ts:init"]
 shell = "bash -c"
 run = """
 set -euo pipefail
+../scripts/tf-init.sh tailscale tailscale-oauth.env
 set -a; . ../secrets/tailscale-oauth.env; set +a
 source ../scripts/r2-env.sh
 terraform plan
@@ -318,10 +273,10 @@ terraform plan
 [tasks."ts:apply"]
 description = "Apply the tailnet policy file (CI does this on push to main)"
 dir = "tailscale"
-depends = ["ts:init"]
 shell = "bash -c"
 run = """
 set -euo pipefail
+../scripts/tf-init.sh tailscale tailscale-oauth.env
 set -a; . ../secrets/tailscale-oauth.env; set +a
 source ../scripts/r2-env.sh
 terraform apply
@@ -352,6 +307,7 @@ kubectl -n kube-system get pods
 description = "Full path: VMs -> machine configs -> bootstrap -> Cilium -> status"
 shell = "bash -c"
 run = """
+set -euo pipefail
 mise run tf:apply
 mise run talosconfig
 mise run kubeconfig
