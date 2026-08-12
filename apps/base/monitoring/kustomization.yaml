@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrepository.yaml
-  - grafana-admin.sops.yaml
+  - grafana-admin.onepassworditem.yaml
   - grafana-tailnet.sops.yaml
   - helmrelease.yaml
 
