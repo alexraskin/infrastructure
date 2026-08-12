@@ -1,17 +1,8 @@
-# The NFS server — a Debian LXC on the cluster's own bridge, exporting a disk
-# to the Kubernetes nodes as RWX storage.
-#
-# It is deliberately *not* the NAS. The NAS lives on 10.0.54.0/24 and the
-# cluster on 10.0.200.0/24 with no route between them, and no amount of
-# in-cluster configuration fixes that: an NFS mount is performed by the CSI
-# node plugin in the node's own network namespace, so a Tailscale egress proxy
-# cannot carry it either. This container is on the cluster's network, so it can.
+# The NFS server — a Debian LXC on the cluster's own bridge
 
 locals {
-  # The hostname the provider SSHes to, taken from the API endpoint.
   pve_host = regex("^https?://([^:/]+)", var.pve_endpoint)[0]
 
-  # 10.0.200.0/24 — what the export is restricted to.
   cluster_subnet = "${cidrhost("${local.cluster.gateway}/${local.cluster.prefix}", 0)}/${local.cluster.prefix}"
 }
 
@@ -37,20 +28,7 @@ resource "proxmox_virtual_environment_container" "nfs" {
   started       = true
   start_on_boot = true
 
-  # The kernel NFS server needs to manipulate mounts and load nfsd, which an
-  # unprivileged container cannot do. This is the one guest here that is not
-  # locked down, which is also why it exports to the cluster subnet only.
   unprivileged = false
-
-  # No `features {}` block, deliberately. PVE refuses to set feature flags on a
-  # privileged container for anyone but root@pam:
-  #
-  #   403 Permission check failed (changing feature flags for privileged
-  #   container is only allowed for root@pam)
-  #
-  # and an API token is not root@pam, however privileged — the same wall the
-  # ACME account hits in acme.tf. scripts/nfs-provision.sh sets
-  # `nesting=1,mount=nfs` with `pct set` over SSH, where root really is root.
 
   cpu {
     cores = var.nfs.cores
@@ -64,9 +42,6 @@ resource "proxmox_virtual_environment_container" "nfs" {
     datastore_id = var.vm_datastore
     size         = var.nfs.root_disk
   }
-
-  # The exported volume, separate from the root filesystem so the OS can be
-  # rebuilt without touching the data.
   mount_point {
     volume = var.vm_datastore
     size   = "${var.nfs.data_disk}G"
@@ -101,10 +76,6 @@ resource "proxmox_virtual_environment_container" "nfs" {
     type             = "debian"
   }
 
-  # Installs nfs-kernel-server and writes /etc/exports. Runs through `pct exec`
-  # on the PVE host rather than SSH into the container: the provider already
-  # needs that SSH access, and this way the container needs no key of its own
-  # and no sshd at all.
   provisioner "local-exec" {
     command = "${path.module}/../../scripts/nfs-provision.sh"
 
@@ -119,11 +90,8 @@ resource "proxmox_virtual_environment_container" "nfs" {
 
   lifecycle {
     ignore_changes = [
-      # The provider reports the allocated volume id (local-lvm:vm-130-disk-1),
-      # which never matches the datastore name given here.
       mount_point[0].volume,
       operating_system[0].template_file_id,
-      # Set by the provisioner, not by Terraform — see above.
       features,
     ]
   }

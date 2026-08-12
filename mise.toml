@@ -8,8 +8,6 @@ helm = "latest"
 [env]
 KUBECONFIG = "{{config_root}}/kubeconfig"
 TALOSCONFIG = "{{config_root}}/secrets/talosconfig"
-# Pinned alongside talos/cilium-values.yaml. 1.20 is the line e2e-tested
-# against Kubernetes 1.36, which is what Talos 1.13 ships.
 CILIUM_VERSION = "1.20.0"
 
 [tasks.preflight]
@@ -47,8 +45,6 @@ run = "terraform apply"
 description = "DESTRUCTIVE: destroy the cluster VMs only — this root also owns the PVE host"
 dir = "terraform/proxmox"
 shell = "bash -c"
-# Targeted on purpose. A bare `terraform destroy` here would also take the
-# host's ACME certificate, its NFS storages and the management bridge with it.
 run = """
 set -euo pipefail
 terraform destroy \
@@ -61,8 +57,6 @@ terraform destroy \
 # ------------------------------------------------------------ cloudflare ----
 #
 # terraform/cloudflare/ — the tunnel, its ingress rules and the DNS records.
-# Token in secrets/cloudflare-api-token: a custom token with
-# Account/Cloudflare Tunnel/Edit, Zone/DNS/Edit, Zone/Zone/Read.
 
 [tasks."cf:init"]
 description = "terraform init for the Cloudflare root"
@@ -84,6 +78,7 @@ shell = "bash -c"
 run = """
 set -euo pipefail
 export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
+source ../../scripts/r2-env.sh
 terraform plan
 """
 
@@ -95,15 +90,13 @@ shell = "bash -c"
 run = """
 set -euo pipefail
 export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
+source ../../scripts/r2-env.sh
 terraform apply
 """
 
 # ---------------------------------------------------------------- oracle ----
 #
-# terraform/oracle/ — the Object Storage bucket CloudNativePG backs up into, and
-# the least-privilege OCI user whose Customer Secret Key it authenticates with.
-# `oci:` rather than `tf:` because that prefix is already the Proxmox root here
-# and the edge root in 00-cloud-edge/mise.toml.
+# terraform/oracle/ — the Object Storage bucket CloudNativePG backs up into
 
 [tasks."oci:init"]
 description = "terraform init for the Oracle backups root"
@@ -143,8 +136,6 @@ terraform apply
 description = "Print the values for apps/base/cnpg/cluster/backup-oci.sops.yaml"
 dir = "terraform/oracle"
 shell = "bash -c"
-# The secret is only ever returned by the OCI API at creation, so state is the
-# only copy. Reads state directly — no plan, no provider credentials needed.
 run = """
 set -euo pipefail
 echo "cluster.yaml   endpointURL:     $(terraform output -raw endpoint_url)"
@@ -184,8 +175,6 @@ echo "wrote kubeconfig (KUBECONFIG is already set by mise in this repo)"
 [tasks.cilium]
 description = "Install/upgrade Cilium — required within ~10min of bootstrap or nodes reboot"
 shell = "bash -c"
-# Deliberately not a Flux HelmRelease: the cluster has no working pod network
-# until this lands, so nothing that reconciles from inside it can install it.
 run = """
 set -euo pipefail
 helm repo add cilium https://helm.cilium.io/ >/dev/null
@@ -251,8 +240,6 @@ echo "nodes rebooting into maintenance mode — re-run 'mise run tf:apply' to re
 [tasks."nfs:status"]
 description = "NFS server: export list, free space, and whether the StorageClass agrees"
 shell = "bash -c"
-# Literal string (''' not """): the sed expression below is full of
-# backslashes, which a TOML basic string would try to interpret as escapes.
 run = '''
 set -euo pipefail
 cfg=terraform/proxmox/cluster.auto.tfvars.json
@@ -296,6 +283,7 @@ shell = "bash -c"
 run = """
 set -euo pipefail
 set -a; . ../secrets/tailscale-oauth.env; set +a
+source ../scripts/r2-env.sh
 terraform plan
 """
 
@@ -307,6 +295,7 @@ shell = "bash -c"
 run = """
 set -euo pipefail
 set -a; . ../secrets/tailscale-oauth.env; set +a
+source ../scripts/r2-env.sh
 terraform apply
 """
 

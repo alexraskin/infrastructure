@@ -9,6 +9,16 @@ output "nodes" {
   }
 }
 
+output "network" {
+  description = "Cluster addressing other Terraform roots consume"
+  value = {
+    vip     = local.cluster.vip
+    gateway = local.cluster.gateway
+    subnet  = "${cidrhost("${local.cluster.gateway}/${local.cluster.prefix}", 0)}/${local.cluster.prefix}"
+    pve_host = split("/", var.pve_bridge_address)[0]
+  }
+}
+
 output "control_plane_endpoint" {
   description = "The Talos VIP fronting the API servers"
   value       = local.cluster_endpoint
@@ -29,7 +39,6 @@ output "talos_image" {
   }
 }
 
-# Written to secrets/ by `mise run talosconfig` and `mise run kubeconfig`.
 output "talosconfig" {
   description = "Client configuration for talosctl"
   value       = data.talos_client_configuration.this.talos_config
@@ -43,7 +52,7 @@ output "kubeconfig" {
 }
 
 output "backup_job" {
-  description = "The nightly vzdump job: what it covers, where it lands, how long it is kept"
+  description = "The nightly vzdump job"
   value = {
     id        = proxmox_backup_job.cluster.id
     storage   = proxmox_backup_job.cluster.storage

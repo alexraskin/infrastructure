@@ -25,10 +25,7 @@ spec:
               app: lastfm-now-playing
       containers:
         - name: api
-          # Tag is maintained by Flux image automation — see
-          # base/image-automation/. Do not edit it by hand; a manual change is
-          # reverted on the next scan.
-          image: ghcr.io/alexraskin/lastfm-now-playing:1.0.1 # {"$imagepolicy": "flux-system:lastfm-now-playing"}
+          image: ghcr.io/alexraskin/lastfm-now-playing:1.0.1
           args: ["-port", "3000"]
           env:
             - name: LASTFM_API_KEY

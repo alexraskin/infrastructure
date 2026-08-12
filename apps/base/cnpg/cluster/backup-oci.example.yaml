@@ -1,17 +1,3 @@
-# Template only. The S3-compatible credential CloudNativePG uses to write base
-# backups and WAL into Oracle Object Storage.
-#
-# Every value comes from `mise run oci:creds`, which reads them out of the
-# terraform/oracle/ state. The Customer Secret Key is returned by the OCI API
-# only at creation, so that state is the only copy — losing it means replacing
-# the key, not reading it back.
-#
-# `region` is here only because barmanObjectStore.s3Credentials.region is a
-# SecretKeySelector in the CRD and takes nothing else. It is not a secret — it is
-# already visible in endpointURL in cluster.yaml — but it has to be set: boto3
-# needs a region to sign SigV4 and the one it would otherwise default to is not
-# Oracle's.
-#
 #   cp backup-oci.example.yaml backup-oci.sops.yaml
 #   $EDITOR backup-oci.sops.yaml
 #   cd apps && mise exec -- sops --encrypt --in-place base/cnpg/cluster/backup-oci.sops.yaml

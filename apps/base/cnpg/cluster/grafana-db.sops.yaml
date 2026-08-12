@@ -1,11 +1,8 @@
-# The grafana database credential, in both namespaces that need it — same shape
-# and same reasoning as gatus-db.sops.yaml.
 apiVersion: v1
 kind: Secret
 metadata:
     name: grafana-db
     namespace: cnpg-system
-# CNPG requires basic-auth for a managed role, and username must match the role.
 type: kubernetes.io/basic-auth
 stringData:
     username: ENC[AES256_GCM,data:oQ+g2p6yDA==,iv:sm+koi00aH4JvpIYTtqqRhXncBSE1l0CmPcXYDU0pyE=,tag:SSa42h6PRC03RvxgnIdV/w==,type:str]

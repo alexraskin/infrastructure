@@ -49,7 +49,7 @@ resource "oci_core_security_list" "edge" {
   }
 
   ingress_security_rules {
-    protocol    = "6" # TCP
+    protocol    = "6"
     source      = "0.0.0.0/0"
     stateless   = false
     description = "HTTPS — HAProxy"
@@ -60,7 +60,7 @@ resource "oci_core_security_list" "edge" {
     }
   }
   ingress_security_rules {
-    protocol    = "17" # UDP
+    protocol    = "17"
     source      = "0.0.0.0/0"
     stateless   = false
     description = "Tailscale direct connections"

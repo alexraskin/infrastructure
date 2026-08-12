@@ -8,8 +8,6 @@ spec:
   chart:
     spec:
       chart: loki
-      # Pinned by hand, like the other HelmReleases — image automation only
-      # tracks our own GHCR images.
       version: "7.2.0"
       sourceRef:
         kind: HelmRepository
@@ -23,15 +21,6 @@ spec:
     remediation:
       retries: 3
   values:
-    # ------------------------------------------------------- topology ----
-    # One StatefulSet running `-target=all` instead of the chart's default
-    # read/write/backend split, which would be three Deployments plus two
-    # memcached tiers for a homelab's log volume.
-    #
-    # The three scalable targets must be explicitly zeroed. Leave them at their
-    # defaults and the chart's validate.yaml aborts the render with "You have
-    # more than zero replicas configured for both the single binary and simple
-    # scalable targets".
     deploymentMode: SingleBinary
     read:
       replicas: 0
@@ -39,11 +28,6 @@ spec:
       replicas: 0
     backend:
       replicas: 0
-
-    # Chart defaults that are far too heavy here: chunksCache alone asks for
-    # 8 GiB of memcached, on nodes that have 8 GiB total. resultsCache adds
-    # another tier, lokiCanary a DaemonSet, gateway an nginx in front of a
-    # service Grafana can reach directly.
     chunksCache:
       enabled: false
     resultsCache:
@@ -56,11 +40,7 @@ spec:
       enabled: false
     minio:
       enabled: false
-
-    # ----------------------------------------------------------- loki ----
     loki:
-      # Single tenant. With auth off there is no X-Scope-OrgID to send, which is
-      # why the Grafana datasource needs no custom header.
       auth_enabled: false
 
       commonConfig:
@@ -68,11 +48,6 @@ spec:
 
       schemaConfig:
         configs:
-          # `from` is a UTC day boundary and must already have passed when Loki
-          # starts, or it exits with "no schema config found for time <epoch>"
-          # and CrashLoops — a date one day ahead is enough to do it. Backdated
-          # deliberately; the bucket is empty, so there is nothing before this
-          # for the period to mis-describe.
           - from: "2026-08-01"
             store: tsdb
             object_store: s3
@@ -87,44 +62,27 @@ spec:
         reject_old_samples_max_age: 168h
 
       compactor:
-        # retention_period above does NOTHING without this. Chunks are never
-        # deleted, logs look like they are kept forever, and the R2 bill grows
-        # quietly.
         retention_enabled: true
         delete_request_store: s3
 
       storage:
         type: s3
-        # Same bucket for both; Loki keys them apart by prefix.
         bucketNames:
           chunks: loki
           ruler: loki
         s3:
-          # ${...} survives into the rendered config and is expanded at startup
-          # by -config.expand-env=true, from the loki-r2 Secret. The endpoint is
-          # in the secret too because it embeds the Cloudflare account id.
           endpoint: ${R2_ENDPOINT}
           accessKeyId: ${R2_ACCESS_KEY_ID}
           secretAccessKey: ${R2_SECRET_ACCESS_KEY}
-          # R2 has no regions, and is path-style only — the same two adjustments
-          # terraform/*/providers.tf makes with region="auto" and use_path_style.
           region: auto
           s3ForcePathStyle: true
-
-    # --------------------------------------------------- single binary ----
     singleBinary:
       replicas: 1
-
-      # global.extraEnvFrom does not reach the single-binary target — its scope
-      # list covers read/write/backend and friends only. It has to be set here.
       extraArgs:
         - "-config.expand-env=true"
       extraEnvFrom:
         - secretRef:
             name: loki-r2
-
-      # WAL and the index cache only. Chunks are in R2, so losing the node this
-      # PVC is pinned to costs replay, not history.
       persistence:
         enabled: true
         storageClass: local-path

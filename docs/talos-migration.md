@@ -41,7 +41,9 @@ e2e-tested against 1.36, which ruled out the 1.18 the plan originally named.
 - **`terraform/proxmox/main.tf`** — VMs with no cloud-init, a blank system disk,
   an optional `scsi1` for the db nodes, booting the factory ISO.
 - **`terraform/proxmox/talos.tf`** — secrets, per-node machine configs, apply,
-  bootstrap, kubeconfig, and the role patches.
+  and the sleep before bootstrap. The role patches, the bootstrap and the
+  kubeconfig are in `talos-controlplane.tf`, `talos-workers.tf` and
+  `talos-db-worker.tf`.
 - **`talos/cilium-values.yaml`** + `mise run cilium`.
 - **`apps/base/local-path/`** — two StorageClasses and the static PVs.
 - **`apps/base/tailscale-router/`** — the Connector that replaces the node
@@ -61,7 +63,7 @@ e2e-tested against 1.36, which ruled out the 1.18 the plan originally named.
 3. `mise run ts:apply` — policy first, so `autoApprovers` is ready for the
    Connector's `tag:k8s-router`. Then delete the old cluster's devices in the
    admin console; a stale device holding a hostname pushes the new one to
-   `name-1`. See `tailscale/CLAUDE.md`.
+   `name-1`.
 4. `mise run tf:destroy` — **targeted**, and it has to stay that way: this root
    also owns the PVE host's ACME certificate, its NFS storages and the
    management bridge. A bare `terraform destroy` would take those too.

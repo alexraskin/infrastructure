@@ -1,13 +1,3 @@
-# RWX storage, backed by the NFS server LXC in terraform/proxmox/nfs.tf.
-#
-# Unlike `local-path` and `db-local` this one provisions on demand: the driver
-# mounts the export, creates a subdirectory per volume and hands that out. No PV
-# has to be written by hand, and a volume is not pinned to a node — which is the
-# whole point of having it.
-#
-# `server` and `share` must match `nfs` in cluster.auto.tfvars.json. They are
-# not templated from it: Flux does not read Terraform's variables, so this is
-# the one place the address is repeated. `mise run nfs:status` checks they agree.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -16,8 +6,6 @@ provisioner: nfs.csi.k8s.io
 parameters:
   server: 10.0.200.30
   share: /srv/nfs
-  # Keeps a deleted volume's data on the server under archived-<pvc>, rather
-  # than removing it with the PVC.
   onDelete: archive
 reclaimPolicy: Delete
 volumeBindingMode: Immediate

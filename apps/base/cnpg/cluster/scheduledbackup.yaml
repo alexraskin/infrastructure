@@ -1,12 +1,3 @@
-# Weekly base backup. WAL is archived continuously by the operator as soon as
-# spec.backup.barmanObjectStore is set on the Cluster — this only schedules the
-# full copies that WAL is replayed on top of.
-#
-# The schedule is a SIX-field cron with seconds first, not the usual five. This
-# is Sunday 03:00. A five-field expression is not rejected, it is misread.
-#
-# immediate: true takes the first backup when this is created rather than waiting
-# until Sunday, which is also how the backup path gets verified on day one.
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:

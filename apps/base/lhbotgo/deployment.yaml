@@ -8,10 +8,6 @@ spec:
   selector:
     matchLabels:
       app: lhbotgo
-  # Recreate, not RollingUpdate: this is a Discord gateway client, not a server.
-  # Two pods alive at once means two gateway sessions handling the same events
-  # twice. There is nothing to keep available in the gap — Discord queues the
-  # events — so the old pod goes away before the new one starts.
   strategy:
     type: Recreate
   template:

@@ -58,15 +58,3 @@ resource "cloudflare_dns_record" "tunnel" {
   ttl     = 1
   comment = "terraform: k3s tunnel"
 }
-
-resource "cloudflare_dns_record" "extra" {
-  for_each = var.extra_dns_records
-
-  zone_id = var.zones[each.value.zone]
-  name    = each.value.name
-  type    = each.value.type
-  content = each.value.content
-  ttl     = each.value.ttl
-  proxied = each.value.proxied
-  comment = each.value.comment
-}

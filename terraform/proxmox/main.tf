@@ -15,8 +15,6 @@ resource "proxmox_virtual_environment_vm" "node" {
   on_boot = true
   started = true
 
-  # The extension is in the image factory schematic; without it Proxmox never
-  # learns the guest's address and a shutdown is a hard stop.
   agent {
     enabled = true
   }
@@ -32,9 +30,6 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   scsi_hardware = "virtio-scsi-single"
 
-  # Blank disk. Talos installs itself onto it from the ISO on first boot —
-  # there is no image to import and no cloud-init drive, because Talos takes
-  # its entire configuration over its own API.
   disk {
     datastore_id = var.vm_datastore
     file_format  = var.disk_format
@@ -45,8 +40,6 @@ resource "proxmox_virtual_environment_vm" "node" {
     iothread     = true
   }
 
-  # Second disk on the db nodes only, picked up by the `db` UserVolumeConfig
-  # and mounted at /var/mnt/db.
   dynamic "disk" {
     for_each = each.value.data_disk == null ? [] : [each.value.data_disk]
 
@@ -80,8 +73,6 @@ resource "proxmox_virtual_environment_vm" "node" {
   serial_device {}
 
   lifecycle {
-    # A Talos version bump changes the ISO, and the VM has to come back up on
-    # it to be reinstalled.
     replace_triggered_by = [
       proxmox_virtual_environment_download_file.talos_iso.id,
     ]

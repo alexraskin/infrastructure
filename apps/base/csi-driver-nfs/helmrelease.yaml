@@ -8,7 +8,6 @@ spec:
   chart:
     spec:
       chart: csi-driver-nfs
-      # Pinned by hand; image automation only tracks our own GHCR images.
       version: "4.13.4"
       sourceRef:
         kind: HelmRepository
@@ -22,8 +21,6 @@ spec:
     remediation:
       retries: 3
   values:
-    # The controller does the provisioning: it mounts the export, creates a
-    # subdirectory per PV and hands that to the pod. Nothing is pre-created.
     controller:
       replicas: 1
       runOnControlPlane: false
@@ -35,8 +32,6 @@ spec:
           limits:
             memory: 128Mi
 
-    # Runs on every node, including the tainted ones — a database pod on a db
-    # node still needs a driver there to mount anything.
     node:
       tolerations:
         - operator: Exists

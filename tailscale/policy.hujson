@@ -56,9 +56,6 @@
 			"ip":  ["*"],
 		},
 
-		// Exit node. `dst: ["*"]` above does not cover this — autogroup:internet
-		// is only matched when it is named, so without this grant the edge is
-		// approved as an exit node and every client using it gets nothing.
 		{
 			"src": ["autogroup:member"],
 			"dst": ["autogroup:internet"],
@@ -111,7 +108,7 @@
 
 	"autoApprovers": {
 		"routes": {
-			"10.0.200.0/24": ["tag:k8s-router"],
+			"${cluster_subnet}": ["tag:k8s-router"],
 		},
 
 		// Without this the edge advertises 0.0.0.0/0 and waits for a human.
@@ -130,8 +127,8 @@
 			],
 			"deny": [
 				"100.73.219.120:22",
-				"10.0.200.40:6443",
-				"10.0.200.41:22",
+				"${cluster_vip}:6443",
+				"${node["talos-cp-1"]}:22",
 				// tag:k8s-loki is split out so this stays denied.
 				"tag:k8s:443",
 			],
@@ -144,7 +141,7 @@
 			"accept": ["tag:cloud-edge:443", "100.109.167.97:443"],
 			"deny": [
 				"100.73.219.120:32400",
-				"10.0.200.40:6443",
+				"${cluster_vip}:6443",
 				"tag:cloud-edge:22",
 				"100.109.167.97:5001",
 			],

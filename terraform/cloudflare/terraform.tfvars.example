@@ -34,6 +34,22 @@ ingress = [
   },
 ]
 
+# A records fed from terraform/proxmox/ state, so an address is declared once.
+# source is "vip", "pve_host", or a node name from cluster.auto.tfvars.json.
+# These are RFC1918 and resolve publicly — see the variable's description.
+cluster_dns_records = {
+  # pve = {
+  #   zone   = "<zone>"
+  #   name   = "pve.lan<zone>"
+  #   source = "pve_host"
+  # }
+  # k8s = {
+  #   zone   = "<zone>"
+  #   name   = "k8s.lan<zone>"
+  #   source = "vip"
+  # }
+}
+
 # Anything else worth keeping in code. Empty is fine — records not listed here
 # and not generated from `ingress` are left alone, not deleted.
 extra_dns_records = {}

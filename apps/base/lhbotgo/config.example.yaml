@@ -1,17 +1,3 @@
-# Template only. Fill in the four values, then encrypt it in place:
-#
-#   cp config.example.yaml config.sops.yaml
-#   $EDITOR config.sops.yaml
-#   mise run sops-encrypt base/lhbotgo/config.sops.yaml
-#
-# This replaces the config.toml the bot used to bind-mount under docker
-# (/mnt/lhbotgo/config.toml). The binary still looks for that file and shrugs
-# when it is absent; every key it needs is set here as an env override instead
-# (lhbot/config.go, applyEnvOverrides).
-#
-# command-channel-ids is a comma-separated list of snowflakes; leave it empty to
-# keep the built-in default. lhcloudy-id is a single snowflake. Neither is
-# secret, but they live here so there is one file to fill in rather than three.
 apiVersion: v1
 kind: Secret
 metadata:

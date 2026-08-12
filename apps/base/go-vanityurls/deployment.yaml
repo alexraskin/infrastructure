@@ -25,16 +25,11 @@ spec:
               app: go-vanityurls
       containers:
         - name: web
-          # Tag is maintained by Flux image automation — see
-          # base/image-automation/. Do not edit it by hand; a manual change is
-          # reverted on the next scan.
-          image: ghcr.io/alexraskin/go-vanityurls:1.0.0 # {"$imagepolicy": "flux-system:go-vanityurls"}
+          image: ghcr.io/alexraskin/go-vanityurls:1.0.0
           args: ["-port", "8080"]
           ports:
             - name: http
               containerPort: 8080
-          # The binary serves an embedded FS with no health endpoint; the
-          # generated index at / is the only thing to probe.
           readinessProbe:
             httpGet:
               path: /

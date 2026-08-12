@@ -1,13 +1,3 @@
-# Template only. Discord -> the channel's Settings -> Integrations -> Webhooks
-# -> New Webhook -> Copy Webhook URL. The URL is the credential: anyone holding
-# it can post to that channel, which is why it is not in the HelmRelease.
-#
-# The secret name and the key are referenced by the HelmRelease's env block —
-# do not rename them.
-#
-#   cp discord.example.yaml discord.sops.yaml
-#   $EDITOR discord.sops.yaml
-#   cd apps && mise exec -- sops --encrypt --in-place base/gatus/discord.sops.yaml
 apiVersion: v1
 kind: Secret
 metadata:

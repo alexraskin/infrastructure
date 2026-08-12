@@ -57,7 +57,7 @@ Add a top-level `maintenance:` block under `config:` in
 
 Gatus keeps probing and recording during a maintenance window; it only
 suppresses alerts. The block **recurs daily** — it is not a one-shot, which is
-why Phase 6 removes it again. Note the same in `apps/base/gatus/CLAUDE.md`.
+why Phase 6 removes it again.
 
 Commit, push, and confirm Flux applied it — a window that has not reconciled is
 not a window:
@@ -271,7 +271,6 @@ lvremove pve/root-pre9
 | file | change |
 |---|---|
 | `apps/base/gatus/helmrelease.yaml` | `config.maintenance` block added, then removed |
-| `apps/base/gatus/CLAUDE.md` | short note on the window and that it recurs |
 
 Nothing in `terraform/proxmox/`, `hosts.json` or the NixOS configs changes — a
 host upgrade does not touch the guests, and the Phase 6 `tf:plan` is the check
