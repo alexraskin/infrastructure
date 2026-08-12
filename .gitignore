@@ -5,23 +5,20 @@ terraform.tfvars
 crash.log
 .terraform*
 !.terraform.lock.hcl
+!.terraform-docs.yml
 
-# k3s join token, tailscale pre-auth key, age private key for SOPS
 secrets/
 age.key
 *.plain.yaml
 
-# cluster admin credentials
 kubeconfig
 
-# built images (GBs) and nix build symlinks
 build/
 result
 result-*
 *.qcow2
 *.img
 
-# terraform state backend credentials
 *.tfbackend
 !*.tfbackend.example
 
@@ -30,5 +27,4 @@ result-*
 00-cloud-edge/edge.json
 ci.auto.tfvars
 
-# import blocks name every adopted record — hostnames and Cloudflare record IDs
 terraform/cloudflare/imports.tf

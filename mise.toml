@@ -4,6 +4,9 @@ jq = "latest"
 kubectl = "latest"
 talosctl = "latest"
 helm = "latest"
+pre-commit = "latest"
+tflint = "latest"
+terraform-docs = "latest"
 
 [env]
 KUBECONFIG = "{{config_root}}/kubeconfig"
