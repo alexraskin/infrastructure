@@ -122,6 +122,14 @@ tag manually is undone within 5 minutes; pin by narrowing the ImagePolicy range.
 - `mise run sops-encrypt <file>` is broken (does not receive its argument). Use
   `cd apps && mise exec -- sops --encrypt --in-place <file>`.
 
+**The 1Password operator is the second way in, not a replacement.**
+`apps/base/onepassword/` runs the operator alone — no Connect server — against a
+service account token that is itself a `*.sops.yaml`, so SOPS still bootstraps
+it and stays the only thing that works on a rebuild. A `OnePasswordItem` names a
+vault item and the operator writes the Secret; because the CRD ships with that
+HelmRelease, the CRs belong with the consuming app and `dependsOn: [onepassword]`.
+`docs/onepassword-operator.md` has the rest, including why no Connect server.
+
 ### Terraform state
 
 Five roots, one per credential set, all on the `s3` backend against Cloudflare
