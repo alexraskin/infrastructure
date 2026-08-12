@@ -25,7 +25,7 @@ spec:
               app: lastfm-now-playing
       containers:
         - name: api
-          image: ghcr.io/alexraskin/lastfm-now-playing:1.0.1
+          image: ghcr.io/alexraskin/lastfm-now-playing:1.0.1 # {"$imagepolicy": "flux-system:lastfm-now-playing"}
           args: ["-port", "3000"]
           env:
             - name: LASTFM_API_KEY
