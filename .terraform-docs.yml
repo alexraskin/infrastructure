@@ -6,8 +6,7 @@ header-from: main.tf
 footer-from: ""
 
 recursive:
-  enabled: false # if this is a standalone module
-  # enabled: true # if a modules folder exists
+  enabled: false
   path: ./modules
   include-main: true
 
