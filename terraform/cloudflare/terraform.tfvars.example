@@ -1,8 +1,3 @@
-# cp terraform.tfvars.example terraform.tfvars and fill in.
-# terraform.tfvars is gitignored. The API token is not here — it lives in
-# ../../secrets/cloudflare-api-token and reaches the provider as an env var.
-
-# Both are in the encrypted connector token — see CLAUDE.md for the one-liner.
 account_id = "0000000000000000000000000000000f"
 tunnel_id  = "00000000-0000-0000-0000-000000000000"
 tunnel_name = "k3s"
@@ -12,9 +7,6 @@ zones = {
   "alexraskin.com" = "0000000000000000000000000000000f"
 }
 
-# The tunnel config, in order. service is what cloudflared dials from inside the
-# cluster — Service name, namespace, then the Service port (80 here, not the
-# container port).
 ingress = [
   {
     hostname = "alexraskin.com"
@@ -25,18 +17,11 @@ ingress = [
     service  = "http://alexraskin-com.web.svc.cluster.local:80"
   },
   {
-    hostname = "go.alexraskin.com"
-    service  = "http://go-vanityurls.vanityurls.svc.cluster.local:80"
-  },
-  {
     hostname = "lastfm.alexraskin.com"
     service  = "http://lastfm-now-playing.lastfm.svc.cluster.local:80"
   },
 ]
 
-# A records fed from terraform/proxmox/ state, so an address is declared once.
-# source is "vip", "pve_host", or a node name from cluster.auto.tfvars.json.
-# These are RFC1918 and resolve publicly — see the variable's description.
 cluster_dns_records = {
   # pve = {
   #   zone   = "<zone>"
@@ -49,7 +34,3 @@ cluster_dns_records = {
   #   source = "vip"
   # }
 }
-
-# Anything else worth keeping in code. Empty is fine — records not listed here
-# and not generated from `ingress` are left alone, not deleted.
-extra_dns_records = {}

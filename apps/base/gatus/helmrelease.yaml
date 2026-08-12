@@ -302,15 +302,6 @@ spec:
           alerts:
             - type: discord
 
-        - name: "go-vanityurls (origin)"
-          group: "Apps"
-          url: "http://go-vanityurls.vanityurls.svc.cluster.local/"
-          interval: 60s
-          conditions:
-            - "[STATUS] == 200"
-          alerts:
-            - type: discord
-
         - name: "lastfm-now-playing (origin)"
           group: "Apps"
           url: "http://lastfm-now-playing.lastfm.svc.cluster.local/ping"
