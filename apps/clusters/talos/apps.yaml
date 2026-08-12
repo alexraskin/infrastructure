@@ -97,6 +97,7 @@ spec:
       name: sops-age
   dependsOn:
     - name: cloudflared
+    - name: onepassword
   wait: true
   timeout: 3m
 ---
@@ -152,6 +153,25 @@ spec:
     name: flux-system
   dependsOn:
     - name: tailscale-operator
+  wait: true
+  timeout: 5m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: onepassword
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/onepassword
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   wait: true
   timeout: 5m
 ---

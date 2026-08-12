@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: onepassword-service-account-token
+  namespace: onepassword
+type: Opaque
+stringData:
+  token: ops_SERVICE_ACCOUNT_TOKEN
