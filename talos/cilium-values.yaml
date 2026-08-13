@@ -1,20 +1,38 @@
-# Cilium on Talos, kube-proxy-free. Applied by `mise run cilium`, not by Flux —
-# see "Cilium is bootstrap infrastructure" in the root CLAUDE.md.
 ipam:
   mode: kubernetes
 
-# There is no kube-proxy: cluster.proxy.disabled is set in the machine config.
-# localhost:7445 is KubePrism, Talos' node-local apiserver load balancer, which
-# is what breaks the circularity of a CNI that needs the API server to start.
 kubeProxyReplacement: true
 k8sServiceHost: localhost
 k8sServicePort: 7445
 
-# hostNamespaceOnly restricts socket LB to the host and re-enables the tc
-# lookup for everything in a pod namespace. Confirmed against this exact
-# tailscale-operator/Cilium interaction: cilium/cilium#27758.
 socketLB:
   hostNamespaceOnly: true
+
+hubble:
+  enabled: true
+  tls:
+    auto:
+      method: cronJob
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - httpV2:exemplars=true;labelsContext=source_namespace,source_workload,destination_namespace,destination_workload,traffic_direction
+    serviceMonitor:
+      enabled: true
+    # The chart's four Hubble dashboards, as ConfigMaps the Grafana sidecar
+    # picks up (searchNamespace: ALL, so kube-system is fine).
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
 
 # Talos mounts cgroupv2 and bpffs itself and will not let Cilium do it again.
 cgroup:

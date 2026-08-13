@@ -190,11 +190,21 @@ run = """
 set -euo pipefail
 helm repo add cilium https://helm.cilium.io/ >/dev/null
 helm repo update cilium >/dev/null
+# Hubble's ServiceMonitor is a hard apply failure until kube-prometheus-stack
+# has created the CRD, which Flux only does after the CNI is up.
+if kubectl get crd servicemonitors.monitoring.coreos.com >/dev/null 2>&1; then
+  servicemonitor=true
+else
+  servicemonitor=false
+  echo "no ServiceMonitor CRD yet — rendering Hubble without it"
+fi
 helm template cilium cilium/cilium \
   --version "$CILIUM_VERSION" \
   --namespace kube-system \
   --values talos/cilium-values.yaml \
+  --set hubble.metrics.serviceMonitor.enabled="$servicemonitor" \
   | kubectl apply -f -
+kubectl apply -f talos/hubble-ui-ingress.yaml
 echo
 echo "waiting for nodes to go Ready ..."
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
