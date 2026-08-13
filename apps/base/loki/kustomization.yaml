@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrepository.yaml
-  - r2.onepassworditem.yaml
+  - r2.sops.yaml
   - helmrelease.yaml
   - datasource.yaml
   - service.yaml

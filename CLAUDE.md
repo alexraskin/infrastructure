@@ -5,14 +5,27 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 ## What this is
 
 An HA Kubernetes cluster on **Talos Linux**: 3 control plane nodes (embedded
-etcd), 3 workers, 3 tainted database workers, as VMs on one Proxmox host.
-Terraform creates the VMs *and* the cluster — Talos takes its whole
+etcd), 3 workers, 3 tainted database workers, as VMs on one Proxmox host
+(`bunker`). Terraform creates the VMs *and* the cluster — Talos takes its whole
 configuration through its own API, so there is no second configuration step.
 Flux deploys everything in `apps/`.
 
-**Explanations belong here, not in code comments.** Inline comments stay to a
-line or two — enough to flag the non-obvious at the call site. Background,
-tradeoffs and what breaks belong in this file.
+## Where things live
+
+| path | owns |
+| --- | --- |
+| `terraform/proxmox/` | the nine VMs, the cluster, **and** the PVE host itself (ACME cert, storages, management bridge, nightly vzdump, the NFS LXC) |
+| `terraform/cloudflare/` | tunnel + DNS |
+| `terraform/oracle/` | the CNPG backup bucket |
+| `tailscale/` | the tailnet policy file |
+| `00-cloud-edge/` | the NixOS edge box — its own flake, mise config and Terraform root |
+| `apps/base/` | one directory per workload, deployed by Flux |
+| `apps/clusters/talos/` | the Flux Kustomizations that point at `apps/base/` |
+| `talos/cilium-values.yaml` | CNI values, applied outside Flux |
+| `scripts/` | preflight, backend init, the root list both CI and mise read |
+| `docs/` | runbooks (PVE 8→9, CNPG backups) |
+| `secrets/` | gitignored — `talosconfig`, `r2.tfbackend`, the age key |
+| `01-pve/plex/` | a docker-compose stack that runs on the PVE host, not in the cluster |
 
 ## Commands
 
@@ -27,11 +40,13 @@ mise run kubeconfig      # write ./kubeconfig, pointed at the VIP
 mise run cilium          # install/upgrade the CNI — REQUIRED within ~10min of bootstrap
 mise run health|status   # talosctl health; kubectl get nodes + kube-system
 mise run upgrade         # talosctl upgrade every node to the pinned talos_version
+mise run upgrade-k8s     # kubernetes version, separately
 mise run bootstrap       # tf:apply -> talosconfig -> kubeconfig -> cilium -> status
 mise run cf:plan|cf:apply    # terraform/cloudflare — tunnel + DNS (CI does this on main)
-mise run ts:plan|ts:apply    # tailscale — the tailnet policy file (CI too)
-mise run oci:plan|oci:apply  # terraform/oracle — the CNPG backup bucket
-mise run tf:destroy      # DESTRUCTIVE, targeted — see below
+mise run ts:plan|ts:apply|ts:status   # tailscale policy (CI too)
+mise run oci:plan|oci:apply|oci:creds # terraform/oracle
+mise run nfs:status      # the NFS LXC
+mise run tf:destroy      # DESTRUCTIVE, and targeted on purpose — see the vault
 mise run reset           # DESTRUCTIVE: talosctl reset every node
 ```
 
@@ -61,17 +76,7 @@ validated variables, so there is no second copy. A malformed node fails at
 Changing cores/memory/disk *or an IP* is a `tf:apply` — the address lives in the
 machine config, not in cloud-init.
 
-## The rules that matter
-
-**`mise run tf:destroy` is targeted, and must stay that way.**
-`terraform/proxmox/` also owns the PVE host — ACME certificate, storages, the
-management bridge. A bare `terraform destroy` there takes the host apart, not
-the cluster.
-
-**The bootstrap window is real.** With `cni.name: none`, nodes come up NotReady
-and Talos reboots to retry after ~10 minutes. `tf:apply` finishes anyway (the
-API server is a static pod on the host network), so the sequence is `tf:apply`
-then **`mise run cilium`, promptly**.
+## How the pieces fit
 
 **Cilium is bootstrap infrastructure, not a workload.** `helm template | kubectl
 apply`, deliberately not a Flux HelmRelease: nothing reconciling from inside the
@@ -82,15 +87,14 @@ false`, and `SYS_MODULE` dropped from `ciliumAgent`.
 
 **The VIP is Talos', not kube-vip's.** Layer-2, etcd-elected, on the control
 plane interfaces only. It is the *Kubernetes* endpoint and never the *Talos*
-endpoint — `talos_client_configuration.endpoints` is the three node addresses,
-because a cluster broken enough to need `talosctl` is one whose VIP is gone.
+endpoint — `talos_client_configuration.endpoints` is the three node addresses.
 In-cluster traffic uses KubePrism on `localhost:7445` instead.
-
-**Talos has no SSH.** Recovery is `talosctl` or the Proxmox console, and
-`talosctl` needs `secrets/talosconfig`. Fetch it before you need it.
 
 **kube-proxy is gone for good** (Cilium replaces it), and the service CIDR is
 Talos' `10.96.0.0/12`, not k3s' `10.43.0.0/16`. CoreDNS is at `10.96.0.10`.
+
+**Talos has no SSH.** Recovery is `talosctl` or the Proxmox console, and
+`talosctl` needs `secrets/talosconfig`. Fetch it before you need it.
 
 ### Storage is static
 
@@ -101,44 +105,29 @@ demand.
 
 **Every PV path is a Talos user volume** declared in `terraform/proxmox/`, so
 adding a claim is **two** changes: a PV in `apps/`, and a user volume there — and
-the second is a `tf:apply`, not a Flux reconcile. Two Talos facts force this:
-
-- `/var/mnt` is read-only, so a hostPath PV with `DirectoryOrCreate` cannot
-  create its own directory.
-- kubelet applies `fsGroup` to `local` volumes but **not** hostPath ones, so a
-  hostPath PV stays root-owned and every non-root chart fails on it.
+the second is a `tf:apply`, not a Flux reconcile.
 
 ### Flux and secrets
 
-**A CRD and a CR using it need separate Kustomizations.** Flux dry-runs the
-whole resource set before applying, so a CR whose CRD arrives in the same
-Kustomization fails with `no matches for kind`. This is why `cnpg` /
-`cnpg-cluster` and `tailscale-operator` / `tailscale-router` are split.
+Each directory under `apps/base/` gets a Kustomization in
+`apps/clusters/talos/apps.yaml`. **A CRD and a CR using it need separate
+Kustomizations** — which is why `cnpg` / `cnpg-cluster` and `tailscale-operator`
+/ `tailscale-router` are split.
 
-**Image tags are owned by image-automation-controller**, not by hand. Editing a
-tag manually is undone within 5 minutes; pin by narrowing the ImagePolicy range.
+**Image tags are owned by image-automation-controller**, not by hand. Pin by
+narrowing the ImagePolicy range.
 
-**One age key opens everything**, kept in 1Password. `apps/` decrypts via the
-`sops-age` Secret; the edge decrypts with sops-nix using the same key. Two traps:
+**SOPS is the only way secrets reach the cluster.** One age key opens
+everything, kept in 1Password (the password manager — there is no operator in
+the cluster any more). `apps/` decrypts via the `sops-age` Secret; the edge
+decrypts with sops-nix using the same key. `apps/.sops.yaml` sets
+`encrypted_regex: ^(data|stringData)$`, so SOPS only works on Kubernetes
+Secrets there. Use `mise run sops-encrypt <file>` and `sops-edit` from `apps/`,
+and `mise run secrets:edit` from `00-cloud-edge/`.
 
-- `apps/.sops.yaml` sets `encrypted_regex: ^(data|stringData)$`, so **SOPS only
-  works on Kubernetes Secrets** there.
-- **`sops` resolves `.sops.yaml` from the working directory, not from the file.**
-  Running it from `apps/` against a path in `00-cloud-edge/` picks the wrong
-  config, matches nothing, and writes **plaintext** with a `sops:` block that
-  makes it look encrypted. Use `mise run secrets:edit` from `00-cloud-edge/`.
-  `mise run sops-encrypt <file>` and `sops-edit` run from `apps/` and are fine.
-
-**The 1Password operator is the second way in, not a replacement.**
-`apps/base/onepassword/` runs the operator alone — no Connect server — against a
-service account token that is itself a `*.sops.yaml`, so SOPS still bootstraps
-it and stays the only thing that works on a rebuild. A `OnePasswordItem` names a
-vault item and the operator writes the Secret; because the CRD ships with that
-HelmRelease, the CRs belong with the consuming app and `dependsOn: [onepassword]`.
-No Connect server because a service-account token is one credential and no
-in-cluster copy of the vault, where Connect needs two bootstrap secrets and
-keeps a synced copy — the tradeoff is no local cache, so a `1password.com`
-outage stalls new/rotated Secrets while existing ones keep working.
+Every app that needs a secret carries a `*.sops.yaml` next to its manifests, an
+`*.example.yaml` beside it showing the shape, and a `decryption` block on its
+Kustomization in `apps/clusters/talos/apps.yaml`.
 
 ### Terraform state
 
@@ -152,67 +141,19 @@ R2. Backend blocks are deliberately **partial** — credentials and the endpoint
 machine secrets and the client CA live in R2. Treat it as a secret store, and
 keep `secrets/talosconfig` as the copy that matters.
 
-Terraform 1.9 is pinned, which predates `use_lockfile`, so there is **no state
-locking**. Single operator, accepted.
-
 **`terraform/cloudflare/` and `tailscale/` read the Proxmox root's state** so the
 VIP, subnet and PVE host address are declared once. A `terraform_remote_state`
 data source takes no `-backend-config`, so credentials arrive as `AWS_*`
 environment variables from `scripts/r2-env.sh` (CI already exported them).
-**Outputs reach a consumer only through `apply`, never `plan`** — add an output
-and the other roots keep seeing the old state until `tf:apply` runs.
 
-## Gotchas found the hard way
+## Conventions
 
-- **A `tf:apply` that changes the user-volume list breaks running pods.** Talos
-  reconciles `/var/mnt/*` and resets the mountpoints to `root:root 0755`, but
-  kubelet only applies `fsGroup` at pod *start* — so a non-root workload
-  silently loses the ability to *create* files while still being able to write
-  existing ones. Grafana surfaced it in seconds (sqlite needs a `-journal` file,
-  so login 500s); Loki never noticed. Roll every workload holding one of these
-  PVs after the apply.
-- **A `Retain` PV never rebinds after its claim is deleted.** It goes `Released`
-  keeping a `claimRef` to the dead UID, so even an identically-named claim will
-  not bind. A HelmRelease whose *install* fails is uninstalled before retry,
-  which deletes its PVCs and strands every PV at once. Fix:
-  `kubectl patch pv <name> --type=merge -p '{"spec":{"claimRef":null}}'`.
-- **Nothing names the NIC.** Machine configs match it with `deviceSelector:
-  {driver: virtio_net}` — under NixOS, `eth0` vs `ens18` stranded a node.
-- **A privsep Proxmox API token authenticates and then sees nothing.** Proxmox
-  filters lists by permission rather than returning 403, so datastores and
-  bridges come back as empty arrays. `pveum user token modify <userid> <tokenid>
-  --privsep 0`. The provider also ignores `~/.ssh/config` and fails *partway*
-  through an apply, after the VMs exist.
-- **`proxmox_acme_certificate` needs `force = true`.** PVE will not order over a
-  certificate it did not place itself, and fails the apply with `Parameter
-  verification failed. (force: Custom certificate exists but 'force' is not
-  set.)`. "Custom" means anything at `/etc/pve/nodes/<node>/pveproxy-ssl.pem`
-  that ACME did not write — including the installer's self-signed one, so this
-  bites on the very first order as well as after any manual cert.
-- **Three things the Proxmox token cannot manage at all**: the ACME account,
-  feature flags on a privileged container, and individual apt repository lines.
-  PVE reserves them for the real `root@pam`, and a token is not it.
-- **CNPG backups can fill the database disks.** Once `barmanObjectStore` is set,
-  Postgres will not recycle a WAL segment until `archive_command` succeeds — a
-  bad credential grows `pg_wal` until the volume is full and Postgres stops.
-  Check the `ContinuousArchiving` condition immediately after any change.
-  Oracle's S3 also rejects botocore's default `aws-chunked` checksums, which is
-  what the two `AWS_*_CHECKSUM_*` values in `spec.env` disable.
-- **Cilium's socket-LB only sees locally-originated connections** — forwarded
-  or DNAT'd traffic (e.g. the tailscale-operator's ingress proxy) has no
-  socket, so a ClusterIP is never translated on that path.
-  `socketLB.hostNamespaceOnly: true` (`talos/cilium-values.yaml`) fixes it, but
-  needs `kubectl rollout restart ds/cilium -n kube-system` after `mise run
-  cilium` — the flag needs a BPF recompile, not just a ConfigMap change.
-  cilium/cilium#27758.
-- **Keep `notes_template` on the backup job ASCII.** An em dash fails the apply
-  with "Provider produced inconsistent result after apply".
-- **`terraform/proxmox/firewall.tf`'s `depends_on` is load-bearing.** The
-  cluster/node firewall resources must not enable their DROP policy before the
-  ACCEPT rules for `var.pve_trusted_cidr` exist, or the apply locks itself out
-  of 8006/22 mid-run with no way back in but the Proxmox console.
-- **A `mise` task cannot read `$1`.** Arguments are appended to the *command
-  string*, not passed as positional parameters, so `${1:-}` is always empty and
-  the argument lands on the last command's argv instead — which is how
-  `mise run ssh <host>` used to run `<host>` on the edge box. A task that takes
-  one declares `usage = 'arg "<file>"'` and reads `$usage_file`.
+**Explanations do not go in code comments, and they do not go here.** Inline
+comments stay to a line or two — enough to flag the non-obvious at the call
+site. This file covers layout and setup only.
+
+**Everything learned the hard way lives in the Obsidian vault**, under
+`Talos Homelab/` — one note per subsystem, plus `Talos Gotchas Index.md`
+grouping every failure mode by what you were doing when it bit. Read it before
+changing anything load-bearing, and write new findings back to it: the detail
+into the subsystem note, a bullet into the index linking there.
