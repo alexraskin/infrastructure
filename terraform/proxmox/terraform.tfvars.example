@@ -34,3 +34,6 @@ acme_dns_plugin_data = {
 pve_bridge_address = "10.0.0.2/24"
 pve_bridge_gateway = "10.0.0.1"
 pve_bridge_port    = "enp1s0"
+
+# Only this CIDR can reach the web UI (8006) or SSH once the firewall is up.
+pve_trusted_cidr = "10.0.0.0/24"

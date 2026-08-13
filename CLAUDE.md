@@ -8,8 +8,7 @@ An HA Kubernetes cluster on **Talos Linux**: 3 control plane nodes (embedded
 etcd), 3 workers, 3 tainted database workers, as VMs on one Proxmox host.
 Terraform creates the VMs *and* the cluster — Talos takes its whole
 configuration through its own API, so there is no second configuration step.
-Flux deploys everything in `apps/`. It used to be k3s on NixOS;
-`docs/talos-migration.md` records why it is not.
+Flux deploys everything in `apps/`.
 
 **Explanations belong here, not in code comments.** Inline comments stay to a
 line or two — enough to flag the non-obvious at the call site. Background,
@@ -136,7 +135,10 @@ service account token that is itself a `*.sops.yaml`, so SOPS still bootstraps
 it and stays the only thing that works on a rebuild. A `OnePasswordItem` names a
 vault item and the operator writes the Secret; because the CRD ships with that
 HelmRelease, the CRs belong with the consuming app and `dependsOn: [onepassword]`.
-`docs/onepassword-operator.md` has the rest, including why no Connect server.
+No Connect server because a service-account token is one credential and no
+in-cluster copy of the vault, where Connect needs two bootstrap secrets and
+keeps a synced copy — the tradeoff is no local cache, so a `1password.com`
+outage stalls new/rotated Secrets while existing ones keep working.
 
 ### Terraform state
 
@@ -196,11 +198,19 @@ and the other roots keep seeing the old state until `tf:apply` runs.
   Check the `ContinuousArchiving` condition immediately after any change.
   Oracle's S3 also rejects botocore's default `aws-chunked` checksums, which is
   what the two `AWS_*_CHECKSUM_*` values in `spec.env` disable.
-- **Traffic reaches Cilium's socket-LB only on locally-originated connections.**
-  Forwarded or DNAT'd traffic has no socket, so a ClusterIP is never translated
-  on that path and `bpf-lb-external-clusterip` does not change it.
+- **Cilium's socket-LB only sees locally-originated connections** — forwarded
+  or DNAT'd traffic (e.g. the tailscale-operator's ingress proxy) has no
+  socket, so a ClusterIP is never translated on that path.
+  `socketLB.hostNamespaceOnly: true` (`talos/cilium-values.yaml`) fixes it, but
+  needs `kubectl rollout restart ds/cilium -n kube-system` after `mise run
+  cilium` — the flag needs a BPF recompile, not just a ConfigMap change.
+  cilium/cilium#27758.
 - **Keep `notes_template` on the backup job ASCII.** An em dash fails the apply
   with "Provider produced inconsistent result after apply".
+- **`terraform/proxmox/firewall.tf`'s `depends_on` is load-bearing.** The
+  cluster/node firewall resources must not enable their DROP policy before the
+  ACCEPT rules for `var.pve_trusted_cidr` exist, or the apply locks itself out
+  of 8006/22 mid-run with no way back in but the Proxmox console.
 - **A `mise` task cannot read `$1`.** Arguments are appended to the *command
   string*, not passed as positional parameters, so `${1:-}` is always empty and
   the argument lands on the last command's argv instead — which is how
