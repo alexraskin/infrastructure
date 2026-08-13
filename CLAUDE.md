@@ -25,7 +25,7 @@ Flux deploys everything in `apps/`.
 | `scripts/` | preflight, backend init, the root list both CI and mise read |
 | `docs/` | runbooks (PVE 8→9, CNPG backups) |
 | `secrets/` | gitignored — `talosconfig`, `r2.tfbackend`, the age key |
-| `01-pve/plex/` | a docker-compose stack that runs on the PVE host, not in the cluster |
+| `01-pve/plex/` | a docker-compose stack, not deployed anywhere right now — Plex runs on the workstation, and Docker is deliberately off the PVE host |
 
 ## Commands
 
