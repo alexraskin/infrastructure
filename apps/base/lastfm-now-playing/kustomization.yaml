@@ -4,4 +4,4 @@ resources:
   - namespace.yaml
   - deployment.yaml
   - service.yaml
-  - api-key.onepassworditem.yaml
+  - api-key.sops.yaml

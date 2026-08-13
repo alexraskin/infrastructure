@@ -4,6 +4,6 @@ resources:
   - namespace.yaml
   - serviceaccount.yaml
   - helmrepository.yaml
-  - discord.onepassworditem.yaml
+  - discord.sops.yaml
   - egress.yaml
   - helmrelease.yaml
