@@ -194,3 +194,8 @@ variable "pve_bridge_port" {
   description = "Physical NIC enslaved to the management bridge"
   type        = string
 }
+
+variable "pve_trusted_cidr" {
+  description = "Source CIDR allowed to reach the PVE web UI (8006) and SSH (22). Everything else inbound to the host is dropped."
+  type        = string
+}
