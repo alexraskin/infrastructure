@@ -147,7 +147,11 @@ because this repo is public. `auth=APIKey` is one of those flags and has to
 stay one: in the backend block it makes every request 404, and without it the
 backend never reaches the API key. That script also retries the spurious
 `BucketNotFound` Object Storage returns now and then, and
-`OCI_SDK_DEFAULT_RETRY_ENABLED` is set for the same reason.
+`OCI_SDK_DEFAULT_RETRY_ENABLED` is set for the same reason. CI runs `plan` and
+`apply` through `scripts/tf-run.sh`, which retries the same two errors —
+`BucketNotFound` and the `NotAuthenticated` a freshly created API key returns
+while it propagates — and refuses to retry once an apply has started changing
+things.
 
 **CI does not use the API key in `secrets/oci.env`.** `00-global/iam.tf` creates
 a `terraform-ci` user whose policy is `read buckets` + `manage objects` on the

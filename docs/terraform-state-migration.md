@@ -25,9 +25,13 @@ Requires Terraform **1.12+** (`backend "oci"` does not exist before that) —
 - **Object Storage answers with a spurious `BucketNotFound`**, on `init`,
   `plan` and `state pull` alike. Worst right after the bucket is created and it
   decays: ~25% of calls at bucket age 15 minutes, ~5% at 90 minutes.
-  `tf-init.sh` retries that one error three times, and
-  `OCI_SDK_DEFAULT_RETRY_ENABLED=true` (set in both mise configs and both deploy
-  workflows) cut a 12-call sample from 3 failures to 1.
+  `tf-init.sh` retries it, `scripts/tf-run.sh` wraps `plan`/`apply` in CI with
+  the same retry, and `OCI_SDK_DEFAULT_RETRY_ENABLED=true` (both mise configs,
+  both deploy workflows) cut a 12-call sample from 3 failures to 1.
+- **A new API key returns `401 NotAuthenticated` for its first minutes.** Seen
+  locally (two failures, then fine at ~40s) and in CI 30 minutes after the
+  `terraform-ci` key was created. It settles on its own — 15/15 calls clean
+  afterwards — and both retry paths cover it.
 - **`-migrate-state` could not read the R2 side.** The cached
   `.terraform/terraform.tfstate` was written by Terraform 1.9's `s3` backend and
   carries `assume_role_duration_seconds`, which 1.15's schema rejects:
