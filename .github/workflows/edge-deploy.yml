@@ -54,15 +54,23 @@ jobs:
           authkey: ${{ env.TS_AUTHKEY }}
           tailscaled-args: "--statedir=/tmp/tailscale-state"
 
+      # Masked: the logs are public, and deploy.sh prints the address throughout.
+      - name: Resolve the edge address
+        run: |
+          ip=$(01-cloud-edge/scripts/edge-addr.sh)
+          echo "::add-mask::$ip"
+          echo "EDGE_IP=$ip" >> "$GITHUB_ENV"
+
       - name: Deploy
         if: github.event_name == 'push' || inputs.apply
-        run: 01-cloud-edge/scripts/deploy.sh
+        run: 01-cloud-edge/scripts/deploy.sh "$EDGE_IP"
 
       - name: Status
         run: |
-          ip=$(01-cloud-edge/scripts/edge-addr.sh)
-          ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null "root@$ip" '
+          ssh -o StrictHostKeyChecking=accept-new \
+              -o UserKnownHostsFile=/dev/null \
+              -o LogLevel=ERROR "root@$EDGE_IP" '
             systemctl is-active haproxy
             systemctl is-active tailscaled
-            ls /var/lib/acme 2>/dev/null || echo "no certs issued yet"
+            printf "acme certs: %s\n" "$(ls /var/lib/acme 2>/dev/null | wc -l)"
           '
