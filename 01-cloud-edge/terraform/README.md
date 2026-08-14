@@ -2,7 +2,7 @@
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
 | <a name="requirement_cloudflare"></a> [cloudflare](#requirement\_cloudflare) | ~> 5 |
 | <a name="requirement_oci"></a> [oci](#requirement\_oci) | ~> 6 |
@@ -11,7 +11,7 @@
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_cloudflare"></a> [cloudflare](#provider\_cloudflare) | 5.23.0 |
 | <a name="provider_oci"></a> [oci](#provider\_oci) | 6.37.0 |
 | <a name="provider_sops"></a> [sops](#provider\_sops) | 1.4.1 |
@@ -24,7 +24,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [cloudflare_dns_record.site](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/dns_record) | resource |
 | [cloudflare_dns_record.wildcard](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/dns_record) | resource |
 | [oci_core_instance.edge](https://registry.terraform.io/providers/oracle/oci/latest/docs/resources/core_instance) | resource |
@@ -42,7 +42,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_instance_availability_domain"></a> [instance\_availability\_domain](#input\_instance\_availability\_domain) | n/a | `string` | `""` | no |
 | <a name="input_instance_availability_domain_index"></a> [instance\_availability\_domain\_index](#input\_instance\_availability\_domain\_index) | Zero-based AD index used when no explicit AD is given | `number` | `0` | no |
 | <a name="input_public_subnet_cidr"></a> [public\_subnet\_cidr](#input\_public\_subnet\_cidr) | CIDR for the public subnet | `string` | `"10.80.1.0/24"` | no |
@@ -51,7 +51,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_availability_domain"></a> [availability\_domain](#output\_availability\_domain) | Which AD the instance actually landed in, after any capacity retries |
 | <a name="output_instance_id"></a> [instance\_id](#output\_instance\_id) | n/a |
 | <a name="output_private_ip"></a> [private\_ip](#output\_private\_ip) | Address inside the VCN |

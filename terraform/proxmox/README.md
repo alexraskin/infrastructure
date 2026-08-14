@@ -2,7 +2,7 @@
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
 | <a name="requirement_cloudflare"></a> [cloudflare](#requirement\_cloudflare) | ~> 5 |
 | <a name="requirement_proxmox"></a> [proxmox](#requirement\_proxmox) | ~> 0.111 |
@@ -13,7 +13,7 @@
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_proxmox"></a> [proxmox](#provider\_proxmox) | 0.111.1 |
 | <a name="provider_sops"></a> [sops](#provider\_sops) | 1.4.1 |
 | <a name="provider_talos"></a> [talos](#provider\_talos) | 0.11.0 |
@@ -26,7 +26,7 @@ No modules.
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [proxmox_acme_certificate.host](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acme_certificate) | resource |
 | [proxmox_acme_dns_plugin.cloudflare](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acme_dns_plugin) | resource |
 | [proxmox_apt_standard_repository.no_subscription](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/apt_standard_repository) | resource |
@@ -53,7 +53,7 @@ No modules.
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_acme_account"></a> [acme\_account](#input\_acme\_account) | Name of the ACME account on the host that orders the certificate | `string` | `"default"` | no |
 | <a name="input_acme_dns_plugin_data"></a> [acme\_dns\_plugin\_data](#input\_acme\_dns\_plugin\_data) | Credentials for the acme.sh DNS plugin (CF\_Account\_ID, CF\_Email, CF\_Token) | `map(string)` | n/a | yes |
 | <a name="input_backup_enabled"></a> [backup\_enabled](#input\_backup\_enabled) | Whether the backup job runs on schedule | `bool` | `true` | no |
@@ -83,7 +83,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_backup_job"></a> [backup\_job](#output\_backup\_job) | The nightly vzdump job |
 | <a name="output_control_plane_endpoint"></a> [control\_plane\_endpoint](#output\_control\_plane\_endpoint) | The Talos VIP fronting the API servers |
 | <a name="output_kubeconfig"></a> [kubeconfig](#output\_kubeconfig) | Cluster admin kubeconfig, pointed at the VIP |
