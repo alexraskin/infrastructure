@@ -1,10 +1,3 @@
-# The bucket CloudNativePG archives WAL and base backups into.
-#
-# No lifecycle policy, deliberately. CNPG's own `backup.retentionPolicy` deletes
-# expired backups and the WAL they no longer need; a second expiry mechanism
-# working off object age would eventually delete WAL segments that a still-valid
-# base backup depends on, and the failure only shows up at restore time.
-
 data "oci_objectstorage_namespace" "this" {
   compartment_id = local.admin["oci_compartment_ocid"]
 }

@@ -51,10 +51,6 @@ resource "oci_identity_user_group_membership" "cnpg_backup" {
   group_id = oci_identity_group.cnpg_backup.id
 }
 
-# Policy statements name the compartment by *name*, not OCID, which is why the
-# data source above exists. `manage objects` covers put/get/delete inside the
-# bucket; `read buckets` is what lets barman-cloud check the bucket exists before
-# its first upload. Both are constrained to this one bucket.
 resource "oci_identity_policy" "cnpg_backup" {
   compartment_id = local.admin["oci_tenancy_ocid"]
   name           = "cnpg-backup"
@@ -70,8 +66,6 @@ resource "oci_identity_policy" "cnpg_backup" {
   }
 }
 
-# The S3-compatible credential. `key` is returned only when the resource is
-# created, so it exists in state and nowhere else — see CLAUDE.md.
 resource "oci_identity_customer_secret_key" "cnpg_backup" {
   display_name = "cnpg-backup"
   user_id      = oci_identity_user.cnpg_backup.id
