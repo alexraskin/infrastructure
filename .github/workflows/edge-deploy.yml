@@ -19,7 +19,6 @@ permissions:
 
 concurrency:
   group: edge
-  # A cancelled nixos-rebuild mid-activation is how the box is lost.
   cancel-in-progress: false
 
 jobs:
@@ -27,8 +26,6 @@ jobs:
     name: "edge"
     runs-on: ubuntu-latest
     environment: edge
-
-    # deploy.sh waits up to 1800s on edge-rebuild.service before giving up.
     timeout-minutes: 45
 
     env:
@@ -43,8 +40,6 @@ jobs:
         with:
           version: 3.13.3
 
-      # edge.json is gitignored — it maps internal backends and ports, and this
-      # repo is public. The auth key is pre-signed for tailnet lock.
       - name: Decrypt what the runner needs
         run: |
           sops --decrypt --output-type json sops/terraform.sops.yaml > "$RUNNER_TEMP/ci.json"
@@ -53,17 +48,12 @@ jobs:
           echo "::add-mask::$key"
           echo "TS_AUTHKEY=$key" >> "$GITHUB_ENV"
           rm -f "$RUNNER_TEMP/ci.json"
-
-      # Tailnet lock: the key is signed, and the client needs somewhere to keep
-      # the key-authority state it verifies against.
       - name: Join the tailnet
         uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
         with:
           authkey: ${{ env.TS_AUTHKEY }}
           tailscaled-args: "--statedir=/tmp/tailscale-state"
 
-      # SSH needs no key: the edge runs tailscaled with --ssh, and the policy
-      # accepts tag:ci as root.
       - name: Deploy
         if: github.event_name == 'push' || inputs.apply
         run: 01-cloud-edge/scripts/deploy.sh
