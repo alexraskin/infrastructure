@@ -14,7 +14,7 @@ if [ "${1:-}" != "" ]; then
 fi
 
 [ -s "$here/edge.json" ] || {
-  echo "missing 00-cloud-edge/edge.json — copy edge.json.example" >&2
+  echo "missing 01-cloud-edge/edge.json — copy edge.json.example" >&2
   exit 1
 }
 host=$(jq -r '.instance.hostname' "$here/edge.json")

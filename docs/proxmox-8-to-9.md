@@ -14,7 +14,7 @@ this is a base-OS move to stay supported, and it brings kernel 6.14 and QEMU 10.
 
 It takes **the entire cluster down** for the window — all six k3s VMs, so Flux,
 the cloudflared tunnel, `alexraskin.com`, Grafana, Loki and gatus with them.
-Unaffected: the Oracle edge (`00-cloud-edge/`), and Plex, which runs on
+Unaffected: the Oracle edge (`01-cloud-edge/`), and Plex, which runs on
 `morpheus`, not on `bunker`.
 
 ## The host as it stands

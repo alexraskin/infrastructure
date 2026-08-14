@@ -1,14 +1,16 @@
 terraform {
-  required_version = ">= 1.6"
+  # backend "oci" is Terraform 1.12+. The block itself lives in backend.tf, so
+  # it can be moved aside if this bucket ever has to be created again.
+  required_version = ">= 1.12"
 
   required_providers {
     oci = {
       source  = "oracle/oci"
       version = "~> 6"
     }
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 5"
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4"
     }
   }
 }
@@ -19,8 +21,4 @@ provider "oci" {
   fingerprint      = var.oci_fingerprint
   private_key_path = pathexpand(var.oci_private_key_path)
   region           = var.oci_region
-}
-
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
 }

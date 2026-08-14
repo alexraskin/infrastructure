@@ -3,7 +3,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
 | <a name="requirement_tailscale"></a> [tailscale](#requirement\_tailscale) | ~> 0.29 |
 
 ## Providers
@@ -26,7 +26,14 @@ No modules.
 
 ## Inputs
 
-No inputs.
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_oci_fingerprint"></a> [oci\_fingerprint](#input\_oci\_fingerprint) | Fingerprint of that user's API signing key | `string` | n/a | yes |
+| <a name="input_oci_namespace"></a> [oci\_namespace](#input\_oci\_namespace) | Object Storage namespace holding the state bucket | `string` | n/a | yes |
+| <a name="input_oci_private_key_path"></a> [oci\_private\_key\_path](#input\_oci\_private\_key\_path) | Path to the API signing key; defaults to secrets/oci\_api\_key.pem | `string` | n/a | yes |
+| <a name="input_oci_region"></a> [oci\_region](#input\_oci\_region) | Region the state bucket lives in | `string` | n/a | yes |
+| <a name="input_oci_tenancy_ocid"></a> [oci\_tenancy\_ocid](#input\_oci\_tenancy\_ocid) | Tenancy OCID | `string` | n/a | yes |
+| <a name="input_oci_user_ocid"></a> [oci\_user\_ocid](#input\_oci\_user\_ocid) | OCID of the user whose API key signs the state read | `string` | n/a | yes |
 
 ## Outputs
 

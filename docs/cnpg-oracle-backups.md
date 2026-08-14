@@ -39,18 +39,18 @@ sessionToken, inheritFromIAMRole}` where every field is a `SecretKeySelector`.
 ## 1. `terraform/oracle/` — a fourth root
 
 Follows the conventions in `terraform/cloudflare/providers.tf` and
-`00-cloud-edge/terraform/`. Backend inline in `providers.tf` (the cloudflare
+`01-cloud-edge/terraform/`. Backend inline in `providers.tf` (the cloudflare
 style), not a separate `backend.tf`.
 
 - **`providers.tf`** — `required_version = ">= 1.6"`; partial `backend "s3"`
   with `bucket = "terraform"`, **`key = "oracle-backups/terraform.tfstate"`**
   (a fifth unique key), `region = "auto"`, the five `skip_*` flags and
   `use_path_style = true`; `oracle/oci ~> 6`. Provider block copies
-  `00-cloud-edge/terraform/providers.tf` verbatim — same five variables,
+  `01-cloud-edge/terraform/providers.tf` verbatim — same five variables,
   `private_key_path = pathexpand(var.oci_private_key_path)`.
 - **`variables.tf`** — the six OCI variables (`oci_tenancy_ocid`,
   `oci_user_ocid`, `oci_fingerprint`, `oci_private_key_path`, `oci_region`,
-  `oci_compartment_ocid`) matching `00-cloud-edge/terraform/variables.tf`
+  `oci_compartment_ocid`) matching `01-cloud-edge/terraform/variables.tf`
   exactly, plus `bucket_name` (default `cnpg-backups`).
 - **`objectstorage.tf`** — `data.oci_objectstorage_namespace.this` and
   `oci_objectstorage_bucket.cnpg` with `access_type = "NoPublicAccess"`,
@@ -71,8 +71,8 @@ style), not a separate `backend.tf`.
   `sensitive`.
 - **`CLAUDE.md`** — new, following the pattern of the other root docs.
 
-**`00-cloud-edge/scripts/tf-env.sh` cannot be reused.** It hard-requires
-`00-cloud-edge/edge.json` and `secrets/cloudflare-api-token`, and derives
+**`01-cloud-edge/scripts/tf-env.sh` cannot be reused.** It hard-requires
+`01-cloud-edge/edge.json` and `secrets/cloudflare-api-token`, and derives
 `_repo` from its own location. Add **`scripts/oci-env.sh`** at the repo root: the
 same `secrets/oci.env` + `secrets/oci_api_key.pem` logic with the edge- and
 Cloudflare-specific parts removed. Note the duplication in the new `CLAUDE.md`
@@ -82,12 +82,13 @@ working deploy path and this is a 20-line overlap.
 ## 2. `mise.toml` — an `oci:*` prefix
 
 **`tf:` is already taken twice** — root `mise.toml` (proxmox) and
-`00-cloud-edge/mise.toml` (the edge). Use `oci:` in the root config, following
+`01-cloud-edge/mise.toml` (the edge). Use `oci:` in the root config, following
 the `cf:*` block at `mise.toml:66` for shape.
 
-- `oci:init` — guard loop over `r2.tfbackend`, `oci.env` and `oci_api_key.pem`,
-  then `terraform init -upgrade -backend-config=../../secrets/r2.tfbackend`
-  (`../../` because the root sits at `terraform/oracle/`).
+- `oci:init` — `scripts/tf-init.sh --force terraform/oracle oci.env`, which
+  guards the secrets and assembles the backend config. (Written against the R2
+  backend originally; state now lives in Object Storage — see
+  `terraform-state-migration.md`.)
 - `oci:plan` / `oci:apply` — `depends = ["oci:init"]`, `source ../../scripts/oci-env.sh`.
 - `oci:creds` — prints the two output values in the exact key order of the
   example Secret, so pasting into SOPS is mechanical.
@@ -209,8 +210,8 @@ once now rather than discovering the gap during an incident.
   it is failing and cannot be fixed quickly, remove `spec.backup` to restore the
   old behaviour.
 - **The Customer Secret Key is only returned at creation** and lands in
-  Terraform state in R2. `CLAUDE.md` already treats R2 state as a secret store,
-  so this is consistent — but losing state means the credential cannot be read
+  Terraform state. `CLAUDE.md` already treats that state as a secret store, so
+  this is consistent — but losing state means the credential cannot be read
   back, only replaced.
 - **Always Free caps: 20 GiB and 50,000 API requests/month.** Weekly base
   backups plus WAL for databases this size are comfortably inside both. The
