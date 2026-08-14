@@ -9,8 +9,9 @@
 #   mise run push-age-key
 set -euo pipefail
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-repo=$(cd "$here/.." && pwd)
+# shellcheck source-path=SCRIPTDIR
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
 key="$repo/secrets/age.key"
 
 [ -s "$key" ] || {
@@ -19,11 +20,10 @@ key="$repo/secrets/age.key"
   exit 1
 }
 
-ip=$("$here/scripts/edge-addr.sh" "${1:-}")
-ssh_opts=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null)
+ip=$(edge_addr "${1:-}")
 
 echo "==> $ip: age key -> /var/lib/sops-nix/key.txt"
-ssh "${ssh_opts[@]}" "root@$ip" '
+edge_ssh "$ip" '
   set -eu
   install -d -m 0755 /var/lib/sops-nix
   umask 077

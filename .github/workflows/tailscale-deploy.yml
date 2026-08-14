@@ -7,10 +7,6 @@ on:
     paths:
       - "tailscale/**"
       - ".github/workflows/tailscale-deploy.yml"
-  pull_request:
-    paths:
-      - "tailscale/**"
-      - ".github/workflows/tailscale-deploy.yml"
   workflow_dispatch:
     inputs:
       apply:
@@ -39,23 +35,12 @@ jobs:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
 
-      # Object Storage 404s the state backend spuriously; the SDK's retries help
       OCI_SDK_DEFAULT_RETRY_ENABLED: "true"
 
       TAILSCALE_OAUTH_CLIENT_ID: ${{ vars.TAILSCALE_OAUTH_CLIENT_ID }}
       TAILSCALE_AUDIENCE: ${{ vars.TAILSCALE_AUDIENCE }}
 
-      # State lives in the OCI bucket 00-global/ owns. These reach both the
-      # backend (via scripts/tf-init.sh) and the terraform_remote_state data
-      # source that reads the proxmox root.
-      TF_VAR_oci_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
-      TF_VAR_oci_user_ocid: ${{ secrets.OCI_USER_OCID }}
-      TF_VAR_oci_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-      TF_VAR_oci_namespace: ${{ secrets.OCI_NAMESPACE }}
-      TF_VAR_oci_region: ${{ secrets.OCI_REGION }}
-      # scripts/oci-env.sh defaults this to secrets/oci_api_key.pem, but the
-      # plan and apply steps do not source it — only tf-init.sh does.
-      TF_VAR_oci_private_key_path: ${{ github.workspace }}/secrets/oci_api_key.pem
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
     steps:
       - name: Checkout Code
@@ -67,26 +52,22 @@ jobs:
           terraform_version: "1.15"
           terraform_wrapper: false
 
-      - name: Write the OCI signing key
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir -p secrets
-          umask 077
-          printf '%s\n' "$OCI_API_KEY" > secrets/oci_api_key.pem
-        env:
-          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
+      - name: Setup sops
+        uses: nhedger/setup-sops@18e52f363488ed469d2e1855e542a1c651743bba # v3.0.0
+        with:
+          version: 3.13.3
 
       - name: Terraform Init
-        run: ${{ github.workspace }}/scripts/tf-init.sh --force tailscale
+        run: ${{ github.workspace }}/scripts/tf.sh tailscale init
 
       - name: Terraform Validate
         run: terraform validate
 
       - name: Terraform Plan
-        run: ${{ github.workspace }}/scripts/tf-run.sh plan -out .planfile -input=false
+        run: ${{ github.workspace }}/scripts/tf.sh tailscale plan -out .planfile -input=false
 
       - name: Terraform Apply
         if: |
           (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
           (github.event_name == 'workflow_dispatch' && inputs.apply)
-        run: ${{ github.workspace }}/scripts/tf-run.sh apply -auto-approve -input=false .planfile
+        run: ${{ github.workspace }}/scripts/tf.sh tailscale apply -auto-approve -input=false .planfile

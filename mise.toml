@@ -1,21 +1,22 @@
 [tools]
 terraform = "1.15"
+sops = "3.13.3"
+age = "latest"
 jq = "latest"
 kubectl = "latest"
 talosctl = "latest"
 helm = "latest"
 pre-commit = "latest"
 tflint = "latest"
-terraform-docs = "latest"
+terraform-docs = "0.20.0"  # matches terraform-docs/gh-actions, so CI and local agree
 
 [env]
+# Both age identities: the one apps/ uses, and the terraform-only one.
+SOPS_AGE_KEY_FILE = "{{config_root}}/secrets/age.key"
 KUBECONFIG = "{{config_root}}/kubeconfig"
 TALOSCONFIG = "{{config_root}}/secrets/talosconfig"
 CILIUM_VERSION = "1.20.0"
 
-# Object Storage answers the state backend with a spurious 404 now and then —
-# most often just after a bucket is created. The SDK's own retry policy cuts it
-# down; scripts/tf-init.sh retries the rest. See docs/terraform-state-migration.md.
 OCI_SDK_DEFAULT_RETRY_ENABLED = "true"
 
 [tasks.preflight]
@@ -27,223 +28,137 @@ description = "regenerate the README of every terraform root (CI checks these ar
 shell = "bash -c"
 run = """
 set -euo pipefail
-for d in $(scripts/tf-roots.sh); do
+for d in $(scripts/tf.sh roots); do
   terraform-docs -c .pre-commit-config.tfdocs.yml "$d"
 done
 """
 
 [tasks.tflint]
-description = "tflint every terraform root (same set as .github/workflows/terraform_checks.yml)"
+description = "tflint every terraform root"
 shell = "bash -c"
 env = { TFLINT_CONFIG_FILE = "{{config_root}}/.tflint.hcl" }
 run = """
 set -euo pipefail
 tflint --init
 rc=0
-for d in $(scripts/tf-roots.sh); do
+for d in $(scripts/tf.sh roots); do
   echo "== $d"
   tflint --chdir="$d" --format=compact || rc=$?
 done
 exit $rc
 """
 
-# ------------------------------------------------------------- 00-global ----
-#
-# 00-global/ — the Object Storage bucket every other root keeps its state in,
-# its own state included. Rebuilding it from nothing is a one-off documented in
-# docs/terraform-state-migration.md, not a task.
+# Every root goes through scripts/tf.sh: secrets, backend configuration and the
+# retries for Object Storage's spurious errors live there, not here.
 
 [tasks."global:init"]
 description = "terraform init for the state-bucket root"
-run = "scripts/tf-init.sh --force 00-global oci.env"
+run = "scripts/tf.sh global init"
 
 [tasks."global:plan"]
-description = "Plan the Terraform state bucket"
-dir = "00-global"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../scripts/tf-init.sh 00-global oci.env
-source ../scripts/oci-env.sh oci_compartment_ocid oci_namespace ci_user_email
-terraform plan
-"""
+description = "Plan the state bucket and the terraform-ci user"
+run = "scripts/tf.sh global plan"
 
 [tasks."global:apply"]
-description = "Apply the Terraform state bucket"
-dir = "00-global"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../scripts/tf-init.sh 00-global oci.env
-source ../scripts/oci-env.sh oci_compartment_ocid oci_namespace ci_user_email
-terraform apply
-"""
-
-[tasks."global:ci-creds"]
-description = "Print the OCI_* GitHub environment secrets for the cloudflare and tailscale workflows"
-dir = "00-global"
-shell = "bash -c"
-run = """
-set -euo pipefail
-echo "OCI_TENANCY_OCID: $(terraform output -raw tenancy_ocid)"
-echo "OCI_USER_OCID:    $(terraform output -raw ci_user_ocid)"
-echo "OCI_FINGERPRINT:  $(terraform output -raw ci_fingerprint)"
-echo "OCI_NAMESPACE:    $(terraform output -raw namespace)"
-echo "OCI_REGION:       $(terraform output -raw region)"
-echo
-echo "OCI_API_KEY (the whole block, BEGIN/END lines included):"
-terraform output -raw ci_private_key
-"""
+description = "Apply the state bucket and the terraform-ci user"
+run = "scripts/tf.sh global apply"
 
 [tasks."global:backend"]
 description = "Print the bucket, namespace and region every backend block resolves against"
-dir = "00-global"
 shell = "bash -c"
 run = """
 set -euo pipefail
-echo "bucket:    $(terraform output -raw bucket)"
-echo "namespace: $(terraform output -raw namespace)"
-echo "region:    $(terraform output -raw region)"
+echo "bucket:    $(scripts/tf.sh global output -raw bucket)"
+echo "namespace: $(scripts/tf.sh global output -raw namespace)"
+echo "region:    $(scripts/tf.sh global output -raw region)"
 """
 
-# ------------------------------------------------------------ terraform ----
-
-[tasks."tf:init"]
-description = "terraform init, re-resolving providers (state lives in the OCI bucket 00-global/ owns)"
-run = "scripts/tf-init.sh --force terraform/proxmox oci.env"
-
-[tasks."tf:plan"]
-description = "terraform plan"
-dir = "terraform/proxmox"
+[tasks."global:ci-creds"]
+description = "Print the terraform-ci credentials, in the shape secrets.sops.yaml wants"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../../scripts/tf-init.sh terraform/proxmox oci.env
-terraform plan
+echo "backend_tenancy_ocid: $(scripts/tf.sh global output -raw tenancy_ocid)"
+echo "backend_user_ocid: $(scripts/tf.sh global output -raw ci_user_ocid)"
+echo "backend_fingerprint: $(scripts/tf.sh global output -raw ci_fingerprint)"
+echo "backend_namespace: $(scripts/tf.sh global output -raw namespace)"
+echo "backend_region: $(scripts/tf.sh global output -raw region)"
+echo "backend_private_key: |"
+scripts/tf.sh global output -raw ci_private_key | sed 's/^/  /'
 """
 
-[tasks."tf:apply"]
+[tasks."proxmox:init"]
+description = "terraform init, re-resolving providers"
+run = "scripts/tf.sh proxmox init"
+
+[tasks."proxmox:plan"]
+description = "Plan the VMs, machine configs and bootstrap"
+run = "scripts/tf.sh proxmox plan"
+
+[tasks."proxmox:apply"]
 description = "Create the VMs, apply machine configs, bootstrap the cluster"
-dir = "terraform/proxmox"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../../scripts/tf-init.sh terraform/proxmox oci.env
-terraform apply
-"""
+run = "scripts/tf.sh proxmox apply"
 
-[tasks."tf:destroy"]
+[tasks."proxmox:destroy"]
 description = "DESTRUCTIVE: destroy the cluster VMs only — this root also owns the PVE host"
-dir = "terraform/proxmox"
-shell = "bash -c"
-run = """
-set -euo pipefail
-terraform destroy \
-  -target='proxmox_virtual_environment_vm.node' \
-  -target='talos_machine_configuration_apply.node' \
-  -target='talos_machine_bootstrap.this' \
-  -target='talos_cluster_kubeconfig.this'
-"""
+run = "scripts/tf.sh proxmox destroy -target='proxmox_virtual_environment_vm.node' -target='talos_machine_configuration_apply.node' -target='talos_machine_bootstrap.this' -target='talos_cluster_kubeconfig.this'"
 
-# ------------------------------------------------------------ cloudflare ----
-#
-# terraform/cloudflare/ — the tunnel, its ingress rules and the DNS records.
-
-[tasks."cf:init"]
+[tasks."cloudflare:init"]
 description = "terraform init for the Cloudflare root"
-run = "scripts/tf-init.sh --force terraform/cloudflare oci.env cloudflare-api-token"
+run = "scripts/tf.sh cloudflare init"
 
-[tasks."cf:plan"]
+[tasks."cloudflare:plan"]
 description = "Plan the tunnel, ingress rules and DNS records"
-dir = "terraform/cloudflare"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../../scripts/tf-init.sh terraform/cloudflare oci.env cloudflare-api-token
-export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
-source ../../scripts/oci-env.sh oci_namespace
-terraform plan
-"""
+run = "scripts/tf.sh cloudflare plan"
 
-[tasks."cf:apply"]
+[tasks."cloudflare:apply"]
 description = "Apply the tunnel, ingress rules and DNS records"
-dir = "terraform/cloudflare"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../../scripts/tf-init.sh terraform/cloudflare oci.env cloudflare-api-token
-export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
-source ../../scripts/oci-env.sh oci_namespace
-terraform apply
-"""
+run = "scripts/tf.sh cloudflare apply"
 
-# ---------------------------------------------------------------- oracle ----
-#
-# terraform/oracle/ — the Object Storage bucket CloudNativePG backs up into
+[tasks."oracle:init"]
+description = "terraform init for the CNPG backup root"
+run = "scripts/tf.sh oracle init"
 
-[tasks."oci:init"]
-description = "terraform init for the Oracle backups root"
-run = "scripts/tf-init.sh --force terraform/oracle oci.env"
-
-[tasks."oci:plan"]
+[tasks."oracle:plan"]
 description = "Plan the CNPG backup bucket and its IAM user"
-dir = "terraform/oracle"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../../scripts/tf-init.sh terraform/oracle oci.env
-source ../../scripts/oci-env.sh oci_compartment_ocid backup_user_email
-terraform plan
-"""
+run = "scripts/tf.sh oracle plan"
 
-[tasks."oci:apply"]
+[tasks."oracle:apply"]
 description = "Create the CNPG backup bucket and its IAM user"
-dir = "terraform/oracle"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../../scripts/tf-init.sh terraform/oracle oci.env
-source ../../scripts/oci-env.sh oci_compartment_ocid backup_user_email
-terraform apply
-"""
+run = "scripts/tf.sh oracle apply"
 
-[tasks."oci:creds"]
+[tasks."oracle:creds"]
 description = "Print the values for apps/base/cnpg/cluster/backup-oci.sops.yaml"
-dir = "terraform/oracle"
 shell = "bash -c"
 run = """
 set -euo pipefail
-echo "cluster.yaml   endpointURL:     $(terraform output -raw endpoint_url)"
-echo "cluster.yaml   destinationPath: $(terraform output -raw destination_path)"
+echo "cluster.yaml   endpointURL:     $(scripts/tf.sh oracle output -raw endpoint_url)"
+echo "cluster.yaml   destinationPath: $(scripts/tf.sh oracle output -raw destination_path)"
 echo
 echo "backup-oci.sops.yaml stringData:"
-echo "  access-key-id:     $(terraform output -raw access_key_id)"
-echo "  secret-access-key: $(terraform output -raw secret_access_key)"
-echo "  region:            $(terraform output -raw region)"
+echo "  access-key-id:     $(scripts/tf.sh oracle output -raw access_key_id)"
+echo "  secret-access-key: $(scripts/tf.sh oracle output -raw secret_access_key)"
+echo "  region:            $(scripts/tf.sh oracle output -raw region)"
 """
-
-# ----------------------------------------------------------------- talos ----
 
 [tasks.talosconfig]
 description = "Write secrets/talosconfig from Terraform state"
-dir = "terraform/proxmox"
 shell = "bash -c"
 run = """
 set -euo pipefail
-mkdir -p ../../secrets
+mkdir -p secrets
 umask 077
-terraform output -raw talosconfig > ../../secrets/talosconfig
+scripts/tf.sh proxmox output -raw talosconfig > secrets/talosconfig
 echo "wrote secrets/talosconfig (TALOSCONFIG is already set by mise in this repo)"
 """
 
 [tasks.kubeconfig]
 description = "Write ./kubeconfig from Terraform state, pointed at the VIP"
-dir = "terraform/proxmox"
 shell = "bash -c"
 run = """
 set -euo pipefail
 umask 077
-terraform output -raw kubeconfig > ../../kubeconfig
+scripts/tf.sh proxmox output -raw kubeconfig > kubeconfig
 echo "wrote kubeconfig (KUBECONFIG is already set by mise in this repo)"
 """
 
@@ -288,7 +203,7 @@ description = "Upgrade Talos on every node to the version in terraform/proxmox/c
 shell = "bash -c"
 run = """
 set -euo pipefail
-schematic=$(terraform -chdir=terraform/proxmox output -json talos_image | jq -r .schematic_id)
+schematic=$(scripts/tf.sh proxmox output -json talos_image | jq -r .schematic_id)
 version=$(jq -r '.cluster.talos_version' terraform/proxmox/cluster.auto.tfvars.json)
 for ip in $(jq -r '.nodes[].ip' terraform/proxmox/cluster.auto.tfvars.json); do
   echo "==> $ip"
@@ -319,52 +234,28 @@ for ip in $(jq -r '.nodes[].ip' terraform/proxmox/cluster.auto.tfvars.json); do
   echo "==> $ip"
   talosctl -n "$ip" reset --graceful=false --reboot --wait=false || true
 done
-echo "nodes rebooting into maintenance mode — re-run 'mise run tf:apply' to rebuild"
+echo "nodes rebooting into maintenance mode — re-run 'mise run proxmox:apply' to rebuild"
 """
 
 [tasks."nfs:status"]
 description = "NFS server: export list, free space, and whether the StorageClass agrees"
 run = "scripts/nfs-status.sh"
 
-# --------------------------------------------------------------- tailnet ----
+[tasks."tailscale:init"]
+description = "terraform init for the tailnet policy root"
+run = "scripts/tf.sh tailscale init"
 
-[tasks."ts:init"]
-description = "terraform init for the tailnet policy root (state lives in the OCI bucket)"
-run = "scripts/tf-init.sh --force tailscale oci.env tailscale-oauth.env"
-
-[tasks."ts:plan"]
+[tasks."tailscale:plan"]
 description = "Plan the tailnet policy file"
-dir = "tailscale"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../scripts/tf-init.sh tailscale oci.env tailscale-oauth.env
-set -a; . ../secrets/tailscale-oauth.env; set +a
-source ../scripts/oci-env.sh oci_namespace
-terraform plan
-"""
+run = "scripts/tf.sh tailscale plan"
 
-[tasks."ts:apply"]
+[tasks."tailscale:apply"]
 description = "Apply the tailnet policy file (CI does this on push to main)"
-dir = "tailscale"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../scripts/tf-init.sh tailscale oci.env tailscale-oauth.env
-set -a; . ../secrets/tailscale-oauth.env; set +a
-source ../scripts/oci-env.sh oci_namespace
-terraform apply
-"""
+run = "scripts/tf.sh tailscale apply"
 
-[tasks."ts:status"]
+[tasks."tailscale:status"]
 description = "The in-cluster subnet router and the operator's proxies"
-shell = "bash -c"
-run = """
-set -euo pipefail
-kubectl -n tailscale get connector,pods -o wide
-"""
-
-# ----------------------------------------------------------------- kube ----
+run = "kubectl -n tailscale get connector,pods -o wide"
 
 [tasks.status]
 description = "Show nodes and control-plane pods"
@@ -375,14 +266,12 @@ echo
 kubectl -n kube-system get pods
 """
 
-# ------------------------------------------------------------- one-shot ----
-
 [tasks.bootstrap]
 description = "Full path: VMs -> machine configs -> bootstrap -> Cilium -> status"
 shell = "bash -c"
 run = """
 set -euo pipefail
-mise run tf:apply
+mise run proxmox:apply
 mise run talosconfig
 mise run kubeconfig
 mise run cilium

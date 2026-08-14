@@ -1,4 +1,4 @@
-name: "Cloudflare: deploy"
+name: "Cloudflare: plan"
 
 on:
   push:
@@ -7,16 +7,7 @@ on:
     paths:
       - "terraform/cloudflare/**"
       - ".github/workflows/cloudflare-deploy.yml"
-  pull_request:
-    paths:
-      - "terraform/cloudflare/**"
-      - ".github/workflows/cloudflare-deploy.yml"
   workflow_dispatch:
-    inputs:
-      apply:
-        description: "Run terraform apply (dangerous)"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -37,23 +28,9 @@ jobs:
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
-
-      # Object Storage 404s the state backend spuriously; the SDK's retries help
       OCI_SDK_DEFAULT_RETRY_ENABLED: "true"
 
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
-      # State lives in the OCI bucket 00-global/ owns. These reach both the
-      # backend (via scripts/tf-init.sh) and the terraform_remote_state data
-      # source that reads the proxmox root.
-      TF_VAR_oci_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
-      TF_VAR_oci_user_ocid: ${{ secrets.OCI_USER_OCID }}
-      TF_VAR_oci_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-      TF_VAR_oci_namespace: ${{ secrets.OCI_NAMESPACE }}
-      TF_VAR_oci_region: ${{ secrets.OCI_REGION }}
-      # scripts/oci-env.sh defaults this to secrets/oci_api_key.pem, but the
-      # plan and apply steps do not source it — only tf-init.sh does.
-      TF_VAR_oci_private_key_path: ${{ github.workspace }}/secrets/oci_api_key.pem
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
     steps:
       - name: Checkout Code
@@ -70,36 +47,24 @@ jobs:
         env:
           CI_TFVARS: ${{ secrets.CLOUDFLARE_TFVARS }}
 
-      - name: Write the OCI signing key
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir -p secrets
-          umask 077
-          printf '%s\n' "$OCI_API_KEY" > secrets/oci_api_key.pem
-        env:
-          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
+      - name: Setup sops
+        uses: nhedger/setup-sops@18e52f363488ed469d2e1855e542a1c651743bba # v3.0.0
+        with:
+          version: 3.13.3
 
       - name: Terraform Init
-        run: ${{ github.workspace }}/scripts/tf-init.sh --force terraform/cloudflare
+        run: ${{ github.workspace }}/scripts/tf.sh cloudflare init
 
       - name: Terraform Validate
         run: terraform validate
-
       - name: Terraform Plan
         run: |
-          "${{ github.workspace }}/scripts/tf-run.sh" plan -out .planfile -input=false -no-color > plan.txt 2>&1 || {
+          "${{ github.workspace }}/scripts/tf.sh" cloudflare plan -input=false -no-color > plan.txt 2>&1 || {
             echo "::error::terraform plan failed"
             exit 1
           }
           grep -E "^(Plan:|No changes\.)" plan.txt | tail -n 1
 
-      - name: Terraform Apply
-        if: |
-          (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
-          (github.event_name == 'workflow_dispatch' && inputs.apply)
-        run: |
-          "${{ github.workspace }}/scripts/tf-run.sh" apply -auto-approve -input=false -no-color .planfile > apply.txt 2>&1 || {
-            echo "::error::terraform apply failed; output withheld (public logs)"
-            exit 1
-          }
-          grep -E "^Apply complete!" apply.txt
+          if grep -qE "^Plan: .*[1-9][0-9]* to destroy" plan.txt; then
+            echo "::warning::this plan destroys resources — check CLOUDFLARE_TFVARS is current"
+          fi
