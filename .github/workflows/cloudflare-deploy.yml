@@ -1,13 +1,9 @@
-name: "Cloudflare: deploy"
+name: "Cloudflare: plan"
 
 on:
   push:
     branches:
       - main
-    paths:
-      - "terraform/cloudflare/**"
-      - ".github/workflows/cloudflare-deploy.yml"
-  pull_request:
     paths:
       - "terraform/cloudflare/**"
       - ".github/workflows/cloudflare-deploy.yml"
@@ -32,15 +28,9 @@ jobs:
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
-
-      # Object Storage 404s the state backend spuriously; the SDK's retries help
       OCI_SDK_DEFAULT_RETRY_ENABLED: "true"
 
-      # Every credential comes out of secrets.sops.yaml, which this key opens
-      # and nothing else does — see docs/terraform-sops.md.
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-      SOPS_VERSION: "3.13.3"
-      SOPS_SHA256: "e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b"
 
     steps:
       - name: Checkout Code
@@ -57,23 +47,16 @@ jobs:
         env:
           CI_TFVARS: ${{ secrets.CLOUDFLARE_TFVARS }}
 
-      - name: Install sops
-        run: |
-          curl -fsSL -o /tmp/sops \
-            https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64
-          echo "${SOPS_SHA256}  /tmp/sops" | sha256sum -c -
-          sudo install -m 0755 /tmp/sops /usr/local/bin/sops
+      - name: Setup sops
+        uses: nhedger/setup-sops@18e52f363488ed469d2e1855e542a1c651743bba # v3.0.0
+        with:
+          version: 3.13.3
 
       - name: Terraform Init
         run: ${{ github.workspace }}/scripts/tf.sh cloudflare init
 
       - name: Terraform Validate
         run: terraform validate
-
-      # Plan only, deliberately. terraform.tfvars is not committed, so CI plans
-      # against CLOUDFLARE_TFVARS, and whenever that copy lags the local one the
-      # plan proposes deleting the DNS records it cannot see. Apply from a
-      # workstation until the inputs live in one place.
       - name: Terraform Plan
         run: |
           "${{ github.workspace }}/scripts/tf.sh" cloudflare plan -input=false -no-color > plan.txt 2>&1 || {
