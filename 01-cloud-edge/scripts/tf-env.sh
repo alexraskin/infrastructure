@@ -8,7 +8,7 @@ _here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 _repo=$(cd "$_here/.." && pwd)
 
 [ -s "$_here/edge.json" ] || {
-  echo "missing 00-cloud-edge/edge.json — copy edge.json.example" >&2
+  echo "missing 01-cloud-edge/edge.json — copy edge.json.example" >&2
   return 1 2>/dev/null || exit 1
 }
 
@@ -19,7 +19,7 @@ _need() {
   }
 }
 
-_need oci.env "copy 00-cloud-edge/oci.env.example" || return 1 2>/dev/null || exit 1
+_need oci.env "copy 01-cloud-edge/oci.env.example" || return 1 2>/dev/null || exit 1
 # shellcheck disable=SC1090
 source "$_repo/secrets/oci.env"
 

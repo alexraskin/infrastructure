@@ -1,5 +1,5 @@
 [tools]
-terraform = "1.9"
+terraform = "1.15"
 jq = "latest"
 kubectl = "latest"
 talosctl = "latest"
@@ -12,6 +12,11 @@ terraform-docs = "latest"
 KUBECONFIG = "{{config_root}}/kubeconfig"
 TALOSCONFIG = "{{config_root}}/secrets/talosconfig"
 CILIUM_VERSION = "1.20.0"
+
+# Object Storage answers the state backend with a spurious 404 now and then —
+# most often just after a bucket is created. The SDK's own retry policy cuts it
+# down; scripts/tf-init.sh retries the rest. See docs/terraform-state-migration.md.
+OCI_SDK_DEFAULT_RETRY_ENABLED = "true"
 
 [tasks.preflight]
 description = "Check API token, privileges, node, datastores, VM IDs, IPs, SSH, capacity"
@@ -42,11 +47,70 @@ done
 exit $rc
 """
 
+# ------------------------------------------------------------- 00-global ----
+#
+# 00-global/ — the Object Storage bucket every other root keeps its state in,
+# its own state included. Rebuilding it from nothing is a one-off documented in
+# docs/terraform-state-migration.md, not a task.
+
+[tasks."global:init"]
+description = "terraform init for the state-bucket root"
+run = "scripts/tf-init.sh --force 00-global oci.env"
+
+[tasks."global:plan"]
+description = "Plan the Terraform state bucket"
+dir = "00-global"
+shell = "bash -c"
+run = """
+set -euo pipefail
+../scripts/tf-init.sh 00-global oci.env
+source ../scripts/oci-env.sh oci_compartment_ocid oci_namespace ci_user_email
+terraform plan
+"""
+
+[tasks."global:apply"]
+description = "Apply the Terraform state bucket"
+dir = "00-global"
+shell = "bash -c"
+run = """
+set -euo pipefail
+../scripts/tf-init.sh 00-global oci.env
+source ../scripts/oci-env.sh oci_compartment_ocid oci_namespace ci_user_email
+terraform apply
+"""
+
+[tasks."global:ci-creds"]
+description = "Print the OCI_* GitHub environment secrets for the cloudflare and tailscale workflows"
+dir = "00-global"
+shell = "bash -c"
+run = """
+set -euo pipefail
+echo "OCI_TENANCY_OCID: $(terraform output -raw tenancy_ocid)"
+echo "OCI_USER_OCID:    $(terraform output -raw ci_user_ocid)"
+echo "OCI_FINGERPRINT:  $(terraform output -raw ci_fingerprint)"
+echo "OCI_NAMESPACE:    $(terraform output -raw namespace)"
+echo "OCI_REGION:       $(terraform output -raw region)"
+echo
+echo "OCI_API_KEY (the whole block, BEGIN/END lines included):"
+terraform output -raw ci_private_key
+"""
+
+[tasks."global:backend"]
+description = "Print the bucket, namespace and region every backend block resolves against"
+dir = "00-global"
+shell = "bash -c"
+run = """
+set -euo pipefail
+echo "bucket:    $(terraform output -raw bucket)"
+echo "namespace: $(terraform output -raw namespace)"
+echo "region:    $(terraform output -raw region)"
+"""
+
 # ------------------------------------------------------------ terraform ----
 
 [tasks."tf:init"]
-description = "terraform init, re-resolving providers (state lives in R2)"
-run = "scripts/tf-init.sh --force terraform/proxmox"
+description = "terraform init, re-resolving providers (state lives in the OCI bucket 00-global/ owns)"
+run = "scripts/tf-init.sh --force terraform/proxmox oci.env"
 
 [tasks."tf:plan"]
 description = "terraform plan"
@@ -54,7 +118,7 @@ dir = "terraform/proxmox"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../../scripts/tf-init.sh terraform/proxmox
+../../scripts/tf-init.sh terraform/proxmox oci.env
 terraform plan
 """
 
@@ -64,7 +128,7 @@ dir = "terraform/proxmox"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../../scripts/tf-init.sh terraform/proxmox
+../../scripts/tf-init.sh terraform/proxmox oci.env
 terraform apply
 """
 
@@ -87,7 +151,7 @@ terraform destroy \
 
 [tasks."cf:init"]
 description = "terraform init for the Cloudflare root"
-run = "scripts/tf-init.sh --force terraform/cloudflare cloudflare-api-token"
+run = "scripts/tf-init.sh --force terraform/cloudflare oci.env cloudflare-api-token"
 
 [tasks."cf:plan"]
 description = "Plan the tunnel, ingress rules and DNS records"
@@ -95,9 +159,9 @@ dir = "terraform/cloudflare"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../../scripts/tf-init.sh terraform/cloudflare cloudflare-api-token
+../../scripts/tf-init.sh terraform/cloudflare oci.env cloudflare-api-token
 export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
-source ../../scripts/r2-env.sh
+source ../../scripts/oci-env.sh oci_namespace
 terraform plan
 """
 
@@ -107,9 +171,9 @@ dir = "terraform/cloudflare"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../../scripts/tf-init.sh terraform/cloudflare cloudflare-api-token
+../../scripts/tf-init.sh terraform/cloudflare oci.env cloudflare-api-token
 export CLOUDFLARE_API_TOKEN=$(cat ../../secrets/cloudflare-api-token)
-source ../../scripts/r2-env.sh
+source ../../scripts/oci-env.sh oci_namespace
 terraform apply
 """
 
@@ -119,7 +183,7 @@ terraform apply
 
 [tasks."oci:init"]
 description = "terraform init for the Oracle backups root"
-run = "scripts/tf-init.sh --force terraform/oracle oci.env oci_api_key.pem"
+run = "scripts/tf-init.sh --force terraform/oracle oci.env"
 
 [tasks."oci:plan"]
 description = "Plan the CNPG backup bucket and its IAM user"
@@ -127,8 +191,8 @@ dir = "terraform/oracle"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../../scripts/tf-init.sh terraform/oracle oci.env oci_api_key.pem
-source ../../scripts/oci-env.sh
+../../scripts/tf-init.sh terraform/oracle oci.env
+source ../../scripts/oci-env.sh oci_compartment_ocid backup_user_email
 terraform plan
 """
 
@@ -138,8 +202,8 @@ dir = "terraform/oracle"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../../scripts/tf-init.sh terraform/oracle oci.env oci_api_key.pem
-source ../../scripts/oci-env.sh
+../../scripts/tf-init.sh terraform/oracle oci.env
+source ../../scripts/oci-env.sh oci_compartment_ocid backup_user_email
 terraform apply
 """
 
@@ -265,8 +329,8 @@ run = "scripts/nfs-status.sh"
 # --------------------------------------------------------------- tailnet ----
 
 [tasks."ts:init"]
-description = "terraform init for the tailnet policy root (state lives in R2)"
-run = "scripts/tf-init.sh --force tailscale tailscale-oauth.env"
+description = "terraform init for the tailnet policy root (state lives in the OCI bucket)"
+run = "scripts/tf-init.sh --force tailscale oci.env tailscale-oauth.env"
 
 [tasks."ts:plan"]
 description = "Plan the tailnet policy file"
@@ -274,9 +338,9 @@ dir = "tailscale"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../scripts/tf-init.sh tailscale tailscale-oauth.env
+../scripts/tf-init.sh tailscale oci.env tailscale-oauth.env
 set -a; . ../secrets/tailscale-oauth.env; set +a
-source ../scripts/r2-env.sh
+source ../scripts/oci-env.sh oci_namespace
 terraform plan
 """
 
@@ -286,9 +350,9 @@ dir = "tailscale"
 shell = "bash -c"
 run = """
 set -euo pipefail
-../scripts/tf-init.sh tailscale tailscale-oauth.env
+../scripts/tf-init.sh tailscale oci.env tailscale-oauth.env
 set -a; . ../secrets/tailscale-oauth.env; set +a
-source ../scripts/r2-env.sh
+source ../scripts/oci-env.sh oci_namespace
 terraform apply
 """
 

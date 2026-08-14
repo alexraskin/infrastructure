@@ -38,11 +38,19 @@ jobs:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
 
+      # Object Storage 404s the state backend spuriously; the SDK's retries help
+      OCI_SDK_DEFAULT_RETRY_ENABLED: "true"
+
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      AWS_ENDPOINT_URL_S3: ${{ secrets.R2_S3_ENDPOINT }}
+      # State lives in the OCI bucket 00-global/ owns. These reach both the
+      # backend (via scripts/tf-init.sh) and the terraform_remote_state data
+      # source that reads the proxmox root.
+      TF_VAR_oci_tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
+      TF_VAR_oci_user_ocid: ${{ secrets.OCI_USER_OCID }}
+      TF_VAR_oci_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
+      TF_VAR_oci_namespace: ${{ secrets.OCI_NAMESPACE }}
+      TF_VAR_oci_region: ${{ secrets.OCI_REGION }}
 
     steps:
       - name: Checkout Code
@@ -51,7 +59,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          terraform_version: "1.9"
+          terraform_version: "1.15"
           terraform_wrapper: false
 
       - name: Write tfvars
@@ -59,8 +67,17 @@ jobs:
         env:
           CI_TFVARS: ${{ secrets.CLOUDFLARE_TFVARS }}
 
+      - name: Write the OCI signing key
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p secrets
+          umask 077
+          printf '%s\n' "$OCI_API_KEY" > secrets/oci_api_key.pem
+        env:
+          OCI_API_KEY: ${{ secrets.OCI_API_KEY }}
+
       - name: Terraform Init
-        run: terraform init
+        run: ${{ github.workspace }}/scripts/tf-init.sh --force terraform/cloudflare
 
       - name: Terraform Validate
         run: terraform validate

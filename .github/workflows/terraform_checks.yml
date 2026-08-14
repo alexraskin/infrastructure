@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - "00-cloud-edge/terraform/**"
+      - "00-global/**"
+      - "01-cloud-edge/terraform/**"
       - "tailscale/**"
       - "terraform/**"
       - ".tflint.hcl"
@@ -14,7 +15,8 @@ on:
       - ".github/workflows/terraform_checks.yml"
   pull_request:
     paths:
-      - "00-cloud-edge/terraform/**"
+      - "00-global/**"
+      - "01-cloud-edge/terraform/**"
       - "tailscale/**"
       - "terraform/**"
       - ".tflint.hcl"
@@ -31,7 +33,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TERRAFORM_VERSION: "1.9"
+  TERRAFORM_VERSION: "1.15"
   TFLINT_VERSION: "v0.64.0"
   TERRAFORM_DOCS_VERSION: "v0.24.0"
 
@@ -60,7 +62,8 @@ jobs:
       fail-fast: false
       matrix:
         dir:
-          - 00-cloud-edge/terraform
+          - 00-global
+          - 01-cloud-edge/terraform
           - tailscale
           - terraform/cloudflare
           - terraform/oracle

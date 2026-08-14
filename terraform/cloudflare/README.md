@@ -3,7 +3,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
 | <a name="requirement_cloudflare"></a> [cloudflare](#requirement\_cloudflare) | ~> 5.0 |
 
 ## Providers
@@ -36,6 +36,12 @@ No modules.
 | <a name="input_catch_all_service"></a> [catch\_all\_service](#input\_catch\_all\_service) | What the tunnel answers with for a hostname no rule matched. | `string` | `"http_status:404"` | no |
 | <a name="input_cluster_dns_records"></a> [cluster\_dns\_records](#input\_cluster\_dns\_records) | n/a | <pre>map(object({<br/>    zone    = string<br/>    name    = string<br/>    source  = string<br/>    ttl     = optional(number, 1)<br/>    comment = optional(string, "terraform: cluster address")<br/>  }))</pre> | `{}` | no |
 | <a name="input_ingress"></a> [ingress](#input\_ingress) | n/a | <pre>list(object({<br/>    hostname = string<br/>    service  = string<br/>    path     = optional(string)<br/>  }))</pre> | n/a | yes |
+| <a name="input_oci_fingerprint"></a> [oci\_fingerprint](#input\_oci\_fingerprint) | Fingerprint of that user's API signing key | `string` | n/a | yes |
+| <a name="input_oci_namespace"></a> [oci\_namespace](#input\_oci\_namespace) | Object Storage namespace holding the state bucket | `string` | n/a | yes |
+| <a name="input_oci_private_key_path"></a> [oci\_private\_key\_path](#input\_oci\_private\_key\_path) | Path to the API signing key; defaults to secrets/oci\_api\_key.pem | `string` | n/a | yes |
+| <a name="input_oci_region"></a> [oci\_region](#input\_oci\_region) | Region the state bucket lives in | `string` | n/a | yes |
+| <a name="input_oci_tenancy_ocid"></a> [oci\_tenancy\_ocid](#input\_oci\_tenancy\_ocid) | Tenancy OCID | `string` | n/a | yes |
+| <a name="input_oci_user_ocid"></a> [oci\_user\_ocid](#input\_oci\_user\_ocid) | OCID of the user whose API key signs the state read | `string` | n/a | yes |
 | <a name="input_tunnel_id"></a> [tunnel\_id](#input\_tunnel\_id) | UUID of the existing tunnel, used by the import blocks in imports.tf | `string` | n/a | yes |
 | <a name="input_tunnel_name"></a> [tunnel\_name](#input\_tunnel\_name) | Name of the existing tunnel, as it appears in Zero Trust -> Networks -> Tunnels | `string` | `"k3s"` | no |
 | <a name="input_zones"></a> [zones](#input\_zones) | Zone name -> zone ID. Every ingress hostname must fall under one of these. | `map(string)` | n/a | yes |

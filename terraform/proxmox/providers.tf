@@ -1,16 +1,9 @@
 terraform {
-  required_version = ">= 1.6"
+  required_version = ">= 1.12"
 
-  backend "s3" {
-    bucket                      = "terraform"
-    key                         = "talos-proxmox/terraform.tfstate"
-    region                      = "auto"
-    skip_credentials_validation = true
-    skip_metadata_api_check     = true
-    skip_region_validation      = true
-    skip_requesting_account_id  = true
-    skip_s3_checksum            = true
-    use_path_style              = true
+  backend "oci" {
+    bucket = "infrastructure-terraform-state"
+    key    = "talos-proxmox/terraform.tfstate"
   }
 
   required_providers {
