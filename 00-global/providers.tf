@@ -4,6 +4,10 @@ terraform {
   required_version = ">= 1.12"
 
   required_providers {
+    sops = {
+      source  = "carlpett/sops"
+      version = "~> 1.4"
+    }
     oci = {
       source  = "oracle/oci"
       version = "~> 6"
@@ -15,10 +19,18 @@ terraform {
   }
 }
 
+data "sops_file" "admin" {
+  source_file = "${path.module}/../sops/admin.sops.yaml"
+}
+
+locals {
+  admin = data.sops_file.admin.data
+}
+
 provider "oci" {
-  tenancy_ocid     = var.oci_tenancy_ocid
-  user_ocid        = var.oci_user_ocid
-  fingerprint      = var.oci_fingerprint
-  private_key_path = pathexpand(var.oci_private_key_path)
-  region           = var.oci_region
+  tenancy_ocid = local.admin["oci_tenancy_ocid"]
+  user_ocid    = local.admin["oci_user_ocid"]
+  fingerprint  = local.admin["oci_fingerprint"]
+  private_key  = local.admin["oci_private_key"]
+  region       = local.admin["oci_region"]
 }

@@ -1,21 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-[ -s "$here/edge.json" ] || {
-  echo "missing 01-cloud-edge/edge.json — copy edge.json.example" >&2
-  exit 1
-}
-host=$(jq -r '.instance.hostname' "$here/edge.json")
-ip=$("$here/scripts/edge-addr.sh" "${1:-}")
+# shellcheck source-path=SCRIPTDIR
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-ssh_opts=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null)
+host=$(edge_host)
+ip=$(edge_addr "${1:-}")
 
-"$here/scripts/push-age-key.sh" "$ip"
+"$edge/scripts/push-age-key.sh" "$ip"
 
 echo "==> $ip: copying the flake -> /etc/nixos-edge"
-tar -C "$here" -cf - flake.nix flake.lock edge.json nixos \
-  | ssh "${ssh_opts[@]}" "root@$ip" '
+tar -C "$edge" -cf - flake.nix flake.lock edge.json nixos \
+  | edge_ssh "$ip" '
       rm -rf /etc/nixos-edge
       mkdir -p /etc/nixos-edge
       tar -C /etc/nixos-edge -xf -
@@ -25,7 +21,7 @@ echo "==> $ip: nixos-rebuild switch (building on the box)"
 # Detached, because this session is served by tailscaled: a switch that touches
 # the tailscale unit kills its own connection mid-activation. The unit outlives
 # the drop; the loop below reconnects and waits it out.
-ssh "${ssh_opts[@]}" "root@$ip" "
+edge_ssh "$ip" "
   set -eu
   systemctl reset-failed edge-rebuild.service 2>/dev/null || true
   systemd-run --no-block --unit=edge-rebuild \
@@ -53,7 +49,7 @@ while :; do
 done
 echo
 
-ssh "${ssh_opts[@]}" "root@$ip" '
+edge_ssh "$ip" '
   journalctl -u edge-rebuild.service --no-pager -n 40
   state=$(systemctl show -p ActiveState --value edge-rebuild.service)
   systemctl stop edge-rebuild.service 2>/dev/null || true
@@ -71,12 +67,12 @@ certs=$(jq -r '
            | select((split(".") | .[1:] | join(".")) as $parent
                     | ($w | index($parent)) == null) ]
   | unique[]
-' "$here/edge.json")
+' "$edge/edge.json")
 
 for cert in $certs; do
-  ssh "${ssh_opts[@]}" "root@$ip" "systemctl start 'acme-$cert.service'" ||
+  edge_ssh "$ip" "systemctl start 'acme-$cert.service'" ||
     echo "  acme-$cert failed — check: journalctl -u acme-$cert.service" >&2
 done
 
 echo "==> $ip: done"
-ssh "${ssh_opts[@]}" "root@$ip" 'tailscale status --peers=false 2>/dev/null || true'
+edge_ssh "$ip" 'tailscale status --peers=false 2>/dev/null || true'

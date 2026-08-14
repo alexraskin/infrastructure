@@ -1,4 +1,4 @@
-# A dedicated user for the backup credential, not the API user in secrets/oci.env.
+# A dedicated user for the backup credential, not the admin API user.
 #
 # The Customer Secret Key created here ends up in a Kubernetes Secret, which
 # anything with pod-exec in the cluster can read — the same reasoning that scopes
@@ -6,10 +6,10 @@
 # the Terraform user's rights would mean handing out the edge instance too.
 #
 # IAM lives in the tenancy, not in a compartment, so the user, group and policy
-# are all created against var.oci_tenancy_ocid regardless of where the bucket is.
+# are all created against local.admin["oci_tenancy_ocid"] regardless of where the bucket is.
 
 data "oci_identity_compartment" "this" {
-  id = var.oci_compartment_ocid
+  id = local.admin["oci_compartment_ocid"]
 }
 
 locals {
@@ -18,18 +18,18 @@ locals {
   # with "does not exist or is not part of the policy compartment subtree".
   # `in tenancy` is the only form that works there.
   policy_scope = (
-    var.oci_compartment_ocid == var.oci_tenancy_ocid
+    local.admin["oci_compartment_ocid"] == local.admin["oci_tenancy_ocid"]
     ? "in tenancy"
     : "in compartment ${data.oci_identity_compartment.this.name}"
   )
 }
 
 resource "oci_identity_user" "cnpg_backup" {
-  compartment_id = var.oci_tenancy_ocid
+  compartment_id = local.admin["oci_tenancy_ocid"]
   name           = "cnpg-backup"
   description    = "CloudNativePG backups — managed by Terraform"
 
-  email = var.backup_user_email
+  email = local.admin["backup_user_email"]
 
   freeform_tags = {
     managed-by = "terraform"
@@ -37,7 +37,7 @@ resource "oci_identity_user" "cnpg_backup" {
 }
 
 resource "oci_identity_group" "cnpg_backup" {
-  compartment_id = var.oci_tenancy_ocid
+  compartment_id = local.admin["oci_tenancy_ocid"]
   name           = "cnpg-backup"
   description    = "Write access to the CloudNativePG backup bucket only"
 
@@ -56,7 +56,7 @@ resource "oci_identity_user_group_membership" "cnpg_backup" {
 # bucket; `read buckets` is what lets barman-cloud check the bucket exists before
 # its first upload. Both are constrained to this one bucket.
 resource "oci_identity_policy" "cnpg_backup" {
-  compartment_id = var.oci_tenancy_ocid
+  compartment_id = local.admin["oci_tenancy_ocid"]
   name           = "cnpg-backup"
   description    = "CloudNativePG backups — managed by Terraform"
 

@@ -7,86 +7,32 @@ sops = "latest"
 SSH_OPTS = "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
 SOPS_AGE_KEY_FILE = "{{config_root}}/../secrets/age.key"
 
-# Object Storage answers the state backend with a spurious 404 now and then —
-# most often just after a bucket is created. The SDK's own retry policy cuts it
-# down; scripts/tf-init.sh retries the rest. See docs/terraform-state-migration.md.
 OCI_SDK_DEFAULT_RETRY_ENABLED = "true"
 
 # --------------------------------------------------------------- terraform ---
 
-[tasks."tf:init"]
-description = "terraform init, re-resolving providers (state lives in the OCI bucket 00-global/ owns)"
-shell = "bash -c"
-run = "../scripts/tf-init.sh --force 01-cloud-edge/terraform oci.env cloudflare-api-token"
+[tasks."edge:init"]
+description = "terraform init, re-resolving providers"
+run = "../scripts/tf.sh edge init"
 
-[tasks."tf:plan"]
+[tasks."edge:plan"]
 description = "Plan the VCN, instance and DNS records"
-dir = "terraform"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../../scripts/tf-init.sh 01-cloud-edge/terraform oci.env cloudflare-api-token
-source ../scripts/tf-env.sh
-terraform plan
-"""
+run = "../scripts/tf.sh edge plan"
 
-[tasks."tf:apply"]
-description = "Create the edge instance, retrying each availability domain on capacity errors"
-dir = "terraform"
-shell = "bash -c"
-run = """
-set -euo pipefail
-../../scripts/tf-init.sh 01-cloud-edge/terraform oci.env cloudflare-api-token
-source ../scripts/tf-env.sh
+[tasks."edge:apply"]
+description = "Create the edge instance, walking the availability domains on capacity errors"
+run = "../scripts/tf.sh edge apply"
 
-log=$(mktemp)
-trap 'rm -f "$log"' EXIT
-
-for idx in 0 1 2; do
-  echo "==> apply, availability domain index $idx"
-  set +e
-  terraform apply -var "instance_availability_domain_index=$idx" "$@" 2>&1 | tee "$log"
-  rc=${PIPESTATUS[0]}
-  set -e
-
-  [ "$rc" -eq 0 ] && exit 0
-
-  if grep -qi "Out of host capacity" "$log"; then
-    echo "no capacity in AD $idx — trying the next one"
-    continue
-  fi
-
-  if grep -qiE "does not identify an element|Invalid index" "$log"; then
-    echo "region has no AD at index $idx — every one it does have is full." >&2
-    echo "try again later, or set TF_VAR_oci_region to another region." >&2
-    exit 1
-  fi
-
-  echo "apply failed for a reason other than capacity" >&2
-  exit "$rc"
-done
-
-echo "every availability domain is out of A1 capacity. Try again later, or another region." >&2
-exit 1
-"""
-
-[tasks."tf:destroy"]
+[tasks."edge:destroy"]
 description = "Destroy the instance, its network and its DNS records"
-dir = "terraform"
-shell = "bash -c"
-run = """
-set -euo pipefail
-source ../scripts/tf-env.sh
-terraform destroy
-"""
+run = "../scripts/tf.sh edge destroy"
 
 [tasks.ip]
 description = "The instance's current public IP"
-dir = "terraform"
 shell = "bash -c"
 run = """
 set -euo pipefail
-terraform output -raw public_ip
+../scripts/tf.sh edge output -raw public_ip
 echo
 """
 
@@ -99,8 +45,6 @@ run = "scripts/install.sh"
 [tasks."secrets:edit"]
 description = "Decrypt the box's secrets into $EDITOR and re-encrypt on save"
 shell = "bash -c"
-# Run from here, never from apps/: sops picks .sops.yaml out of the working
-# directory, and apps/ has a different one that would leave this file plaintext.
 run = "exec sops nixos/hosts/oracle-edge/secrets.sops.yaml"
 
 [tasks."secrets:show"]
@@ -151,9 +95,6 @@ ssh $SSH_OPTS "root@$ip" '
 '
 """
 
-# ---------------------------------------------------------------- validate ---
-
-# terraform fmt and validate are the CI workflow's job, for every root at once.
 [tasks.check]
 description = "Evaluate the flake — does this NixOS config build at all"
 shell = "bash -c"

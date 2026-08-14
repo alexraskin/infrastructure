@@ -6,6 +6,7 @@
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
 | <a name="requirement_cloudflare"></a> [cloudflare](#requirement\_cloudflare) | ~> 5 |
 | <a name="requirement_proxmox"></a> [proxmox](#requirement\_proxmox) | ~> 0.111 |
+| <a name="requirement_sops"></a> [sops](#requirement\_sops) | ~> 1.4 |
 | <a name="requirement_talos"></a> [talos](#requirement\_talos) | ~> 0.9 |
 | <a name="requirement_time"></a> [time](#requirement\_time) | ~> 0.12 |
 
@@ -14,8 +15,9 @@
 | Name | Version |
 | ---- | ------- |
 | <a name="provider_proxmox"></a> [proxmox](#provider\_proxmox) | 0.111.1 |
+| <a name="provider_sops"></a> [sops](#provider\_sops) | 1.4.1 |
 | <a name="provider_talos"></a> [talos](#provider\_talos) | 0.11.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | 0.14.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
 
 ## Modules
 
@@ -43,6 +45,7 @@ No modules.
 | [talos_machine_configuration_apply.node](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/machine_configuration_apply) | resource |
 | [talos_machine_secrets.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/machine_secrets) | resource |
 | [time_sleep.install](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
+| [sops_file.admin](https://registry.terraform.io/providers/carlpett/sops/latest/docs/data-sources/file) | data source |
 | [talos_client_configuration.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/data-sources/client_configuration) | data source |
 | [talos_image_factory_urls.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/data-sources/image_factory_urls) | data source |
 | [talos_machine_configuration.node](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/data-sources/machine_configuration) | data source |
@@ -65,7 +68,6 @@ No modules.
 | <a name="input_network_bridge"></a> [network\_bridge](#input\_network\_bridge) | Proxmox bridge to attach VMs to | `string` | `"vmbr0"` | no |
 | <a name="input_nfs"></a> [nfs](#input\_nfs) | The NFS server LXC: identity, sizing and what it exports. Sizes are GB. | <pre>object({<br/>    name        = string<br/>    vmid        = number<br/>    ip          = string<br/>    cores       = number<br/>    memory      = number<br/>    root_disk   = number<br/>    data_disk   = number<br/>    export_path = string<br/>  })</pre> | n/a | yes |
 | <a name="input_nodes"></a> [nodes](#input\_nodes) | Node name -> role, address, VM ID and size. data\_disk is the db nodes' second disk. | <pre>map(object({<br/>    role      = string<br/>    ip        = string<br/>    vmid      = number<br/>    cores     = number<br/>    memory    = number<br/>    disk      = number<br/>    data_disk = optional(number)<br/>  }))</pre> | n/a | yes |
-| <a name="input_pve_api_token"></a> [pve\_api\_token](#input\_pve\_api\_token) | API token in the form user@realm!tokenid=uuid | `string` | n/a | yes |
 | <a name="input_pve_bridge_address"></a> [pve\_bridge\_address](#input\_pve\_bridge\_address) | The PVE host's own address on the management bridge, CIDR form | `string` | n/a | yes |
 | <a name="input_pve_bridge_gateway"></a> [pve\_bridge\_gateway](#input\_pve\_bridge\_gateway) | Default gateway on the management bridge | `string` | n/a | yes |
 | <a name="input_pve_bridge_port"></a> [pve\_bridge\_port](#input\_pve\_bridge\_port) | Physical NIC enslaved to the management bridge | `string` | n/a | yes |
