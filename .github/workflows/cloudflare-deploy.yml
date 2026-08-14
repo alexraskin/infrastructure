@@ -51,6 +51,9 @@ jobs:
       TF_VAR_oci_fingerprint: ${{ secrets.OCI_FINGERPRINT }}
       TF_VAR_oci_namespace: ${{ secrets.OCI_NAMESPACE }}
       TF_VAR_oci_region: ${{ secrets.OCI_REGION }}
+      # scripts/oci-env.sh defaults this to secrets/oci_api_key.pem, but the
+      # plan and apply steps do not source it — only tf-init.sh does.
+      TF_VAR_oci_private_key_path: ${{ github.workspace }}/secrets/oci_api_key.pem
 
     steps:
       - name: Checkout Code
