@@ -24,7 +24,7 @@ result-*
 
 .env
 
-00-cloud-edge/edge.json
+01-cloud-edge/edge.json
 ci.auto.tfvars
 
 terraform/cloudflare/imports.tf
