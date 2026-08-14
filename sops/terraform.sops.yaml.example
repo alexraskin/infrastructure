@@ -21,3 +21,16 @@ cloudflare_api_token: ...
 # Only used locally: CI authenticates to Tailscale with OIDC federation instead.
 tailscale_oauth_client_id: ...
 tailscale_oauth_client_secret: ...
+
+# The edge deploy workflow. The auth key must be ephemeral, reusable and
+# pre-signed for tailnet lock — `tailscale lock sign` on a signing node prints
+# the value that goes here. See docs/edge-ci-deploy.md.
+tailscale_ci_authkey: tskey-auth-...
+
+# 01-cloud-edge/edge.json, verbatim. Gitignored because it maps internal
+# backends and ports, not because it holds credentials.
+edge_json: |
+  {
+    "instance": { "hostname": "..." },
+    "sites": []
+  }
