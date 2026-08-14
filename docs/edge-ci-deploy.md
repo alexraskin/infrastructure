@@ -57,9 +57,47 @@ finds one locally, so CI skips that step and the box keeps the key it was
 installed with. That key decrypts every `apps/base/**/*.sops.yaml`, and it lives
 on a public-internet-facing VM.
 
-The fix is to give sops-nix the box's own SSH host key as its identity
-(`sops.age.sshKeyPaths`) and make that host key a second recipient on
-`01-cloud-edge/nixos/hosts/oracle-edge/secrets.sops.yaml`. Then an edge
-compromise costs four values instead of every secret in the repo. That work is
-Phase 1 of the plan in the vault (`Secretless Edge Deploy Plan`) and is not done
-yet — CI deploying does not depend on it, but it is the reason to finish it.
+The fix is to give sops-nix the box's own SSH host key as its identity, so the
+master key can be deleted from the VM. An edge compromise then costs the four
+values in that file instead of every secret in the repo.
+
+**Half done.** `01-cloud-edge/.sops.yaml` now carries the host key's age
+recipient (`age1v5jydk3…`, derived from `/etc/ssh/ssh_host_ed25519_key.pub` with
+`ssh-to-age`) alongside the key you edit with, and `install.sh` seeds that host
+key so a reinstall keeps the recipient valid. What remains, in order:
+
+1. Re-encrypt to both recipients:
+
+   ```bash
+   cd 01-cloud-edge && sops updatekeys nixos/hosts/oracle-edge/secrets.sops.yaml
+   ```
+
+2. In `nixos/hosts/oracle-edge/secrets.nix`, add the host key **while keeping**
+   `keyFile` — sops-nix tries every identity, so the old one still carries the
+   deploy if the new path is wrong:
+
+   ```nix
+   age = {
+     keyFile     = "/var/lib/sops-nix/key.txt";
+     sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+     generateKey = false;
+   };
+   ```
+
+3. Deploy. On the box: `systemctl status sops-nix` active, `/run/secrets/`
+   populated. **Reboot and check again** — activation-time and boot-time
+   identity resolution are separate paths.
+4. Drop `keyFile`, deploy, verify `/run/secrets/` again. This run proves the
+   host key is doing the work.
+5. On the box: `rm -f /var/lib/sops-nix/key.txt`. This is the step that removes
+   the master key from the VM.
+6. Save the box's `/etc/ssh/ssh_host_ed25519_key{,.pub}` to 1Password as
+   `secrets/edge-host-ed25519{,.pub}`; `install.sh` needs them to reinstall.
+   Then delete the age-key block from `install.sh` and
+   `01-cloud-edge/scripts/push-age-key.sh` with its mise task.
+
+If sops-nix cannot decrypt, activation fails and takes tailscaled's authkey and
+ACME's `CF_DNS_API_TOKEN` with it. The box stays up on existing state, so this
+is a failed deploy rather than a lost box; recovery is
+`scp secrets/age.key root@<edge>:/var/lib/sops-nix/key.txt` and restoring
+`keyFile`.
