@@ -1,6 +1,12 @@
-# The edge's secrets are encrypted to the same age key as everything under
-# apps/. Whole-file encryption here, unlike apps/.sops.yaml — nothing downstream
-# needs to read a key out of this without decrypting it.
+# Two recipients: the age key you edit with, and the box's own SSH host key,
+# which is what sops-nix decrypts with at activation. Whole-file encryption,
+# unlike apps/.sops.yaml — nothing downstream reads a key out of this without
+# decrypting it.
+#
+# The second recipient is derived from /etc/ssh/ssh_host_ed25519_key.pub with
+# ssh-to-age. install.sh seeds that host key so a reinstall keeps the recipient.
 creation_rules:
   - path_regex: \.sops\.ya?ml$
-    age: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+    age: >-
+      age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw,
+      age1v5jydk3y7qtng36shzdmg2m0quz6ct55t8t5u26ckjler6672dmqczd07t
