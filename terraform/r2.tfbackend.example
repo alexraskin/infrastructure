@@ -1,4 +1,0 @@
-secrets/r2.tfbackend
-access_key = "<R2 access key id>"
-secret_key = "<R2 secret access key>"
-endpoints  = { s3 = "https://<account id>.r2.cloudflarestorage.com" }
