@@ -5,12 +5,12 @@ data "terraform_remote_state" "proxmox" {
     auth             = "APIKey"
     bucket           = "infrastructure-terraform-state"
     key              = "talos-proxmox/terraform.tfstate"
-    namespace        = var.oci_namespace
-    region           = var.oci_region
-    tenancy_ocid     = var.oci_tenancy_ocid
-    user_ocid        = var.oci_user_ocid
-    fingerprint      = var.oci_fingerprint
-    private_key_path = pathexpand(var.oci_private_key_path)
+    namespace        = var.backend_namespace
+    region           = var.backend_region
+    tenancy_ocid     = var.backend_tenancy_ocid
+    user_ocid        = var.backend_user_ocid
+    fingerprint      = var.backend_fingerprint
+    private_key_path = var.backend_private_key_path
   }
 }
 

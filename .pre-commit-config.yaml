@@ -38,6 +38,9 @@ repos:
     rev: v0.11.0.1
     hooks:
       - id: shellcheck
+        # -x follows the `. lib.sh` the edge scripts share. Info level is off:
+        # the ssh command strings are deliberately single-quoted (SC2016/SC2029).
+        args: ["-x", "--severity=warning"]
 
   # ---- Spelling
   - repo: https://github.com/codespell-project/codespell

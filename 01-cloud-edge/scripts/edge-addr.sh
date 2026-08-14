@@ -6,18 +6,15 @@
 # An explicit argument wins, for the window where neither is true.
 set -euo pipefail
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# shellcheck source-path=SCRIPTDIR
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 if [ "${1:-}" != "" ]; then
   echo "$1"
   exit 0
 fi
 
-[ -s "$here/edge.json" ] || {
-  echo "missing 01-cloud-edge/edge.json — copy edge.json.example" >&2
-  exit 1
-}
-host=$(jq -r '.instance.hostname' "$here/edge.json")
+host=$(edge_host)
 
 command -v tailscale >/dev/null 2>&1 || {
   echo "no tailscale CLI here, and 22 is closed on the public IP" >&2

@@ -60,11 +60,6 @@ variable "pve_endpoint" {
   type        = string
 }
 
-variable "pve_api_token" {
-  description = "API token in the form user@realm!tokenid=uuid"
-  type        = string
-  sensitive   = true
-}
 
 variable "pve_insecure" {
   description = "Skip TLS verification (self-signed PVE cert)"

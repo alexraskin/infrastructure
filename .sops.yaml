@@ -1,0 +1,14 @@
+# Terraform's secrets, encrypted in git. Two files because CI gets a key:
+# sops/terraform.sops.yaml carries the terraform-ci credentials the deploy
+# workflows need, sops/admin.sops.yaml the API key that can create and destroy.
+#
+# The first recipient is the key apps/ and 01-cloud-edge/ already use; the
+# second exists so CI can be handed one that opens nothing else.
+creation_rules:
+  - path_regex: ^sops/admin\.sops\.yaml$
+    age: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
+
+  - path_regex: ^sops/terraform\.sops\.yaml$
+    age: >-
+      age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw,
+      age1rg5ktgwjk9y2pvj2kfe4j8vs39pllgglm9d42j4g3p95v0lc3a5supy3m9

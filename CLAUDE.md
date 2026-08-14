@@ -23,9 +23,9 @@ Flux deploys everything in `apps/`.
 | `apps/base/` | one directory per workload, deployed by Flux |
 | `apps/clusters/talos/` | the Flux Kustomizations that point at `apps/base/` |
 | `talos/cilium-values.yaml` | CNI values, applied outside Flux |
-| `scripts/` | preflight, backend init, the root list both CI and mise read |
-| `docs/` | runbooks (PVE 8→9, CNPG backups, the R2→OCI state move) |
-| `secrets/` | gitignored — `talosconfig`, `oci.env`, `oci_api_key.pem`, the age key |
+| `scripts/` | `tf.sh` (every root's terraform), preflight, the NFS and nix helpers |
+| `docs/` | runbooks (PVE 8→9, CNPG backups, the R2→OCI state move, the SOPS layout) |
+| `secrets/` | gitignored — `talosconfig`, `age.key` (both identities), `kubeconfig` fodder |
 | `01-pve/plex/` | a docker-compose stack, not deployed anywhere right now — Plex runs on the workstation, and Docker is deliberately off the PVE host |
 
 ## Commands
@@ -35,38 +35,38 @@ Flux deploys everything in `apps/`.
 
 ```bash
 mise run preflight       # validate Proxmox token, node, datastores, VM IDs, IPs, capacity
-mise run tf:plan|tf:apply    # terraform/proxmox — VMs, machine configs, bootstrap
+mise run proxmox:plan|proxmox:apply   # terraform/proxmox — VMs, machine configs, bootstrap
 mise run talosconfig     # write secrets/talosconfig from state
 mise run kubeconfig      # write ./kubeconfig, pointed at the VIP
 mise run cilium          # install/upgrade the CNI — REQUIRED within ~10min of bootstrap
 mise run health|status   # talosctl health; kubectl get nodes + kube-system
 mise run upgrade         # talosctl upgrade every node to the pinned talos_version
 mise run upgrade-k8s     # kubernetes version, separately
-mise run bootstrap       # tf:apply -> talosconfig -> kubeconfig -> cilium -> status
-mise run cf:plan|cf:apply    # terraform/cloudflare — tunnel + DNS (CI does this on main)
-mise run ts:plan|ts:apply|ts:status   # tailscale policy (CI too)
-mise run oci:plan|oci:apply|oci:creds # terraform/oracle
+mise run bootstrap       # proxmox:apply -> talosconfig -> kubeconfig -> cilium -> status
+mise run cloudflare:plan|cloudflare:apply   # tunnel + DNS (CI does this on main)
+mise run tailscale:plan|tailscale:apply|tailscale:status   # tailnet policy (CI too)
+mise run oracle:plan|oracle:apply|oracle:creds  # the CNPG backup bucket
 mise run global:plan|global:apply     # 00-global — the state bucket itself
-mise run global:backend|global:ci-creds   # backend coordinates; the CI user's OCI_* secrets
+mise run global:backend|global:ci-creds   # backend coordinates; the terraform-ci credentials
 mise run nfs:status      # the NFS LXC
-mise run tf:destroy      # DESTRUCTIVE, and targeted on purpose — see the vault
+mise run proxmox:destroy # DESTRUCTIVE, and targeted on purpose — see the vault
 mise run reset           # DESTRUCTIVE: talosctl reset every node
 ```
 
-From `01-cloud-edge/`: `tf:apply`, `install` (nixos-anywhere, one shot, erases
+From `01-cloud-edge/`: `edge:apply`, `install` (nixos-anywhere, one shot, erases
 the box), `deploy`, `status`, `secrets:edit`.
 
 There is no test suite. "Does it work" is `mise run preflight`, a `terraform
 plan`, then `mise run health` and `mise run status`. `mise run tflint` and
 `mise run tfdocs` cover every Terraform root at once, which is also what
-`.github/workflows/terraform_checks.yml` runs on a PR; `scripts/tf-roots.sh` is
+`.github/workflows/terraform_checks.yml` runs on a PR; `scripts/tf.sh roots` is
 the list both read.
 
-**Every root initialises itself.** `scripts/tf-init.sh` checks the secrets the
-root needs and inits it against R2, but returns immediately once
-`.terraform/terraform.tfstate` exists — so `plan` and `apply` call it every time
-without a registry round trip, and `*:init` passes `--force` when providers
-should actually be re-resolved.
+**Every terraform command goes through `scripts/tf.sh`** — `tf.sh <root> plan`,
+and the mise tasks are one-liners over it. It decrypts the secrets, initialises
+the backend the first time, and retries Object Storage's spurious errors. The
+roots are named there once: `global proxmox cloudflare oracle tailscale edge`,
+and `tf.sh roots` prints the directories CI and the lint tasks iterate.
 
 ## Source of truth
 
@@ -141,24 +141,20 @@ the object is already there. It needs **Terraform 1.12+**, which is why
 `mise.toml` pins 1.15 and `required_version` is `>= 1.12`.
 
 Backend blocks are deliberately **partial** — bucket and key are in the config,
-the namespace and the API signing key are credentials and come from
-`secrets/oci.env` as `-backend-config` flags assembled by `scripts/tf-init.sh`,
-because this repo is public. `auth=APIKey` is one of those flags and has to
-stay one: in the backend block it makes every request 404, and without it the
-backend never reaches the API key. That script also retries the spurious
-`BucketNotFound` Object Storage returns now and then, and
-`OCI_SDK_DEFAULT_RETRY_ENABLED` is set for the same reason. CI runs `plan` and
-`apply` through `scripts/tf-run.sh`, which retries the same two errors —
-`BucketNotFound` and the `NotAuthenticated` a freshly created API key returns
-while it propagates — and refuses to retry once an apply has started changing
-things.
+the credentials are decrypted out of `sops/terraform.sops.yaml` by `scripts/tf.sh` and
+passed as `-backend-config` flags, because this repo is public. `auth=APIKey` is
+one of those flags and has to stay one: in the backend block it makes every
+request 404, and without it the backend never reaches the API key. `tf.sh` also
+retries the `BucketNotFound` and `NotAuthenticated` that Object Storage returns
+spuriously — never once an apply has started changing things — and
+`OCI_SDK_DEFAULT_RETRY_ENABLED` is set for the same reason.
 
-**CI does not use the API key in `secrets/oci.env`.** `00-global/iam.tf` creates
-a `terraform-ci` user whose policy is `read buckets` + `manage objects` on the
+**CI never sees the admin credentials.** `00-global/iam.tf` creates a
+`terraform-ci` user whose policy is `read buckets` + `manage objects` on the
 state bucket and nothing else; its signing key is generated by Terraform, so the
-private half lives in that state. `mise run global:ci-creds` prints the six
-`OCI_*` values the `cloudflare` and `tailscale` environments need. Use the `*:init` tasks; a bare `terraform init`
-prompts and then writes the values into `.terraform/`.
+private half lives in that state, and `mise run global:ci-creds` prints it in
+the shape `sops/terraform.sops.yaml` wants. Use the `*:init` tasks; a bare
+`terraform init` prompts and then writes the values into `.terraform/`.
 
 **`00-global/` owns that bucket**, and its own state lives in it. That is
 circular, so creating it again would mean moving `backend.tf` aside, applying on
@@ -172,8 +168,19 @@ store, and keep `secrets/talosconfig` as the copy that matters.
 **`terraform/cloudflare/` and `tailscale/` read the Proxmox root's state** so the
 VIP, subnet and PVE host address are declared once. A `terraform_remote_state`
 data source takes no `-backend-config`, so its credentials are ordinary
-variables — `TF_VAR_oci_*` from `scripts/oci-env.sh`, and from repository
-secrets in CI.
+variables — the credentials come from `data "sops_file"`, and the signing key as
+`var.backend_private_key_path`, which is the temporary file `tf.sh` wrote.
+
+### Terraform's own secrets
+
+Two SOPS files, encrypted in git: `sops/terraform.sops.yaml` (the `terraform-ci`
+credentials, the Cloudflare token, the Tailscale OAuth pair) and
+`sops/admin.sops.yaml` (the OCI API key that can destroy things, the Proxmox
+token). CI is given an age key that opens only the first, so it cannot read the
+admin file, `apps/`, or the edge. Providers read them through `data "sops_file"`;
+only the backend needs `tf.sh` to decrypt on its behalf, because a backend block
+is resolved before providers exist and wants a key *file*.
+`docs/terraform-sops.md` covers setup and rotation.
 
 ## Conventions
 

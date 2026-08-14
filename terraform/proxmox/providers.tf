@@ -7,6 +7,10 @@ terraform {
   }
 
   required_providers {
+    sops = {
+      source  = "carlpett/sops"
+      version = "~> 1.4"
+    }
     proxmox = {
       source  = "bpg/proxmox"
       version = "~> 0.111"
@@ -26,9 +30,13 @@ terraform {
   }
 }
 
+data "sops_file" "admin" {
+  source_file = "${path.module}/../../sops/admin.sops.yaml"
+}
+
 provider "proxmox" {
   endpoint  = var.pve_endpoint
-  api_token = var.pve_api_token
+  api_token = data.sops_file.admin.data["pve_api_token"]
   insecure  = var.pve_insecure
 
   ssh {

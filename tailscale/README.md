@@ -28,12 +28,12 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_oci_fingerprint"></a> [oci\_fingerprint](#input\_oci\_fingerprint) | Fingerprint of that user's API signing key | `string` | n/a | yes |
-| <a name="input_oci_namespace"></a> [oci\_namespace](#input\_oci\_namespace) | Object Storage namespace holding the state bucket | `string` | n/a | yes |
-| <a name="input_oci_private_key_path"></a> [oci\_private\_key\_path](#input\_oci\_private\_key\_path) | Path to the API signing key; defaults to secrets/oci\_api\_key.pem | `string` | n/a | yes |
-| <a name="input_oci_region"></a> [oci\_region](#input\_oci\_region) | Region the state bucket lives in | `string` | n/a | yes |
-| <a name="input_oci_tenancy_ocid"></a> [oci\_tenancy\_ocid](#input\_oci\_tenancy\_ocid) | Tenancy OCID | `string` | n/a | yes |
-| <a name="input_oci_user_ocid"></a> [oci\_user\_ocid](#input\_oci\_user\_ocid) | OCID of the user whose API key signs the state read | `string` | n/a | yes |
+| <a name="input_backend_fingerprint"></a> [backend\_fingerprint](#input\_backend\_fingerprint) | Fingerprint of that user's API signing key | `string` | n/a | yes |
+| <a name="input_backend_namespace"></a> [backend\_namespace](#input\_backend\_namespace) | Object Storage namespace holding the state bucket | `string` | n/a | yes |
+| <a name="input_backend_private_key_path"></a> [backend\_private\_key\_path](#input\_backend\_private\_key\_path) | Where scripts/tf.sh decrypted that signing key | `string` | n/a | yes |
+| <a name="input_backend_region"></a> [backend\_region](#input\_backend\_region) | Region the state bucket lives in | `string` | n/a | yes |
+| <a name="input_backend_tenancy_ocid"></a> [backend\_tenancy\_ocid](#input\_backend\_tenancy\_ocid) | Tenancy the state credentials belong to | `string` | n/a | yes |
+| <a name="input_backend_user_ocid"></a> [backend\_user\_ocid](#input\_backend\_user\_ocid) | User the state credentials belong to | `string` | n/a | yes |
 
 ## Outputs
 

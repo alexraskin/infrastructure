@@ -1,0 +1,22 @@
+# Copy to secrets.admin.sops.yaml, fill in, then:
+#   sops --encrypt --in-place secrets.admin.sops.yaml
+#
+# The credentials that can create and destroy things: never given to CI, which
+# only ever plans the cloudflare and tailscale roots.
+
+oci_tenancy_ocid: ocid1.tenancy.oc1..aaaa...
+oci_user_ocid: ocid1.user.oc1..aaaa...
+oci_fingerprint: aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99
+oci_region: us-phoenix-1
+oci_compartment_ocid: ocid1.compartment.oc1..aaaa...
+oci_private_key: |
+  -----BEGIN RSA PRIVATE KEY-----
+  ...
+  -----END RSA PRIVATE KEY-----
+
+# Primary emails the Identity Domains tenancy demands on a new user.
+ci_user_email: you@example.com
+backup_user_email: you@example.com
+
+# The Proxmox API token, out of terraform/proxmox/terraform.tfvars.
+pve_api_token: terraform@pve!tf=00000000-0000-0000-0000-000000000000

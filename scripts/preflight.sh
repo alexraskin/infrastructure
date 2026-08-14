@@ -2,7 +2,7 @@
 set -uo pipefail
 
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-cd "$repo"
+cd "$repo" || exit 1
 tfvars=terraform/proxmox/terraform.tfvars
 
 fail=0
@@ -15,7 +15,11 @@ tfvar() { sed -n "s/^$1 *= *\"\\([^\"]*\\)\".*/\\1/p" "$tfvars" | head -1; }
 [ -f "$tfvars" ] || { echo "missing $tfvars"; exit 1; }
 
 endpoint=$(tfvar pve_endpoint); endpoint=${endpoint%/}
-token=$(tfvar pve_api_token)
+# The token lives in sops/admin.sops.yaml with everything else secret.
+token=$(sops --decrypt --output-type json "$repo/sops/admin.sops.yaml" | jq -r .pve_api_token) || {
+  echo "could not decrypt sops/admin.sops.yaml — see docs/terraform-sops.md" >&2
+  exit 1
+}
 node=$(tfvar pve_node)
 image_store=$(tfvar image_datastore); image_store=${image_store:-local}
 vm_store=$(tfvar vm_datastore); vm_store=${vm_store:-local-lvm}

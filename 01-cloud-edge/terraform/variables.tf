@@ -1,34 +1,10 @@
 # ------------------------------------------------------------------ oracle ---
 
-variable "oci_tenancy_ocid" {
-  description = "OCID of the tenancy"
-  type        = string
-}
 
-variable "oci_user_ocid" {
-  description = "OCID of the user the API signing key belongs to"
-  type        = string
-}
 
-variable "oci_fingerprint" {
-  description = "Fingerprint of the API signing key, as shown under User -> API keys"
-  type        = string
-}
 
-variable "oci_private_key_path" {
-  description = "Path to the PEM API signing key (~ is expanded)"
-  type        = string
-}
 
-variable "oci_region" {
-  description = "OCI region. Pick the one nearest home — every Plex byte crosses it twice."
-  type        = string
-}
 
-variable "oci_compartment_ocid" {
-  description = "Compartment for the instance and its network. The tenancy OCID (the root compartment) works."
-  type        = string
-}
 
 # --------------------------------------------------------------- placement ---
 
@@ -69,13 +45,6 @@ variable "public_subnet_cidr" {
 
 # ---------------------------------------------------------------------- ssh ---
 
-variable "ssh_public_key" {
-  type = string
-}
 
 # --------------------------------------------------------------- cloudflare ---
 
-variable "cloudflare_api_token" {
-  type      = string
-  sensitive = true
-}
