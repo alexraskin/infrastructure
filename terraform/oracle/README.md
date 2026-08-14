@@ -3,7 +3,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
 | <a name="requirement_oci"></a> [oci](#requirement\_oci) | ~> 6 |
 
 ## Providers

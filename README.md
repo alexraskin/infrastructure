@@ -45,11 +45,11 @@ flowchart LR
         IAC["image-automation<br/>scans GHCR, commits new tags"]
     end
 
-    R2S[("R2 bucket<br/>terraform state<br/>+ cluster PKI")]
+    TFS[("OCI bucket<br/>terraform state<br/>+ cluster PKI")]
 
     HJ --> FAC --> VMS --> MC --> BOOT
     HJ --> MC
-    BOOT <-.-> R2S
+    BOOT <-.-> TFS
     BOOT --> CIL --> REPO
     REPO --> KS
     IAC --> REPO
@@ -121,22 +121,23 @@ flowchart TB
 ```
 
 There is one machine outside the cluster: a free Oracle ARM box running NixOS and
-HAProxy, in `00-cloud-edge/`.
+HAProxy, in `01-cloud-edge/`.
 
 ## Layout
 
 ```text
+00-global/             the Object Storage bucket every root's state lives in
 terraform/proxmox/     the nine VMs, the machine configs, the bootstrap
 terraform/cloudflare/  the tunnel, its ingress rules, the DNS records
 terraform/oracle/      Object Storage — where Postgres backups land
 tailscale/             the tailnet policy file, as code
 talos/                 Cilium's values, installed outside Flux on purpose
 apps/                  everything Flux deploys
-00-cloud-edge/         the public Oracle edge, NixOS
+01-cloud-edge/         the public Oracle edge, NixOS
 ```
 
-Every command is a `mise` task. State for all five Terraform roots lives in a
-Cloudflare R2 bucket. Secrets in `apps/` are SOPS-encrypted to a single age key that also
+Every command is a `mise` task. State for all six Terraform roots lives in one
+Oracle Object Storage bucket, on the `oci` backend, which locks. Secrets in `apps/` are SOPS-encrypted to a single age key that also
 decrypts the edge; nothing else in the tree is sensitive.
 
 Design notes, failure modes and the things I learned by breaking them are in

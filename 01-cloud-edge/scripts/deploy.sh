@@ -3,7 +3,7 @@ set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 [ -s "$here/edge.json" ] || {
-  echo "missing 00-cloud-edge/edge.json — copy edge.json.example" >&2
+  echo "missing 01-cloud-edge/edge.json — copy edge.json.example" >&2
   exit 1
 }
 host=$(jq -r '.instance.hostname' "$here/edge.json")

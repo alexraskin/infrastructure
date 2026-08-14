@@ -20,7 +20,7 @@ set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 repo=$(cd "$here/.." && pwd)
 [ -s "$here/edge.json" ] || {
-  echo "missing 00-cloud-edge/edge.json — copy edge.json.example" >&2
+  echo "missing 01-cloud-edge/edge.json — copy edge.json.example" >&2
   exit 1
 }
 host=$(jq -r '.instance.hostname' "$here/edge.json")
@@ -78,7 +78,7 @@ trap 'rm -rf "$extra"' EXIT
   chmod 600 \"\$HOME\"/.ssh/* 2>/dev/null || true
 
   nix run github:nix-community/nixos-anywhere -- \
-    --flake 'path:./00-cloud-edge#$host' \
+    --flake 'path:./01-cloud-edge#$host' \
     --build-on-remote \
     --extra-files './secrets/.extra-files' \
     --ssh-option StrictHostKeyChecking=accept-new \
