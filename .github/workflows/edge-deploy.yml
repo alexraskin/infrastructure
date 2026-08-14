@@ -1,0 +1,78 @@
+name: "Edge: deploy"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "01-cloud-edge/**"
+      - ".github/workflows/edge-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Run nixos-rebuild switch on the box"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edge
+  # A cancelled nixos-rebuild mid-activation is how the box is lost.
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: "edge"
+    runs-on: ubuntu-latest
+    environment: edge
+
+    # deploy.sh waits up to 1800s on edge-rebuild.service before giving up.
+    timeout-minutes: 45
+
+    env:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup sops
+        uses: nhedger/setup-sops@18e52f363488ed469d2e1855e542a1c651743bba # v3.0.0
+        with:
+          version: 3.13.3
+
+      # edge.json is gitignored — it maps internal backends and ports, and this
+      # repo is public. The auth key is pre-signed for tailnet lock.
+      - name: Decrypt what the runner needs
+        run: |
+          sops --decrypt --output-type json sops/terraform.sops.yaml > "$RUNNER_TEMP/ci.json"
+          jq -er .edge_json "$RUNNER_TEMP/ci.json" > 01-cloud-edge/edge.json
+          key=$(jq -er .tailscale_ci_authkey "$RUNNER_TEMP/ci.json")
+          echo "::add-mask::$key"
+          echo "TS_AUTHKEY=$key" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/ci.json"
+
+      # Tailnet lock: the key is signed, and the client needs somewhere to keep
+      # the key-authority state it verifies against.
+      - name: Join the tailnet
+        uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
+        with:
+          authkey: ${{ env.TS_AUTHKEY }}
+          tailscaled-args: "--statedir=/tmp/tailscale-state"
+
+      # SSH needs no key: the edge runs tailscaled with --ssh, and the policy
+      # accepts tag:ci as root.
+      - name: Deploy
+        if: github.event_name == 'push' || inputs.apply
+        run: 01-cloud-edge/scripts/deploy.sh
+
+      - name: Status
+        run: |
+          ip=$(01-cloud-edge/scripts/edge-addr.sh)
+          ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null "root@$ip" '
+            systemctl is-active haproxy
+            systemctl is-active tailscaled
+            ls /var/lib/acme 2>/dev/null || echo "no certs issued yet"
+          '

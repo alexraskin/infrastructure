@@ -16,6 +16,15 @@
 			"dst":    ["tag:cloud-edge"],
 			"users":  ["root"],
 		},
+
+		// The deploy workflow. `accept`, not `check`: a check wants a human at a
+		// browser and would hang the runner until the job times out.
+		{
+			"action": "accept",
+			"src":    ["tag:ci"],
+			"dst":    ["tag:cloud-edge"],
+			"users":  ["root"],
+		},
 	],
 
 	"nodeAttrs": [
@@ -89,6 +98,13 @@
 			"dst": ["100.109.167.97"],
 			"ip":  ["tcp:443"],
 		},
+
+		// The deploy workflow reaches the edge over SSH, and nothing else.
+		{
+			"src": ["tag:ci"],
+			"dst": ["tag:cloud-edge"],
+			"ip":  ["tcp:22"],
+		},
 	],
 
 	"tagOwners": {
@@ -104,6 +120,9 @@
 		"tag:k8s-router": ["tag:k8s-operator"],
 
 		"tag:cloud-edge": [],
+
+		// GitHub Actions, joining ephemerally with a tailnet-lock-signed auth key.
+		"tag:ci": [],
 	},
 
 	"autoApprovers": {
@@ -152,6 +171,18 @@
 			"proto": "tcp",
 			"deny":  ["100.73.219.120:32400", "tag:cloud-edge:22"],
 		},
+		{
+			// CI reaches the edge over SSH and nothing else on this tailnet.
+			"src":    "tag:ci",
+			"proto":  "tcp",
+			"accept": ["tag:cloud-edge:22"],
+			"deny": [
+				"100.73.219.120:32400",
+				"${cluster_vip}:6443",
+				"tag:k8s-loki:3100",
+				"tag:cloud-edge:443",
+			],
+		},
 	],
 
 	// autogroup:self is user-owned devices only; a tagged node has no owner.
@@ -160,6 +191,11 @@
 			"src":  "tag:cloud-edge",
 			"dst":  ["tag:k8s"],
 			"deny": ["root", "autogroup:nonroot"],
+		},
+		{
+			"src":    "tag:ci",
+			"dst":    ["tag:cloud-edge"],
+			"accept": ["root"],
 		},
 	],
 }

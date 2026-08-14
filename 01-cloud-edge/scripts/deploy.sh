@@ -7,7 +7,14 @@ set -euo pipefail
 host=$(edge_host)
 ip=$(edge_addr "${1:-}")
 
-"$edge/scripts/push-age-key.sh" "$ip"
+# CI has no master key and must not: the box keeps the one it was installed
+# with. Locally this refreshes it, which is what makes a rebuild survive a
+# rotated key.
+if [ -s "$repo/secrets/age.key" ]; then
+  "$edge/scripts/push-age-key.sh" "$ip"
+else
+  echo "==> no local age key — leaving /var/lib/sops-nix/key.txt as it is"
+fi
 
 echo "==> $ip: copying the flake -> /etc/nixos-edge"
 tar -C "$edge" -cf - flake.nix flake.lock edge.json nixos \

@@ -53,6 +53,11 @@ mise run proxmox:destroy # DESTRUCTIVE, and targeted on purpose — see the vaul
 mise run reset           # DESTRUCTIVE: talosctl reset every node
 ```
 
+CI deploys the edge on a push to `main` under `01-cloud-edge/**`: a runner joins
+the tailnet as `tag:ci` with a tailnet-lock-signed auth key and runs
+`deploy.sh` over Tailscale SSH — no SSH key, no age key. See
+`docs/edge-ci-deploy.md`.
+
 From `01-cloud-edge/`: `edge:apply`, `install` (nixos-anywhere, one shot, erases
 the box), `deploy`, `status`, `secrets:edit`.
 
