@@ -88,6 +88,13 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
+      # edge.json is gitignored, and network.tf reads it with file() — without a
+      # stand-in, validate fails on a file CI is never given.
+      - name: Stand in for the gitignored edge.json
+        if: matrix.dir == '01-cloud-edge/terraform'
+        working-directory: ${{ github.workspace }}
+        run: cp 01-cloud-edge/edge.json.example 01-cloud-edge/edge.json
+
       - name: Terraform Init
         run: terraform init -backend=false -input=false
 
@@ -130,7 +137,6 @@ jobs:
           sudo install -m 0755 terraform-docs /usr/local/bin/terraform-docs
           rm -f terraform-docs terraform-docs.tar.gz
 
-      # README.md is generated. Regenerate with the same config, never by hand.
       - name: terraform-docs is up to date
         working-directory: ${{ github.workspace }}
         run: |

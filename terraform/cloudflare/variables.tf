@@ -9,6 +9,8 @@ variable "tunnel_name" {
   default     = "k3s"
 }
 
+# Used by imports.tf, which is gitignored — invisible to CI, hence the ignore.
+# tflint-ignore: terraform_unused_declarations
 variable "tunnel_id" {
   description = "UUID of the existing tunnel, used by the import blocks in imports.tf"
   type        = string
