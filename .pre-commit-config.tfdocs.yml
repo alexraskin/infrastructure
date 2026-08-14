@@ -1,7 +1,7 @@
 # specialized .terraform-docs.yml for pre-commit
 formatter: "markdown" # this is required
 
-version: "~> 0.24"
+version: "~> 0.20"
 
 header-from: main.tf
 footer-from: ""

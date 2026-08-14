@@ -1,38 +1,3 @@
-variable "oci_tenancy_ocid" {
-  description = "Tenancy OCID"
-  type        = string
-}
-
-variable "oci_user_ocid" {
-  description = "OCID of the user whose API key signs these requests"
-  type        = string
-}
-
-variable "oci_fingerprint" {
-  description = "Fingerprint of that user's API signing key"
-  type        = string
-}
-
-variable "oci_private_key_path" {
-  description = "Path to the API signing key; defaults to secrets/oci_api_key.pem"
-  type        = string
-}
-
-variable "oci_region" {
-  description = "Region the bucket lives in — also the region in the S3 endpoint"
-  type        = string
-}
-
-variable "oci_compartment_ocid" {
-  description = "Compartment the bucket is created in"
-  type        = string
-}
-
-variable "backup_user_email" {
-  description = "Primary email for the cnpg-backup IAM user — required in an Identity Domains tenancy"
-  type        = string
-}
-
 variable "bucket_name" {
   description = "Object Storage bucket holding the CloudNativePG backups"
   type        = string

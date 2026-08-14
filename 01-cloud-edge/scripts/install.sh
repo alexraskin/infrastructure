@@ -17,16 +17,11 @@
 #   mise run install
 set -euo pipefail
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-repo=$(cd "$here/.." && pwd)
-[ -s "$here/edge.json" ] || {
-  echo "missing 01-cloud-edge/edge.json — copy edge.json.example" >&2
-  exit 1
-}
-host=$(jq -r '.instance.hostname' "$here/edge.json")
-ip=${1:-$(terraform -chdir="$here/terraform" output -raw public_ip)}
+# shellcheck source-path=SCRIPTDIR
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-ssh_opts=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null)
+host=$(edge_host)
+ip=${1:-$("$repo/scripts/tf.sh" edge output -raw public_ip)}
 
 echo "==> $ip: waiting for SSH on the Ubuntu image"
 deadline=$((SECONDS + 300))
