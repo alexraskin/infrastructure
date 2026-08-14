@@ -60,9 +60,10 @@ cd "$repo/$root"
 # makes every request come back 404 BucketNotFound, and without it the backend
 # falls through to a credential chain that never reaches the API key.
 #
-# The retry is for that same 404 arriving spuriously — Object Storage answers
-# the backend's workspace ListObjects with BucketNotFound on roughly one run in
-# five against a bucket that is demonstrably there. Anything else fails at once.
+# The retry is for the transient errors that same call returns: BucketNotFound
+# on roughly one run in five against a bucket that is demonstrably there, and
+# NotAuthenticated while a freshly created API key propagates. Anything else
+# fails at once.
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 
@@ -83,9 +84,9 @@ for attempt in 1 2 3; do
   set -e
 
   [ "$rc" -eq 0 ] && exit 0
-  grep -q "BucketNotFound" "$log" || exit "$rc"
+  grep -qE "BucketNotFound|NotAuthenticated" "$log" || exit "$rc"
 
-  echo "Object Storage returned a spurious 404 (attempt $attempt/3) — retrying" >&2
+  echo "transient Object Storage error (attempt $attempt/3) — retrying" >&2
   sleep 3
 done
 
