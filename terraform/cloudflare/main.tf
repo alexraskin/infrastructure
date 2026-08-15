@@ -56,5 +56,5 @@ resource "cloudflare_dns_record" "tunnel" {
   content = "${cloudflare_zero_trust_tunnel_cloudflared.this.id}.cfargotunnel.com"
   proxied = true
   ttl     = 1
-  comment = "terraform: k3s tunnel"
+  comment = "terraform: k8s tunnel"
 }

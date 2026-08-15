@@ -16,8 +16,6 @@ spec:
       labels:
         app: cloudflared
     spec:
-      # One replica per node, spread across the cluster: the tunnel survives a
-      # node going away, and Cloudflare load-balances across the connections.
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname

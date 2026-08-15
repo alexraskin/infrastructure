@@ -96,13 +96,3 @@ resource "proxmox_virtual_environment_container" "nfs" {
     ]
   }
 }
-
-output "nfs_server" {
-  description = "Where the NFS export lives, for the StorageClass in apps/base/csi-driver-nfs/"
-  value = {
-    host   = var.nfs.ip
-    share  = var.nfs.export_path
-    vmid   = proxmox_virtual_environment_container.nfs.vm_id
-    backed = "vzdump, via the nightly job"
-  }
-}
