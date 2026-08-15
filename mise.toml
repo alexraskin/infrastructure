@@ -9,6 +9,7 @@ helm = "latest"
 pre-commit = "latest"
 tflint = "latest"
 terraform-docs = "0.20.0"  # matches terraform-docs/gh-actions, so CI and local agree
+k9s = "latest"
 
 [env]
 # Both age identities: the one apps/ uses, and the terraform-only one.
