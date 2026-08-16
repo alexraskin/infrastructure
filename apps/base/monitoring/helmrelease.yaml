@@ -23,6 +23,13 @@ spec:
     remediation:
       retries: 3
   values:
+    defaultRules:
+      disabled:
+        # Replaced by a longer-fused copy in target-down.yaml: most jobs here have
+        # one pod, so any Flux rollout is 100% of the job down and the chart's
+        # 10m fuse turns every reconcile into a page.
+        TargetDown: true
+
     kubeControllerManager:
       enabled: true
     kubeScheduler:

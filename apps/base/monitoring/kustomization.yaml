@@ -8,6 +8,7 @@ resources:
   - alertmanager-telegram.sops.yaml
   - alertmanager-deadman.sops.yaml
   - helmrelease.yaml
+  - target-down.yaml
 
 configMapGenerator:
   - name: grafana-dashboard-plex
