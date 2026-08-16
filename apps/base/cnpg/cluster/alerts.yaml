@@ -1,0 +1,211 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cnpg-postgres
+  namespace: cnpg-system
+  labels:
+    app: cnpg
+spec:
+  groups:
+    - name: cnpg.availability
+      rules:
+        - alert: CNPGOperatorDown
+          expr: up{job=~".*cloudnative-pg.*"} == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The CloudNativePG operator is down"
+            description: "No failover, no scheduled backups and no reconcile until it is back."
+
+        - alert: CNPGInstanceDown
+          expr: cnpg_collector_up == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Postgres instance {{ $labels.pod }} is not reachable by its collector"
+
+        - alert: CNPGInstanceMissing
+          # Three instances, one per tainted db worker.
+          expr: count(cnpg_collector_up{namespace="cnpg-system"}) < 3
+          for: 15m
+          labels:
+            severity: warning
+
+          annotations:
+            summary: "Fewer than three Postgres instances are reporting"
+            description: "A db worker is gone, or its pod cannot schedule — the PV is pinned by nodeAffinity, so it will not move."
+
+        - alert: CNPGNoPrimary
+          # in_recovery is 0 on exactly one pod. No such pod means no writable primary.
+          expr: absent(cnpg_pg_replication_in_recovery == 0)
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The Postgres cluster has no primary"
+            description: "Grafana and gatus write to postgres-rw and are down with it."
+
+        - alert: CNPGFencingOn
+          expr: cnpg_collector_fencing_on > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.pod }} is fenced"
+            description: "Fencing is manual. If nobody is working on it, it was left behind."
+
+        - alert: CNPGManualSwitchoverRequired
+          expr: cnpg_collector_manual_switchover_required > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The cluster is waiting on a manual switchover"
+
+        - alert: CNPGCollectorErrors
+          expr: cnpg_collector_last_collection_error > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Metrics collection is failing on {{ $labels.pod }}"
+
+    - name: cnpg.replication
+      rules:
+        - alert: CNPGReplicaMissing
+          # Only the primary reports this, so take the max across pods.
+          expr: max(cnpg_pg_replication_streaming_replicas) < 2
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The primary has fewer than two streaming replicas"
+
+        - alert: CNPGReplicationLagHigh
+          expr: cnpg_pg_replication_lag > 30
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.pod }} is {{ $value | humanizeDuration }} behind the primary"
+
+        - alert: CNPGWalReceiverDown
+          expr: cnpg_pg_replication_is_wal_receiver_up == 0 and on(pod) cnpg_pg_replication_in_recovery == 1
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Replica {{ $labels.pod }} has no WAL receiver"
+            description: "It has stopped following the primary and is drifting."
+
+        - alert: CNPGReplicationSlotInactive
+          # Replicas also publish the primary's slots, always inactive there —
+          # so only the primary's copy of the metric counts.
+          expr: |
+            cnpg_pg_replication_slots_active == 0
+              and on(pod) cnpg_pg_replication_in_recovery == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Replication slot {{ $labels.slot_name }} is inactive"
+            description: "The primary keeps WAL for an absent consumer, which fills the data volume."
+
+    - name: cnpg.backup
+      rules:
+        - alert: CNPGBackupStale
+          # ScheduledBackup runs weekly, Sunday 03:00. Eight days means one was missed.
+          expr: |
+            (time() - cnpg_collector_last_available_backup_timestamp > 8 * 86400)
+              and cnpg_collector_last_available_backup_timestamp > 0
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "No successful base backup for over eight days"
+            description: "Check the OCI bucket and the cnpg-backup-oci credentials."
+
+        - alert: CNPGBackupFailing
+          expr: cnpg_collector_last_failed_backup_timestamp > cnpg_collector_last_available_backup_timestamp
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The most recent backup attempt failed"
+
+        - alert: CNPGWalArchiveFailing
+          expr: increase(cnpg_pg_stat_archiver_failed_count[15m]) > 0
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "WAL archiving to object storage is failing"
+            description: "Point-in-time recovery is broken from here on, and pg_wal grows until the volume fills."
+
+        - alert: CNPGWalArchiveStalled
+          expr: cnpg_pg_stat_archiver_seconds_since_last_archival > 3600
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "No WAL segment archived in an hour"
+
+    - name: cnpg.postgres
+      rules:
+        - alert: CNPGVolumeFilling
+          expr: |
+            kubelet_volume_stats_available_bytes{namespace="cnpg-system"}
+              / kubelet_volume_stats_capacity_bytes{namespace="cnpg-system"} < 0.15
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Volume {{ $labels.persistentvolumeclaim }} is over 85% full"
+            description: "db-local PVs are fixed-size local volumes — growing one is a Talos user volume change in terraform/proxmox/."
+
+        - alert: CNPGVolumeFullSoon
+          expr: |
+            predict_linear(kubelet_volume_stats_available_bytes{namespace="cnpg-system"}[6h], 24 * 3600) < 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Volume {{ $labels.persistentvolumeclaim }} is projected full within 24h"
+
+        - alert: CNPGConnectionsHigh
+          expr: |
+            sum by (pod) (cnpg_backends_total)
+              / max by (pod) (cnpg_pg_settings_setting{name="max_connections"}) > 0.8
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.pod }} is using over 80% of max_connections"
+
+        - alert: CNPGLongRunningTransaction
+          expr: cnpg_backends_max_tx_duration_seconds > 3600
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "A transaction on {{ $labels.datname }} has been open over an hour"
+            description: "It holds back vacuum and the xid horizon."
+
+        - alert: CNPGTransactionIDWraparound
+          expr: cnpg_pg_database_xid_age > 300000000
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "Database {{ $labels.datname }} is approaching xid wraparound"
+            description: "Autovacuum is not keeping up. At 2^31 Postgres refuses writes."
+
+        - alert: CNPGDeadlocks
+          expr: increase(cnpg_pg_stat_database_deadlocks[30m]) > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deadlocks on {{ $labels.datname }} ({{ $value }} in 30m)"
