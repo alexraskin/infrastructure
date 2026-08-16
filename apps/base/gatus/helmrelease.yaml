@@ -62,6 +62,10 @@ spec:
             - status
 
     config:
+      # serviceMonitor above only creates the scrape target; without this gatus
+      # answers /metrics with a 404 and the target sits down.
+      metrics: true
+
       storage:
         type: postgres
         path: "postgres://gatus:${POSTGRES_PASSWORD}@postgres-rw.cnpg-system.svc.cluster.local:5432/gatus?sslmode=require"
@@ -274,8 +278,9 @@ spec:
           conditions:
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 2000"
-          alerts:
+          alerts: &rollout-alert
             - type: discord
+              failure-threshold: 5
 
         - name: "Prometheus"
           group: "Platform"
@@ -284,8 +289,7 @@ spec:
           ui: *hide-details
           conditions:
             - "[STATUS] == 200"
-          alerts:
-            - type: discord
+          alerts: *rollout-alert
 
         - name: "Loki"
           group: "Platform"
@@ -294,8 +298,7 @@ spec:
           ui: *hide-details
           conditions:
             - "[STATUS] == 200"
-          alerts:
-            - type: discord
+          alerts: *rollout-alert
 
         - name: "Alloy"
           group: "Platform"
@@ -304,8 +307,7 @@ spec:
           ui: *hide-details
           conditions:
             - "[STATUS] == 200"
-          alerts:
-            - type: discord
+          alerts: *rollout-alert
 
         - name: "alexraskin.com (origin)"
           group: "Apps"
@@ -315,8 +317,7 @@ spec:
           conditions:
             - "[STATUS] == 200"
             - "[RESPONSE_TIME] < 2000"
-          alerts:
-            - type: discord
+          alerts: *rollout-alert
 
         - name: "lastfm-now-playing (origin)"
           group: "Apps"
@@ -325,8 +326,7 @@ spec:
           ui: *hide-details
           conditions:
             - "[STATUS] == 200"
-          alerts:
-            - type: discord
+          alerts: *rollout-alert
 
         - name: "Plex"
           group: "Apps"
