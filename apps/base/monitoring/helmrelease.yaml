@@ -43,13 +43,20 @@ spec:
           repeat_interval: 12h
           receiver: telegram
           routes:
-            # Always-firing liveness alert from the chart. It proves the pipeline
-            # works and is meant to be swallowed here.
-            - receiver: "null"
+            # Watchdog always fires. Pinging a dead man's switch with it means
+            # silence — dead cluster, dead Prometheus, dead Alertmanager — is
+            # itself the alert, which nothing inside the cluster can tell you.
+            - receiver: deadman
               matchers:
                 - alertname = "Watchdog"
+              group_wait: 0s
+              group_interval: 5m
+              repeat_interval: 5m
         receivers:
-          - name: "null"
+          - name: deadman
+            webhook_configs:
+              - url_file: /etc/alertmanager/secrets/alertmanager-deadman/url
+                send_resolved: false
           - name: telegram
             telegram_configs:
               # Both come from the mounted alertmanager-telegram Secret; nothing
@@ -66,6 +73,7 @@ spec:
       alertmanagerSpec:
         secrets:
           - alertmanager-telegram
+          - alertmanager-deadman
         resources:
           requests:
             cpu: 10m

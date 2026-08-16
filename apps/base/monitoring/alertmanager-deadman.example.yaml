@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-deadman
+  namespace: monitoring
+type: Opaque
+stringData:
+  # The ping URL of a healthchecks.io check. Alertmanager POSTs to it every 5m
+  # for as long as Watchdog fires; the check's own period and grace decide when
+  # silence becomes a page. Period 10m, grace 10m pairs with the route below.
+  url: "https://hc-ping.com/PASTE_UUID_HERE"

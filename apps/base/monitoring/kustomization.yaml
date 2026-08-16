@@ -6,6 +6,7 @@ resources:
   - grafana-admin.sops.yaml
   - grafana-tailnet.sops.yaml
   - alertmanager-telegram.sops.yaml
+  - alertmanager-deadman.sops.yaml
   - helmrelease.yaml
 
 configMapGenerator:
