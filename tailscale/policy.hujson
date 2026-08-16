@@ -81,7 +81,7 @@
 		// Log push. Loki has no auth; this grant is the access control.
 		{
 			"src": ["tag:cloud-edge"],
-			"dst": ["tag:k8s-loki"],
+			"dst": ["svc:loki"],
 			"ip":  ["tcp:3100"],
 		},
 
@@ -149,6 +149,7 @@
 			"svc:status":  ["tag:k8s"],
 			"svc:grafana": ["tag:k8s"],
 			"svc:hubble":  ["tag:k8s"],
+			"svc:loki":    ["tag:k8s"],
 		},
 	},
 
@@ -160,7 +161,7 @@
 			"proto": "tcp",
 			"accept": [
 				"100.73.219.120:32400",
-				"tag:k8s-loki:3100",
+				"svc:loki:3100",
 			],
 			"deny": [
 				"100.73.219.120:22",
@@ -197,7 +198,7 @@
 			"deny": [
 				"100.73.219.120:32400",
 				"${cluster_vip}:6443",
-				"tag:k8s-loki:3100",
+				"svc:loki:3100",
 				"tag:cloud-edge:443",
 			],
 		},
