@@ -100,7 +100,9 @@
 		},
 
 		// The status page, reached by its Service name rather than by whichever
-		// proxy replica is up. The Service itself is tailscale/service.tf.
+		// proxy replica is up. svc:status itself is created by the operator, not
+		// here: it refuses to serve a Service without its own owner annotation,
+		// which the tailscale_service resource cannot write.
 		{
 			"src": ["autogroup:member"],
 			"dst": ["svc:status"],
