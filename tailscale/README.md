@@ -22,6 +22,7 @@ No modules.
 | Name | Type |
 |------|------|
 | [tailscale_acl.policy](https://registry.terraform.io/providers/tailscale/tailscale/latest/docs/resources/acl) | resource |
+| [tailscale_service.status](https://registry.terraform.io/providers/tailscale/tailscale/latest/docs/resources/service) | resource |
 | [terraform_remote_state.proxmox](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
 
 ## Inputs
