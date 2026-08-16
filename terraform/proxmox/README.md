@@ -38,6 +38,8 @@ No modules.
 | [proxmox_virtual_environment_container.nfs](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_container) | resource |
 | [proxmox_virtual_environment_download_file.debian_lxc](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_download_file) | resource |
 | [proxmox_virtual_environment_download_file.talos_iso](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_download_file) | resource |
+| [proxmox_virtual_environment_user.metrics_exporter](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_user) | resource |
+| [proxmox_virtual_environment_user_token.metrics_exporter](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_user_token) | resource |
 | [proxmox_virtual_environment_vm.node](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_vm) | resource |
 | [talos_cluster_kubeconfig.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/cluster_kubeconfig) | resource |
 | [talos_image_factory_schematic.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/image_factory_schematic) | resource |
@@ -72,6 +74,10 @@ No modules.
 | <a name="input_pve_bridge_gateway"></a> [pve\_bridge\_gateway](#input\_pve\_bridge\_gateway) | Default gateway on the management bridge | `string` | n/a | yes |
 | <a name="input_pve_bridge_port"></a> [pve\_bridge\_port](#input\_pve\_bridge\_port) | Physical NIC enslaved to the management bridge | `string` | n/a | yes |
 | <a name="input_pve_endpoint"></a> [pve\_endpoint](#input\_pve\_endpoint) | Proxmox VE API endpoint, e.g. https://pve2.lan:8006/ | `string` | n/a | yes |
+| <a name="input_pve_exporter_acl_path"></a> [pve\_exporter\_acl\_path](#input\_pve\_exporter\_acl\_path) | ACL path the role is granted on | `string` | `"/"` | no |
+| <a name="input_pve_exporter_role_id"></a> [pve\_exporter\_role\_id](#input\_pve\_exporter\_role\_id) | Role granted to the exporter user. PVEAuditor is read-only and enough. | `string` | `"PVEAuditor"` | no |
+| <a name="input_pve_exporter_token_name"></a> [pve\_exporter\_token\_name](#input\_pve\_exporter\_token\_name) | Name of that user's API token | `string` | `"exporter"` | no |
+| <a name="input_pve_exporter_user_id"></a> [pve\_exporter\_user\_id](#input\_pve\_exporter\_user\_id) | PVE user the Prometheus exporter authenticates as, realm included | `string` | `"prometheus@pve"` | no |
 | <a name="input_pve_fqdn"></a> [pve\_fqdn](#input\_pve\_fqdn) | Public hostname of the PVE host, the subject of its ACME certificate | `string` | n/a | yes |
 | <a name="input_pve_insecure"></a> [pve\_insecure](#input\_pve\_insecure) | Skip TLS verification (self-signed PVE cert) | `bool` | `true` | no |
 | <a name="input_pve_node"></a> [pve\_node](#input\_pve\_node) | Proxmox node the VMs are created on | `string` | n/a | yes |
@@ -90,6 +96,7 @@ No modules.
 | <a name="output_network"></a> [network](#output\_network) | Cluster addressing other Terraform roots consume |
 | <a name="output_nfs_server"></a> [nfs\_server](#output\_nfs\_server) | Where the NFS export lives, for the StorageClass in apps/base/csi-driver-nfs/ |
 | <a name="output_nodes"></a> [nodes](#output\_nodes) | Node name -> address, role and vmid |
+| <a name="output_pve_exporter"></a> [pve\_exporter](#output\_pve\_exporter) | Credentials for apps/base/pve-exporter/credentials.sops.yaml |
 | <a name="output_talos_endpoints"></a> [talos\_endpoints](#output\_talos\_endpoints) | Talos API endpoints — node addresses, deliberately not the VIP |
 | <a name="output_talos_image"></a> [talos\_image](#output\_talos\_image) | Factory schematic and the installer image the nodes run |
 | <a name="output_talosconfig"></a> [talosconfig](#output\_talosconfig) | Client configuration for talosctl |

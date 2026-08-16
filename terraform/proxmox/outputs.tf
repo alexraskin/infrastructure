@@ -72,3 +72,15 @@ output "nfs_server" {
     backed = "vzdump, via the nightly job"
   }
 }
+
+output "pve_exporter" {
+  description = "Credentials for apps/base/pve-exporter/credentials.sops.yaml"
+  value = {
+    host       = split("/", var.pve_bridge_address)[0]
+    user       = proxmox_virtual_environment_user.metrics_exporter.user_id
+    token_name = proxmox_virtual_environment_user_token.metrics_exporter.token_name
+    # The provider returns "<user>!<token>=<secret>"; the exporter wants the secret alone.
+    token_value = try(split("=", proxmox_virtual_environment_user_token.metrics_exporter.value)[1], null)
+  }
+  sensitive = true
+}

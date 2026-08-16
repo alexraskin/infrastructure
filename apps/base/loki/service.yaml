@@ -1,5 +1,3 @@
-# Loki on the tailnet for the edge node. LoadBalancer, not Ingress: plain TCP on
-# 3100, so the edge can push to the bare MagicDNS name. See CLAUDE.md.
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,8 +6,6 @@ metadata:
   annotations:
     tailscale.com/hostname: "loki"
     tailscale.com/tags: "tag:k8s-loki"
-    # L3 through the same ingress ProxyGroup as the web UIs: svc:loki, DNAT
-    # rather than serve, so the edge still pushes to plain TCP 3100.
     tailscale.com/proxy-group: ingress
 spec:
   type: LoadBalancer
