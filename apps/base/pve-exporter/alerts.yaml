@@ -1,0 +1,127 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pve-exporter
+  namespace: monitoring
+  labels:
+    app: pve-exporter
+spec:
+  groups:
+    - name: proxmox.host
+      rules:
+        - alert: PVEExporterDown
+          expr: up{job="pve-exporter"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVE exporter is not being scraped"
+            description: "No Proxmox metrics for 10m — the exporter, its token, or the PVE API is down."
+
+        - alert: PVEExporterScrapeFailing
+          expr: absent(pve_up{id=~"node/.*"}) and on() up{job="pve-exporter"} == 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVE exporter is up but returning no node metrics"
+
+        - alert: PVENodeRebooted
+          expr: pve_uptime_seconds{id=~"node/.*"} < 600
+          labels:
+            severity: info
+          annotations:
+            summary: "{{ $labels.id }} rebooted less than 10m ago"
+
+        - alert: PVEHostCPUSaturated
+          expr: pve_cpu_usage_ratio{id=~"node/.*"} > 0.9
+          for: 20m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.id }} CPU above 90% for 20m"
+            description: "Nine VMs on one host — check which guest is spinning before adding cores."
+
+        - alert: PVEHostMemoryHigh
+          expr: |
+            pve_memory_usage_bytes{id=~"node/.*"}
+              / pve_memory_size_bytes{id=~"node/.*"} > 0.9
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.id }} memory above 90%"
+            description: "The cluster VMs have fixed memory, so this is the host itself running out of headroom."
+
+    - name: proxmox.storage
+      rules:
+        - alert: PVEStorageOffline
+          expr: pve_up{id=~"storage/.*"} == 0
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Storage {{ $labels.id }} is unavailable"
+            description: "If this is 'backups' or 'iso', the NAS export is gone and vzdump will fail."
+
+        - alert: PVEStorageFilling
+          expr: |
+            (pve_disk_usage_bytes{id=~"storage/.*"}
+              / pve_disk_size_bytes{id=~"storage/.*"})
+              * on(id) group_left(storage, node) pve_storage_info > 0.85
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Storage {{ $labels.storage }} on {{ $labels.node }} is over 85% full"
+
+        - alert: PVEStorageFullSoon
+          expr: |
+            predict_linear(pve_disk_usage_bytes{id=~"storage/.*"}[6h], 24 * 3600)
+              > pve_disk_size_bytes{id=~"storage/.*"}
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Storage {{ $labels.id }} projected full within 24h"
+
+    - name: proxmox.guests
+      rules:
+        - alert: PVEGuestStopped
+          expr: |
+            (pve_up{id=~"(qemu|lxc)/.*"} == 0 and on(id) pve_onboot_status == 1)
+              * on(id) group_left(name, node) pve_guest_info
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Guest {{ $labels.name }} ({{ $labels.id }}) is stopped"
+            description: "It is marked start-on-boot, so this was not planned."
+
+        - alert: PVEGuestMemoryHigh
+          expr: |
+            (pve_memory_usage_bytes{id=~"(qemu|lxc)/.*"}
+              / pve_memory_size_bytes{id=~"(qemu|lxc)/.*"} > 0.95)
+              * on(id) group_left(name) pve_guest_info
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Guest {{ $labels.name }} is using over 95% of its memory"
+
+        - alert: PVEGuestRestarted
+          expr: |
+            (pve_uptime_seconds{id=~"(qemu|lxc)/.*"} < 600 and pve_uptime_seconds{id=~"(qemu|lxc)/.*"} > 0)
+              * on(id) group_left(name) pve_guest_info
+          labels:
+            severity: info
+          annotations:
+            summary: "Guest {{ $labels.name }} restarted in the last 10m"
+
+        - alert: PVEClusterVMMissing
+          expr: count(pve_guest_info{type="qemu"}) < 9
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Fewer than nine VMs exist on the host"

@@ -5,6 +5,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - servicemonitor.yaml
+  - alerts.yaml
 
 configMapGenerator:
   - name: grafana-dashboard-proxmox
