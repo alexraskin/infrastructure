@@ -105,7 +105,7 @@
 		// tailscale_service resource cannot write.
 		{
 			"src": ["autogroup:member"],
-			"dst": ["svc:status", "svc:grafana"],
+			"dst": ["svc:status", "svc:grafana", "svc:hubble"],
 			"ip":  ["tcp:443"],
 		},
 
@@ -148,6 +148,7 @@
 		"services": {
 			"svc:status":  ["tag:k8s"],
 			"svc:grafana": ["tag:k8s"],
+			"svc:hubble":  ["tag:k8s"],
 		},
 	},
 
@@ -195,7 +196,7 @@
 			"proto":  "tcp",
 			// No deny here: the admin grant is dst ["*"], which covers the
 			// Service's VIPs on every port.
-			"accept": ["svc:status:443", "svc:grafana:443"],
+			"accept": ["svc:status:443", "svc:grafana:443", "svc:hubble:443"],
 		},
 		{
 			// CI reaches the edge over SSH and nothing else on this tailnet.

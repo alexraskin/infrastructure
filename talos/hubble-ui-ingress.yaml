@@ -5,6 +5,10 @@ metadata:
   namespace: kube-system
   labels:
     k8s-app: hubble-ui
+  # Served by the ingress ProxyGroup in apps/base/tailscale-ingress/ as
+  # svc:hubble, not by a proxy device of its own.
+  annotations:
+    tailscale.com/proxy-group: ingress
 spec:
   ingressClassName: tailscale
   tls:
