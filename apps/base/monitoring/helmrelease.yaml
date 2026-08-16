@@ -86,6 +86,10 @@ spec:
       ingress:
         enabled: true
         ingressClassName: tailscale
+        # Same ingress ProxyGroup as gatus — published as svc:grafana, served by
+        # every replica instead of one proxy device.
+        annotations:
+          tailscale.com/proxy-group: ingress
         hosts: []
         tls:
           - hosts:
