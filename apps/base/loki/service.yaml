@@ -8,6 +8,9 @@ metadata:
   annotations:
     tailscale.com/hostname: "loki"
     tailscale.com/tags: "tag:k8s-loki"
+    # L3 through the same ingress ProxyGroup as the web UIs: svc:loki, DNAT
+    # rather than serve, so the edge still pushes to plain TCP 3100.
+    tailscale.com/proxy-group: ingress
 spec:
   type: LoadBalancer
   loadBalancerClass: tailscale
