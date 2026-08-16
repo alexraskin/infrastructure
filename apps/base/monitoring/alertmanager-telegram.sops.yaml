@@ -6,7 +6,7 @@ metadata:
 type: Opaque
 stringData:
     bot-token: ENC[AES256_GCM,data:YBgURF9s86G6KvyLazSBHMHdgpjfRGXqn3gJ0l7YGozxcUXyAaNaG/uXqiXHBg==,iv:fLL3P55aBf2xPf+qXleaNMclsq25jrGzdl3IZkrMSRc=,tag:xs0CZ4bd56tJVWdPVb1p/Q==,type:str]
-    chat-id: ENC[AES256_GCM,data:/ErDWIcRGBxHeoc=,iv:U0jYLW4skDuaJCJxl23UDK3RvIcOipUyCnDhYnypT5M=,tag:koA8tmqCIQyqoizy9iljDQ==,type:int]
+    chat-id: ENC[AES256_GCM,data:5wftflUXw8rKJ9M=,iv:LyjRa8QE9Z22kgzS+9i2XQBuJnbWEKGFbdLD+b+oads=,tag:QZOPUjzA6ds5zto9rn1CeQ==,type:str]
 sops:
     age:
         - enc: |
@@ -19,6 +19,6 @@ sops:
             -----END AGE ENCRYPTED FILE-----
           recipient: age1ucjp64s2czgpcfx2adte56fku75d84pwhesnd2wgvnnz46v02euqww5gqw
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-08-16T17:12:42Z"
-    mac: ENC[AES256_GCM,data:h4Jkcnwu57zyoZSt7/NNgsD7uCGn+Zov1LQvXGXBlYJGua4Xqi6LehACtfbtYy5r+eRalfsziZsgJxAA62W/A50UnCXODPIKo5FL8MeJ3prIpRh6Ao4zfQAKvpc4CZZJBrePg70eq2iHbIcO8Wr73Mrxi50LaIWHqCZYtoSYNKI=,iv:FYH/Nv6QECqHZSh9wc2NmOVCXEUwoI8tq+46LzxMReM=,tag:Iw9OuiWHCIwRR8zHjtMEOA==,type:str]
+    lastmodified: "2026-08-16T17:19:49Z"
+    mac: ENC[AES256_GCM,data:eG+8l7wcLiEWhFLcWptdUyETp14OYEBedzSS/bCWtDJ+VHwhnTPvBFbfrtJrHjZHDOxGbBJHryUQkISR66BbIpnXo38GOv87bmR6F6JCZq8QW7RNz+9BqfmjqphZiUMw8wM8aglKi6hcpn7r24TSHa79n8aUbjSWlogU5kmqPnk=,iv:R3GXdiZzMLs4ic6ieCg+dkC6cmQsmixedJJDcY9ARyI=,tag:rFXKUASyE0jaJ+8a+lqr3w==,type:str]
     version: 3.13.3

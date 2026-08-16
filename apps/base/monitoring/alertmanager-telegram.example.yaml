@@ -5,7 +5,5 @@ metadata:
   namespace: monitoring
 type: Opaque
 stringData:
-  # From @BotFather. The bot must be in the chat it posts to.
   bot-token: "123456789:PASTE_BOT_TOKEN_HERE"
-  # Negative for groups, e.g. -1001234567890. No quotes needed, it is read as a file.
   chat-id: "PASTE_CHAT_ID_HERE"
