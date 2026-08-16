@@ -1,0 +1,68 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: flux
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/part-of: flux
+spec:
+  groups:
+    - name: flux.reconciliation
+      rules:
+        # The CR's own namespace arrives as exported_namespace: the scrape target
+        # is the controller pod, so `namespace` is always flux-system.
+        - alert: FluxReconciliationFailure
+          expr: |
+            max by (exported_namespace, name, kind) (
+              gotk_reconcile_condition{type="Ready", status="False"}
+            ) == 1
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} has not reconciled for 15m"
+            description: "Git is no longer the cluster's state. Run 'flux get all -A' or check the object's status conditions."
+
+        - alert: FluxReconciliationStalled
+          # Stalled means the controller gave up retrying — it will not fix itself.
+          expr: |
+            max by (exported_namespace, name, kind) (
+              gotk_reconcile_condition{type="Stalled", status="True"}
+            ) == 1
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} is stalled"
+
+        - alert: FluxSuspended
+          # Suspending is a debugging step. Left on, it silently freezes deploys.
+          expr: gotk_suspend_status == 1
+          for: 6h
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} has been suspended for 6h"
+
+    - name: flux.controllers
+      rules:
+        - alert: FluxControllerDown
+          expr: up{job=~"flux-system/.*"} == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Flux controller {{ $labels.controller }} is down"
+
+        - alert: FluxControllersMissing
+          # source, kustomize, helm, notification, image-reflector, image-automation.
+          # The absent() half matters: count() over nothing returns nothing, so a
+          # PodMonitor that stops matching would otherwise be silent.
+          expr: |
+            count(up{job=~"flux-system/.*"} == 1) < 6
+              or absent(up{job=~"flux-system/.*"})
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Fewer than six Flux controllers are being scraped"
