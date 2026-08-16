@@ -189,3 +189,27 @@ variable "pve_bridge_port" {
   description = "Physical NIC enslaved to the management bridge"
   type        = string
 }
+
+variable "pve_exporter_user_id" {
+  description = "PVE user the Prometheus exporter authenticates as, realm included"
+  type        = string
+  default     = "prometheus@pve"
+}
+
+variable "pve_exporter_token_name" {
+  description = "Name of that user's API token"
+  type        = string
+  default     = "exporter"
+}
+
+variable "pve_exporter_role_id" {
+  description = "Role granted to the exporter user. PVEAuditor is read-only and enough."
+  type        = string
+  default     = "PVEAuditor"
+}
+
+variable "pve_exporter_acl_path" {
+  description = "ACL path the role is granted on"
+  type        = string
+  default     = "/"
+}

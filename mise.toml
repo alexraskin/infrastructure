@@ -100,6 +100,21 @@ run = "scripts/tf.sh proxmox plan"
 description = "Create the VMs, apply machine configs, bootstrap the cluster"
 run = "scripts/tf.sh proxmox apply"
 
+[tasks."proxmox:exporter-creds"]
+description = "Print the values for apps/base/pve-exporter/credentials.sops.yaml"
+shell = "bash -c"
+run = """
+set -euo pipefail
+scripts/tf.sh proxmox output -json pve_exporter | jq -r '
+  "host (servicemonitor.yaml target): \\(.host)",
+  "",
+  "credentials.sops.yaml stringData:",
+  "  user:        \\(.user)",
+  "  token-name:  \\(.token_name)",
+  "  token-value: \\(.token_value // "unavailable — only returned when the token is created")"
+'
+"""
+
 [tasks."proxmox:destroy"]
 description = "DESTRUCTIVE: destroy the cluster VMs only — this root also owns the PVE host"
 run = "scripts/tf.sh proxmox destroy -target='proxmox_virtual_environment_vm.node' -target='talos_machine_configuration_apply.node' -target='talos_machine_bootstrap.this' -target='talos_cluster_kubeconfig.this'"
