@@ -8,3 +8,4 @@ resources:
   - grafana-database.yaml
   - backup-oci.sops.yaml
   - scheduledbackup.yaml
+  - alerts.yaml
