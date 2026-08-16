@@ -54,6 +54,10 @@ spec:
     ingress:
       enabled: true
       ingressClassName: tailscale
+      # Routes through the ingress ProxyGroup, so the operator publishes this as
+      # the Tailscale Service svc:status instead of a single-proxy device.
+      annotations:
+        tailscale.com/proxy-group: ingress
       hosts: []
       tls:
         - hosts:

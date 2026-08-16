@@ -99,6 +99,14 @@
 			"ip":  ["tcp:443"],
 		},
 
+		// The status page, reached by its Service name rather than by whichever
+		// proxy replica is up. The Service itself is tailscale/service.tf.
+		{
+			"src": ["autogroup:member"],
+			"dst": ["svc:status"],
+			"ip":  ["tcp:443"],
+		},
+
 		// The deploy workflow reaches the edge over SSH, and nothing else.
 		{
 			"src": ["tag:ci"],
@@ -132,6 +140,12 @@
 
 		// Without this the edge advertises 0.0.0.0/0 and waits for a human.
 		"exitNode": ["tag:cloud-edge"],
+
+		// Every ingress ProxyGroup replica advertises svc:status on startup, and
+		// each one would otherwise sit pending in the admin console.
+		"services": {
+			"svc:status": ["tag:k8s"],
+		},
 	},
 
 	// Evaluated by the API at `terraform plan`, so a widened grant fails the PR.
@@ -170,6 +184,15 @@
 			"src":   "tag:k8s-router",
 			"proto": "tcp",
 			"deny":  ["100.73.219.120:32400", "tag:cloud-edge:22"],
+		},
+		{
+			// Members get the status page on 443. A test src has to be a concrete
+			// user or tag — autogroup:member is rejected there.
+			"src":    "alexraskin@fastmail.com",
+			"proto":  "tcp",
+			// No deny here: the admin grant is dst ["*"], which covers the
+			// Service's VIPs on every port.
+			"accept": ["svc:status:443"],
 		},
 		{
 			// CI reaches the edge over SSH and nothing else on this tailnet.
