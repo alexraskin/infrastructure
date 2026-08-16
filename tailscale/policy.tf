@@ -23,9 +23,6 @@ resource "tailscale_acl" "policy" {
       name => node.ip
     }
   })
-
-  # The grants and the policy tests name svc:status, which has to exist first.
-  depends_on = [tailscale_service.status]
 }
 
 import {
