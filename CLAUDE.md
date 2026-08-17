@@ -24,7 +24,7 @@ Flux deploys everything in `apps/`.
 | `apps/clusters/talos/` | the Flux Kustomizations that point at `apps/base/` |
 | `talos/cilium-values.yaml` | CNI values, applied outside Flux |
 | `scripts/` | `tf.sh` (every root's terraform), preflight, the NFS and nix helpers |
-| `docs/` | runbooks (PVE 8→9, CNPG backups, the R2→OCI state move, the SOPS layout) |
+| `docs/` | runbooks (PVE 8→9, CNPG backups, the R2→OCI state move, the SOPS layout, the WAF) |
 | `secrets/` | gitignored — `talosconfig`, `age.key` (both identities), `kubeconfig` fodder |
 | `01-pve/plex/` | a docker-compose stack, not deployed anywhere right now — Plex runs on the workstation, and Docker is deliberately off the PVE host |
 

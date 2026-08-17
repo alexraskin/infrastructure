@@ -1,6 +1,3 @@
-# The cluster itself, in cluster.auto.tfvars.json — auto-loaded, and JSON rather
-# than HCL so `jq` can still read it: mise tasks and preflight.sh work from the
-# same file Terraform does, exactly as they did when it was hosts.json.
 variable "cluster" {
   description = "Cluster-wide settings: addressing, versions, install disk, image extensions"
   type = object({

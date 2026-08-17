@@ -1,3 +1,8 @@
+The WAF rulesets here cover every zone in `var.zones`, including the hostnames
+the OCI edge serves — a zone has one entry point ruleset per phase, so they
+cannot be split across roots. `docs/cloudflare-waf.md` has the Free-plan limits
+they are shaped around, and why a grey-cloud record is outside them.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -23,6 +28,8 @@ No modules.
 |------|------|
 | [cloudflare_dns_record.cluster](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/dns_record) | resource |
 | [cloudflare_dns_record.tunnel](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/dns_record) | resource |
+| [cloudflare_ruleset.waf_custom](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/ruleset) | resource |
+| [cloudflare_ruleset.waf_ratelimit](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/ruleset) | resource |
 | [cloudflare_zero_trust_tunnel_cloudflared.this](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/zero_trust_tunnel_cloudflared) | resource |
 | [cloudflare_zero_trust_tunnel_cloudflared_config.this](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/zero_trust_tunnel_cloudflared_config) | resource |
 | [cloudflare_zero_trust_tunnel_cloudflared_token.this](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/data-sources/zero_trust_tunnel_cloudflared_token) | data source |
@@ -44,6 +51,11 @@ No modules.
 | <a name="input_ingress"></a> [ingress](#input\_ingress) | n/a | <pre>list(object({<br/>    hostname = string<br/>    service  = string<br/>    path     = optional(string)<br/>  }))</pre> | n/a | yes |
 | <a name="input_tunnel_id"></a> [tunnel\_id](#input\_tunnel\_id) | UUID of the existing tunnel, used by the import blocks in imports.tf | `string` | n/a | yes |
 | <a name="input_tunnel_name"></a> [tunnel\_name](#input\_tunnel\_name) | Name of the existing tunnel, as it appears in Zero Trust -> Networks -> Tunnels | `string` | `"k3s"` | no |
+| <a name="input_waf_blocked_paths"></a> [waf\_blocked\_paths](#input\_waf\_blocked\_paths) | Path substrings that get a 403. Matched against lower(path); the Free plan has no regex. | `list(string)` | <pre>[<br/>  "/wp-admin",<br/>  "/wp-login",<br/>  "/wp-content",<br/>  "/wp-includes",<br/>  "/xmlrpc.php",<br/>  "/.env",<br/>  "/.git/",<br/>  "/.aws/",<br/>  "/.ssh/",<br/>  "/phpmyadmin",<br/>  "/vendor/phpunit",<br/>  "/cgi-bin/",<br/>  "/administrator/"<br/>]</pre> | no |
+| <a name="input_waf_blocked_user_agents"></a> [waf\_blocked\_user\_agents](#input\_waf\_blocked\_user\_agents) | User-Agent substrings that get a 403. Matched against lower(user\_agent). | `list(string)` | <pre>[<br/>  "ahrefsbot",<br/>  "amazonbot",<br/>  "bytespider",<br/>  "ccbot",<br/>  "dataforseobot",<br/>  "dotbot",<br/>  "gptbot",<br/>  "imagesiftbot",<br/>  "mj12bot",<br/>  "petalbot",<br/>  "semrushbot"<br/>]</pre> | no |
+| <a name="input_waf_enabled"></a> [waf\_enabled](#input\_waf\_enabled) | Whether to manage the WAF rulesets of every zone in var.zones. | `bool` | `true` | no |
+| <a name="input_waf_extra_hosts"></a> [waf\_extra\_hosts](#input\_waf\_extra\_hosts) | Hostnames the read-only rule covers beyond the tunnel's own. Only a proxied hostname ever reaches the WAF. | `list(string)` | `[]` | no |
+| <a name="input_waf_rate_limit"></a> [waf\_rate\_limit](#input\_waf\_rate\_limit) | Per-IP flood control. The Free plan fixes the period and the mitigation timeout at 10s, allows one rule, and takes no action other than block. | <pre>object({<br/>    enabled             = optional(bool, true)<br/>    requests_per_period = optional(number, 100)<br/>    action              = optional(string, "block")<br/>  })</pre> | `{}` | no |
 | <a name="input_zones"></a> [zones](#input\_zones) | Zone name -> zone ID. Every ingress hostname must fall under one of these. | `map(string)` | n/a | yes |
 
 ## Outputs

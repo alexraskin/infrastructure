@@ -1,22 +1,8 @@
-# A dedicated user for the backup credential, not the admin API user.
-#
-# The Customer Secret Key created here ends up in a Kubernetes Secret, which
-# anything with pod-exec in the cluster can read — the same reasoning that scopes
-# Loki's R2 token to one bucket. Handing that out with
-# the Terraform user's rights would mean handing out the edge instance too.
-#
-# IAM lives in the tenancy, not in a compartment, so the user, group and policy
-# are all created against local.admin["oci_tenancy_ocid"] regardless of where the bucket is.
-
 data "oci_identity_compartment" "this" {
   id = local.admin["oci_compartment_ocid"]
 }
 
 locals {
-  # A policy statement scopes to a compartment by *name*, except at the root:
-  # the tenancy is a compartment but "in compartment <tenancy name>" is rejected
-  # with "does not exist or is not part of the policy compartment subtree".
-  # `in tenancy` is the only form that works there.
   policy_scope = (
     local.admin["oci_compartment_ocid"] == local.admin["oci_tenancy_ocid"]
     ? "in tenancy"
