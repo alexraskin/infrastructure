@@ -3,7 +3,6 @@ kind: Secret
 metadata:
     name: gatus-db
     namespace: cnpg-system
-# CNPG requires basic-auth for a managed role, and username must match the role.
 type: kubernetes.io/basic-auth
 stringData:
     username: ENC[AES256_GCM,data:pCmM8Pg=,iv:fKSDOTxKiOhnfCyBV2ZZrcXqTAMBJX5oU7d6kb8k8fA=,tag:/eNlzQNqbMyChN8h0D9hrw==,type:str]

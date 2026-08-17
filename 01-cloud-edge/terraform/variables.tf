@@ -1,13 +1,3 @@
-# ------------------------------------------------------------------ oracle ---
-
-
-
-
-
-
-
-# --------------------------------------------------------------- placement ---
-
 variable "instance_availability_domain" {
   type    = string
   default = ""
@@ -23,8 +13,6 @@ variable "instance_availability_domain_index" {
     error_message = "instance_availability_domain_index must be >= 0."
   }
 }
-
-# ---------------------------------------------------------------- networking --
 
 variable "vcn_cidr" {
   description = "CIDR for the VCN. Must not overlap 10.0.200.0/24 (the home LAN reached over Tailscale) or the flannel range."
@@ -42,9 +30,3 @@ variable "public_subnet_cidr" {
 #   type        = string
 #   default     = "0.0.0.0/0"
 # }
-
-# ---------------------------------------------------------------------- ssh ---
-
-
-# --------------------------------------------------------------- cloudflare ---
-
