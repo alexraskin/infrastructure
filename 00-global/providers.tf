@@ -1,6 +1,4 @@
 terraform {
-  # backend "oci" is Terraform 1.12+. The block itself lives in backend.tf, so
-  # it can be moved aside if this bucket ever has to be created again.
   required_version = ">= 1.12"
 
   required_providers {

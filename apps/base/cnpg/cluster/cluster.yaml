@@ -30,14 +30,6 @@ spec:
         login: true
         passwordSecret:
           name: grafana-db
-
-  # barman-cloud talks S3 through boto3, and botocore >= 1.36 sends its default
-  # data-integrity checksums using `aws-chunked` content encoding. Oracle's S3
-  # compatibility layer does not implement that and rejects every upload with
-  # "NotImplemented ... AWS chunked encoding not supported" — on PutObject and
-  # on UploadPart, so both the backup.info file and the data fail. These two put
-  # the checksums back to on-demand. Nothing about them is Oracle-specific; they
-  # are the documented opt-out.
   env:
     - name: AWS_REQUEST_CHECKSUM_CALCULATION
       value: when_required
@@ -56,7 +48,6 @@ spec:
         secretAccessKey:
           name: cnpg-backup-oci
           key: secret-access-key
-        # Not a secret; a SecretKeySelector is the only shape the CRD accepts.
         region:
           name: cnpg-backup-oci
           key: region
