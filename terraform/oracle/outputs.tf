@@ -1,6 +1,3 @@
-# Everything apps/base/cnpg/cluster/ needs. `mise run oci:creds` prints these in
-# the order backup-oci.example.yaml wants them.
-
 output "endpoint_url" {
   description = "S3-compatible endpoint — goes in cluster.yaml as barmanObjectStore.endpointURL"
   value       = "https://${data.oci_objectstorage_namespace.this.namespace}.compat.objectstorage.${local.admin["oci_region"]}.oraclecloud.com"
@@ -33,4 +30,5 @@ output "secret_access_key" {
 output "namespace" {
   description = "Object Storage namespace, for `oci os object list --namespace`"
   value       = data.oci_objectstorage_namespace.this.namespace
+  sensitive   = true
 }

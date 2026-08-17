@@ -1,5 +1,3 @@
-# The PVE-side half of apps/base/pve-exporter: a read-only user and the API
-# token it authenticates with. The token value is only ever returned at create.
 resource "proxmox_virtual_environment_user" "metrics_exporter" {
   user_id = var.pve_exporter_user_id
   enabled = true
