@@ -25,7 +25,7 @@ spec:
               app: alexraskin-com
       containers:
         - name: web
-          image: ghcr.io/alexraskin/alexraskin.com:v2.0.1 # {"$imagepolicy": "flux-system:alexraskin-com"}
+          image: ghcr.io/alexraskin/alexraskin.com:v2.0.2 # {"$imagepolicy": "flux-system:alexraskin-com"}
           ports:
             - name: http
               containerPort: 8000
