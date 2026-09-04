@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alexraskin-com
+  namespace: web-staging
+  annotations:
+    tailscale.com/proxy-group: ingress
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: alexraskin-com
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - alexraskin-staging

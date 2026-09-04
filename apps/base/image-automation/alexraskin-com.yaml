@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   image: ghcr.io/alexraskin/alexraskin.com
-  interval: 72h
+  interval: 10m
 ---
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
@@ -21,3 +21,20 @@ spec:
   policy:
     semver:
       range: '>=0.1.0'
+---
+# Staging tracks main: every push builds main-<epoch>-<sha>, and the epoch is
+# what orders them — GHCR gives a policy no usable creation time.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: alexraskin-com-staging
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: alexraskin-com
+  filterTags:
+    pattern: '^main-(?P<ts>\d+)-[0-9a-f]+$'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc

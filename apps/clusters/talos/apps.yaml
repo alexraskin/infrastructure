@@ -65,6 +65,23 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: alexraskin-com-staging
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/alexraskin-com-staging
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: tailscale-ingress
+  wait: true
+  timeout: 3m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: lastfm-now-playing
   namespace: flux-system
 spec:
