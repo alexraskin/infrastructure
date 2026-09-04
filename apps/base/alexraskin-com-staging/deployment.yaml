@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alexraskin-com
+  namespace: web-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alexraskin-com
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: alexraskin-com
+    spec:
+      containers:
+        - name: web
+          # Placeholder until the first main-<epoch>-<sha> build exists;
+          # after that the ImagePolicy in the marker owns this line.
+          image: ghcr.io/alexraskin/alexraskin.com:latest # {"$imagepolicy": "flux-system:alexraskin-com-staging"}
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop: ["ALL"]
