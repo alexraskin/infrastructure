@@ -3,6 +3,10 @@ kind: Ingress
 metadata:
   name: alexraskin-com
   namespace: web-staging
+  # First bring-up deadlocks: 443 is advertised only once a cert exists, and
+  # control grants the cert only to a node already advertising the Service.
+  # Break it once with `kubectl -n web-staging annotate ingress alexraskin-com
+  # tailscale.com/http-endpoint=enabled`; Flux takes the annotation back off.
   annotations:
     tailscale.com/proxy-group: ingress
 spec:
