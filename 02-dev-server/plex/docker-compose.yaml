@@ -30,18 +30,3 @@ services:
     restart: always
     labels:
       didar.enabled: "true"
-  subtrace:
-    image: ghcr.io/alexraskin/subtrace:latest
-    container_name: subtrace
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Phoenix
-    volumes:
-      - ./subtrace-config:/config
-      - type: bind
-        source: /mnt/media/Media
-        target: /media
-    restart: always
-    labels:
-      didar.enabled: "true"
