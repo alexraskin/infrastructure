@@ -20,7 +20,7 @@ spec:
         - name: web
           # Placeholder until the first main-<epoch>-<sha> build exists;
           # after that the ImagePolicy in the marker owns this line.
-          image: ghcr.io/alexraskin/alexraskin.com:main-1789229106-26bb0c9 # {"$imagepolicy": "flux-system:alexraskin-com-staging"}
+          image: ghcr.io/alexraskin/alexraskin.com:main-1789229536-a1cd051 # {"$imagepolicy": "flux-system:alexraskin-com-staging"}
           ports:
             - name: http
               containerPort: 8000
