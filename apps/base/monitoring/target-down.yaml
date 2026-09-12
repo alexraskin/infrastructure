@@ -9,10 +9,6 @@ spec:
   groups:
     - name: general.rules.local
       rules:
-        # The chart's TargetDown, with a 30m fuse instead of 10m. Same expression:
-        # more than 10% of a job's targets down, which for a single-pod job means
-        # the one pod. A rollout that has not finished in half an hour is stuck,
-        # not reconciling.
         - alert: TargetDown
           expr: |
             100 * (

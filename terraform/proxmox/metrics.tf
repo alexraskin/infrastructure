@@ -15,6 +15,5 @@ resource "proxmox_virtual_environment_user_token" "metrics_exporter" {
   token_name = var.pve_exporter_token_name
   comment    = "Managed by Terraform for the Prometheus PVE exporter"
 
-  # The token inherits the user's ACL instead of needing one of its own.
   privileges_separation = false
 }

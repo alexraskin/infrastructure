@@ -87,7 +87,6 @@ resource "cloudflare_ruleset" "waf_ratelimit" {
     ref         = "per_ip_flood"
     description = "Per-IP flood control"
     action      = var.waf_rate_limit.action
-    # The Free plan allows only Path and Verified Bot here, so this is zone-wide.
     expression = "not cf.client.bot"
 
     ratelimit = {

@@ -22,8 +22,6 @@ spec:
     semver:
       range: '>=0.1.0'
 ---
-# Staging tracks main: every push builds main-<epoch>-<sha>, and the epoch is
-# what orders them — GHCR gives a policy no usable creation time.
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
 metadata:

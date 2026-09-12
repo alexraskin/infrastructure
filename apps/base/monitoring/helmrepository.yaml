@@ -1,5 +1,3 @@
-# The first Helm source in this repo. helm-controller ships with `flux install`
-# by default, so nothing extra had to be installed for this.
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:

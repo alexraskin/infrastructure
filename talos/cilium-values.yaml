@@ -27,21 +27,16 @@ hubble:
       - httpV2:exemplars=true;labelsContext=source_namespace,source_workload,destination_namespace,destination_workload,traffic_direction
     serviceMonitor:
       enabled: true
-    # The chart's four Hubble dashboards, as ConfigMaps the Grafana sidecar
-    # picks up (searchNamespace: ALL, so kube-system is fine).
     dashboards:
       enabled: true
       label: grafana_dashboard
       labelValue: "1"
 
-# Talos mounts cgroupv2 and bpffs itself and will not let Cilium do it again.
 cgroup:
   autoMount:
     enabled: false
   hostRoot: /sys/fs/cgroup
 
-# The stock list minus SYS_MODULE: Talos does not allow workloads to load
-# kernel modules, and the agent crash-loops if it asks for the capability.
 securityContext:
   capabilities:
     ciliumAgent:

@@ -9,7 +9,6 @@ locals {
   tunnel_hostnames = distinct([for rule in var.ingress : rule.hostname])
 }
 
-# Say which hostname is unroutable, instead of failing later on a null zone_id.
 check "every_hostname_has_a_zone" {
   assert {
     condition     = alltrue([for h, z in local.hostname_zone : z != null])
