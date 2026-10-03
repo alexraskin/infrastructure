@@ -9,8 +9,7 @@ spec:
   groups:
     - name: flux.reconciliation
       rules:
-        # The CR's own namespace arrives as exported_namespace: the scrape target
-        # is the controller pod, so `namespace` is always flux-system.
+        # `namespace` is the controller's; the object's is exported_namespace.
         - alert: FluxReconciliationFailure
           expr: |
             max by (exported_namespace, name, kind) (
@@ -21,7 +20,7 @@ spec:
             severity: critical
           annotations:
             summary: "{{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} has not reconciled for 15m"
-            description: "Git is no longer the cluster's state. Run 'flux get all -A' or check the object's status conditions."
+            description: "Run 'flux get all -A'."
 
         - alert: FluxReconciliationStalled
           # Stalled means the controller gave up retrying — it will not fix itself.
@@ -55,9 +54,7 @@ spec:
             summary: "Flux controller {{ $labels.controller }} is down"
 
         - alert: FluxControllersMissing
-          # source, kustomize, helm, notification, image-reflector, image-automation.
-          # The absent() half matters: count() over nothing returns nothing, so a
-          # PodMonitor that stops matching would otherwise be silent.
+          # absent() catches a PodMonitor that stops matching; count() alone returns nothing.
           expr: |
             count(up{job=~"flux-system/.*"} == 1) < 6
               or absent(up{job=~"flux-system/.*"})

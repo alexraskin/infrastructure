@@ -16,7 +16,7 @@ spec:
             severity: critical
           annotations:
             summary: "The CloudNativePG operator is down"
-            description: "No failover, no scheduled backups and no reconcile until it is back."
+            description: "No failover or scheduled backups until it recovers."
 
         - alert: CNPGInstanceDown
           expr: cnpg_collector_up == 0
@@ -32,10 +32,9 @@ spec:
           for: 15m
           labels:
             severity: warning
-
           annotations:
             summary: "Fewer than three Postgres instances are reporting"
-            description: "A db worker is gone, or its pod cannot schedule — the PV is pinned by nodeAffinity, so it will not move."
+            description: "A db worker is down or its pod cannot schedule; PVs are pinned to their node."
 
         - alert: CNPGNoPrimary
           # in_recovery is 0 on exactly one pod. No such pod means no writable primary.
@@ -45,7 +44,7 @@ spec:
             severity: critical
           annotations:
             summary: "The Postgres cluster has no primary"
-            description: "Grafana and gatus write to postgres-rw and are down with it."
+            description: "Grafana and Gatus are down with it."
 
         - alert: CNPGFencingOn
           expr: cnpg_collector_fencing_on > 0
@@ -54,7 +53,7 @@ spec:
             severity: warning
           annotations:
             summary: "{{ $labels.pod }} is fenced"
-            description: "Fencing is manual. If nobody is working on it, it was left behind."
+            description: "Unfence it if no one is working on it."
 
         - alert: CNPGManualSwitchoverRequired
           expr: cnpg_collector_manual_switchover_required > 0
@@ -98,11 +97,10 @@ spec:
             severity: critical
           annotations:
             summary: "Replica {{ $labels.pod }} has no WAL receiver"
-            description: "It has stopped following the primary and is drifting."
+            description: "It has stopped following the primary."
 
         - alert: CNPGReplicationSlotInactive
-          # Replicas also publish the primary's slots, always inactive there —
-          # so only the primary's copy of the metric counts.
+          # Replicas report the primary's slots as inactive; count the primary only.
           expr: |
             cnpg_pg_replication_slots_active == 0
               and on(pod) cnpg_pg_replication_in_recovery == 0
@@ -111,7 +109,7 @@ spec:
             severity: warning
           annotations:
             summary: "Replication slot {{ $labels.slot_name }} is inactive"
-            description: "The primary keeps WAL for an absent consumer, which fills the data volume."
+            description: "The primary retains WAL for it until the volume fills."
 
     - name: cnpg.backup
       rules:
@@ -142,7 +140,7 @@ spec:
             severity: critical
           annotations:
             summary: "WAL archiving to object storage is failing"
-            description: "Point-in-time recovery is broken from here on, and pg_wal grows until the volume fills."
+            description: "PITR is broken and pg_wal grows until the volume fills."
 
         - alert: CNPGWalArchiveStalled
           expr: cnpg_pg_stat_archiver_seconds_since_last_archival > 3600
@@ -163,7 +161,7 @@ spec:
             severity: critical
           annotations:
             summary: "Volume {{ $labels.persistentvolumeclaim }} is over 85% full"
-            description: "db-local PVs are fixed-size local volumes — growing one is a Talos user volume change in terraform/proxmox/."
+            description: "Grow the Talos user volume in terraform/proxmox/."
 
         - alert: CNPGVolumeFullSoon
           expr: |
@@ -200,7 +198,7 @@ spec:
             severity: critical
           annotations:
             summary: "Database {{ $labels.datname }} is approaching xid wraparound"
-            description: "Autovacuum is not keeping up. At 2^31 Postgres refuses writes."
+            description: "Autovacuum is behind; Postgres stops accepting writes at 2^31."
 
         - alert: CNPGDeadlocks
           expr: increase(cnpg_pg_stat_database_deadlocks[30m]) > 5

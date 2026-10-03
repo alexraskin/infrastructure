@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# The one secret that cannot be committed: the age key sops-nix decrypts
-# nixos/hosts/oracle-edge/secrets.sops.yaml with.
-#
-# Everything else the box needs is in that file, encrypted, in git. This runs
-# before `nixos-rebuild switch` because activation installs the secrets, and
-# activation fails if the key is not there yet.
-#
-#   mise run push-age-key
+# Copy the age key sops-nix decrypts with to the edge; activation fails without it.
 set -euo pipefail
 
 # shellcheck source-path=SCRIPTDIR

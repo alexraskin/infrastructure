@@ -20,4 +20,4 @@ spec:
             severity: warning
           annotations:
             summary: "{{ printf \"%.4g\" $value }}% of the {{ $labels.job }}/{{ $labels.service }} targets in {{ $labels.namespace }} have been down for 30m"
-            description: "Long enough that a Flux rollout is not the explanation — check the pod and its scrape endpoint."
+            description: "Check the pod and its scrape endpoint."

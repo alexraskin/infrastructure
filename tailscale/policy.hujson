@@ -181,8 +181,7 @@
 			],
 		},
 		{
-			// The operator's proxies, which now carry the gatus probes too.
-			// Only what gatus probes, nothing else.
+			// The operator's proxies reach only what gatus probes.
 			"src":    "tag:k8s",
 			"proto":  "tcp",
 			"accept": ["tag:cloud-edge:443", "100.109.167.97:443", "100.102.204.90:9273", "100.102.204.90:9274"],

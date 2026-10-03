@@ -49,8 +49,7 @@ done
 exit $rc
 """
 
-# Every root goes through scripts/tf.sh: secrets, backend configuration and the
-# retries for Object Storage's spurious errors live there, not here.
+# Every root goes through scripts/tf.sh.
 
 [tasks."global:init"]
 description = "terraform init for the state-bucket root"

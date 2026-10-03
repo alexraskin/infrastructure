@@ -16,7 +16,7 @@ spec:
             severity: warning
           annotations:
             summary: "PVE exporter is not being scraped"
-            description: "No Proxmox metrics for 10m — the exporter, its token, or the PVE API is down."
+            description: "Check the exporter pod, its API token, and the PVE API."
 
         - alert: PVEExporterScrapeFailing
           expr: absent(pve_up{id=~"node/.*"}) and on() up{job="pve-exporter"} == 1
@@ -40,7 +40,7 @@ spec:
             severity: warning
           annotations:
             summary: "{{ $labels.id }} CPU above 90% for 20m"
-            description: "Nine VMs on one host — check which guest is spinning before adding cores."
+            description: "Check which guest is using the CPU."
 
         - alert: PVEHostMemoryHigh
           expr: |
@@ -50,8 +50,7 @@ spec:
           labels:
             severity: warning
           annotations:
-            summary: "{{ $labels.id }} memory above 90%"
-            description: "Host itself is running out of memory"
+            summary: "{{ $labels.id }} memory above 95% for 15m"
 
     - name: proxmox.storage
       rules:
@@ -62,7 +61,7 @@ spec:
             severity: critical
           annotations:
             summary: "Storage {{ $labels.id }} is unavailable"
-            description: "If this is 'backups' or 'iso', the NAS export is gone and vzdump will fail."
+            description: "If this is 'backups', nightly vzdump will fail."
 
         - alert: PVEStorageFilling
           expr: |
@@ -95,8 +94,7 @@ spec:
           labels:
             severity: critical
           annotations:
-            summary: "Guest {{ $labels.name }} ({{ $labels.id }}) is stopped"
-            description: "It is marked start-on-boot, so this was not planned."
+            summary: "Guest {{ $labels.name }} ({{ $labels.id }}) is stopped but marked start-on-boot"
 
         - alert: PVEGuestMemoryHigh
           expr: |

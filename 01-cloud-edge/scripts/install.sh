@@ -1,20 +1,7 @@
 #!/usr/bin/env bash
-# Phase 2: install NixOS over the Ubuntu instance Terraform created.
-#
-# nixos-anywhere kexecs into a NixOS installer, runs disko against
-# nixos/hosts/oracle-edge/disk-config.nix, installs the closure and reboots. Nothing
-# of the Ubuntu image survives.
-#
-# --build-on-remote is what makes this work at all from here: the build host is
-# x86_64 and the instance is aarch64. The kexec image itself is substituted
-# prebuilt from cache.nixos.org (a download, not a build, so no emulation), and
-# the system closure is built by the installer on the box's own four Ampere
-# cores.
-#
-# Destructive by design, and only correct on a box that holds nothing. It
-# refuses to run against something that is already NixOS.
-#
-#   mise run install
+# Replace the Ubuntu instance Terraform created with NixOS via nixos-anywhere.
+# Destructive; refuses to run on a box that is already NixOS.
+# --build-on-remote because this host is x86_64 and the instance aarch64.
 set -euo pipefail
 
 # shellcheck source-path=SCRIPTDIR
@@ -41,15 +28,8 @@ fi
 
 echo "==> $ip: nixos-anywhere (kexec, disko, install, reboot)"
 
-# An identity sops-nix can decrypt with has to be on the disk before the
-# installer activates the config, or activation fails and takes the whole
-# install with it. --extra-files copies this tree to / on the target.
-#
-# The host key is what matters: sops-nix derives its age identity from it, and
-# a freshly generated one would leave a box whose secrets no longer decrypt.
-# Seeding the same key every time keeps the recipient in .sops.yaml valid across
-# reinstalls. The age key is seeded too only while secrets.nix still lists
-# keyFile as a fallback — drop that block here once it does not.
+# sops-nix derives its age identity from the host key, so seed the same one
+# before activation or the secrets stop decrypting.
 extra="$repo/secrets/.extra-files"
 rm -rf "$extra"
 trap 'rm -rf "$extra"' EXIT
@@ -71,14 +51,7 @@ if [ -s "$key" ]; then
   install -m 0400 "$key" "$extra/var/lib/sops-nix/key.txt"
 fi
 
-# scripts/nix.sh mounts $HOME/.ssh into the container read-only, which is right
-# for every other consumer — they only read keys. nixos-anywhere writes: it
-# generates a throwaway keypair for the post-kexec reconnect and hands it to
-# ssh-copy-id, which wants a temp dir under ~/.ssh and dies with
-# "failed to create required temporary directory under ~/.ssh (HOME=/root)".
-#
-# So point HOME at a writable copy for the duration, rather than remounting the
-# real one rw for everything.
+# nix.sh mounts ~/.ssh read-only; nixos-anywhere needs to write there.
 "$repo/scripts/nix.sh" "
   set -eu
   export HOME=/tmp/nixos-anywhere-home

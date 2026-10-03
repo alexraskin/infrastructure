@@ -1,5 +1,4 @@
-# specialized .terraform-docs.yml for pre-commit
-formatter: "markdown" # this is required
+formatter: "markdown"
 
 version: "~> 0.20"
 

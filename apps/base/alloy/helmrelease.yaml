@@ -34,9 +34,7 @@ spec:
 
       configMap:
         content: |-
-          // Pod logs come from the Kubernetes API rather than by tailing files
-          // under /var/log/pods: no symlink-chasing, no CRI log-format parsing,
-          // and the chart's ClusterRole already grants pods/log.
+          // Pod logs via the Kubernetes API, not by tailing /var/log/pods.
           discovery.kubernetes "pods" {
             role = "pod"
           }
@@ -71,10 +69,7 @@ spec:
             forward_to = [loki.write.default.receiver]
           }
 
-          // No host-log source: Talos has no systemd and no /var/log/journal.
-          // Node-level logs are `talosctl logs <service>` and `talosctl dmesg`,
-          // or machine.logging.destinations pointing at a receiver that speaks
-          // Talos' json_lines — which nothing here does yet.
+          // No host logs: Talos has no journal. Use `talosctl logs`.
 
           loki.write "default" {
             endpoint {
