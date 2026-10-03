@@ -184,6 +184,10 @@ spec:
           user: grafana
           ssl_mode: require
 
+        # iframes in text panels: the ADS-B dashboard's heatmap and graphs1090
+        panels:
+          disable_sanitize_html: true
+
         analytics:
           reporting_enabled: false
           check_for_updates: false
