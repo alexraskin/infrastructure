@@ -87,7 +87,7 @@ resource "cloudflare_ruleset" "waf_ratelimit" {
     ref         = "per_ip_flood"
     description = "Per-IP flood control"
     action      = var.waf_rate_limit.action
-    expression = "not cf.client.bot"
+    expression  = "not cf.client.bot"
 
     ratelimit = {
       characteristics     = ["cf.colo.id", "ip.src"]
