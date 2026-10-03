@@ -119,7 +119,7 @@ spec:
             summary: "Guest {{ $labels.name }} restarted in the last 10m"
 
         - alert: PVEClusterVMMissing
-          expr: count(pve_guest_info{type="qemu"}) < 10
+          expr: count(pve_guest_info{type="qemu"}) < 9
           for: 15m
           labels:
             severity: critical
