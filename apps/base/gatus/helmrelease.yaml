@@ -255,6 +255,16 @@ spec:
           alerts:
             - type: discord
 
+        # Shares Prometheus' egress proxy in monitoring/ rather than a second one.
+        - name: "adsb (ultrafeeder)"
+          group: "ADS-B"
+          url: "http://adsb-egress.monitoring.svc.cluster.local:9274/metrics"
+          interval: 60s
+          ui: *hide-details
+          conditions: ["[STATUS] == 200"]
+          alerts:
+            - type: discord
+
         - name: "CoreDNS"
           group: "Platform"
           url: "10.96.0.10"
