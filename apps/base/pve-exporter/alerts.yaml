@@ -45,7 +45,7 @@ spec:
         - alert: PVEHostMemoryHigh
           expr: |
             pve_memory_usage_bytes{id=~"node/.*"}
-              / pve_memory_size_bytes{id=~"node/.*"} > 0.9
+              / pve_memory_size_bytes{id=~"node/.*"} > 0.95
           for: 15m
           labels:
             severity: warning
