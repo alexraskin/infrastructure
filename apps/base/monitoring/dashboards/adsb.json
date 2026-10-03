@@ -21,7 +21,7 @@
       }
     ]
   },
-  "description": "ADSB/UAT statistics from Ultrafeeder",
+  "description": "ADSB statistics from Ultrafeeder",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "gnetId": 18398,
@@ -1667,90 +1667,12 @@
       "type": "table"
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 69
-      },
-      "id": 50,
-      "panels": [],
-      "title": "UAT Performance Graphs",
-      "type": "row"
-    },
-    {
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 70
-      },
-      "id": 51,
-      "libraryPanel": {
-        "uid": "e5c01684-6e48-49d8-a8b2-9f8899a0d3d3",
-        "name": "Total UAT Aircraft"
-      }
-    },
-    {
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 70
-      },
-      "id": 52,
-      "libraryPanel": {
-        "uid": "be5fadf4-47d6-4944-b6a5-38438e1c3c62",
-        "name": "UAT Signal Strength (RSSI)"
-      }
-    },
-    {
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 78
-      },
-      "id": 53,
-      "libraryPanel": {
-        "uid": "de2f1a3b-0605-4b2c-8eff-9ccd1ac9c34e",
-        "name": "UAT Max Distance Polar Plot"
-      }
-    },
-    {
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 78
-      },
-      "id": 54,
-      "libraryPanel": {
-        "uid": "d0cdd767-8616-41ee-b71a-00e288da160e",
-        "name": "UAT Autogain Value"
-      }
-    },
-    {
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 86
-      },
-      "id": 57,
-      "libraryPanel": {
-        "uid": "e1af84b4-3fbb-4a9d-98fb-b4d488a6e414",
-        "name": "List of UAT Aircrafts"
-      }
-    },
-    {
       "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 96
+        "y": 69
       },
       "id": 49,
       "panels": [
@@ -1803,94 +1725,9 @@
           "pluginVersion": "9.5.2",
           "title": "Traffic Heatmap",
           "type": "text"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "description": "",
-          "gridPos": {
-            "h": 20,
-            "w": 24,
-            "x": 0,
-            "y": 119
-          },
-          "id": 55,
-          "libraryPanel": {
-            "description": "",
-            "folderId": 27,
-            "folderUid": "f21eb245-edd9-4ed4-97b5-cf06f81f955e",
-            "id": 17,
-            "kind": 1,
-            "meta": {
-              "connectedDashboards": 0,
-              "created": "2023-05-22T16:49:47.444233848Z",
-              "createdBy": {
-                "avatarUrl": "/gfna/avatar/46d229b033af06a191ff2267bca9ae56",
-                "id": 1,
-                "name": "admin"
-              },
-              "folderName": "templates",
-              "folderUid": "f21eb245-edd9-4ed4-97b5-cf06f81f955e",
-              "updated": "2023-05-22T16:49:47.44423392Z",
-              "updatedBy": {
-                "avatarUrl": "/gfna/avatar/46d229b033af06a191ff2267bca9ae56",
-                "id": 1,
-                "name": "admin"
-              }
-            },
-            "model": {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "description": "",
-              "gridPos": {
-                "h": 20,
-                "w": 24,
-                "x": 0,
-                "y": 111
-              },
-              "id": 55,
-              "libraryPanel": {
-                "name": "UAT Traffic",
-                "uid": ""
-              },
-              "options": {
-                "code": {
-                  "language": "html",
-                  "showLineNumbers": false,
-                  "showMiniMap": false
-                },
-                "content": "\n<!-- replace http://feeder_url:30980/skyaware978/ with the URL of your skyaware978 map -->\n<iframe src=\"http://feeder_url:30980/skyaware978/\" title=\"SkyAware978\" style=\"width:100%; height:100%; padding:0; margin:0; border:none;\"></iframe>",
-                "mode": "html"
-              },
-              "pluginVersion": "9.5.2",
-              "title": "UAT Traffic",
-              "type": "text"
-            },
-            "name": "UAT Traffic",
-            "orgId": 2,
-            "type": "text",
-            "uid": "aa6203e2-9e3a-49c7-9364-90cae089d675",
-            "version": 1
-          },
-          "options": {
-            "code": {
-              "language": "html",
-              "showLineNumbers": false,
-              "showMiniMap": false
-            },
-            "content": "\n<!-- replace http://feeder_url:30980/skyaware978/ with the URL of your skyaware978 map -->\n<iframe src=\"http://feeder_url:30980/skyaware978/\" title=\"SkyAware978\" style=\"width:100%; height:100%; padding:0; margin:0; border:none;\"></iframe>",
-            "mode": "html"
-          },
-          "pluginVersion": "9.5.2",
-          "title": "UAT Traffic",
-          "type": "text"
         }
       ],
-      "title": "ADSB/UAT Maps",
+      "title": "ADSB Maps",
       "type": "row"
     }
   ],
