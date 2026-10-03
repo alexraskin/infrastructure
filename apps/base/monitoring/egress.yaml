@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: adsb-egress
+  namespace: monitoring
+  annotations:
+    tailscale.com/tailnet-ip: "100.102.204.90"
+spec:
+  type: ExternalName
+  externalName: placeholder

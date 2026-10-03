@@ -106,6 +106,12 @@ spec:
               - targets: ["10.0.200.87:9001"]
                 labels:
                   instance: plex
+          - job_name: ultrafeeder
+            metrics_path: /metrics
+            static_configs:
+              - targets: ["adsb-egress.monitoring.svc.cluster.local:9274"]
+                labels:
+                  instance: adsb
 
         resources:
           requests:

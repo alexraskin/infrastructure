@@ -98,6 +98,12 @@
 			"dst": ["100.109.167.97"],
 			"ip":  ["tcp:443"],
 		},
+		// Prometheus scrapes the ADS-B feeder through apps/base/monitoring/egress.yaml.
+		{
+			"src": ["tag:k8s"],
+			"dst": ["100.102.204.90"],
+			"ip":  ["tcp:9274"],
+		},
 
 		// Reached by Service name rather than by whichever proxy replica is up.
 		// The Services themselves are created by the operator, not here: it
@@ -179,7 +185,7 @@
 			// Only what gatus probes, nothing else.
 			"src":    "tag:k8s",
 			"proto":  "tcp",
-			"accept": ["tag:cloud-edge:443", "100.109.167.97:443"],
+			"accept": ["tag:cloud-edge:443", "100.109.167.97:443", "100.102.204.90:9274"],
 			"deny": [
 				"100.73.219.120:32400",
 				"${cluster_vip}:6443",
