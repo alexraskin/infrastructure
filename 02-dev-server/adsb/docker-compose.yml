@@ -1,6 +1,6 @@
 services:
   ultrafeeder:
-    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:latest
+    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:telegraf
     container_name: ultrafeeder
     hostname: ultrafeeder
     restart: always
@@ -8,8 +8,11 @@ services:
       - 'c 189:* rwm'
     ports:
       - 8080:80
+      - 9273-9274:9273-9274
     environment:
       - TZ=America/Phoenix
+      - PROMETHEUS_ENABLE=true
+      - TAR1090_ENABLE_AC_DB=true
       - READSB_DEVICE_TYPE=rtlsdr
       - READSB_GAIN=autogain
       - READSB_LAT=

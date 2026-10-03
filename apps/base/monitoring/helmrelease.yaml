@@ -112,6 +112,9 @@ spec:
               - targets: ["adsb-egress.monitoring.svc.cluster.local:9274"]
                 labels:
                   instance: adsb
+              - targets: ["adsb-egress.monitoring.svc.cluster.local:9273"]
+                labels:
+                  instance: adsb-telegraf
 
         resources:
           requests:
