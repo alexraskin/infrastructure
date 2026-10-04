@@ -4,7 +4,7 @@ metadata:
   name: adsb-egress
   namespace: monitoring
   annotations:
-    tailscale.com/tailnet-ip: "100.102.204.90"
+    tailscale.com/tailnet-ip: "100.86.236.21"
 spec:
   type: ExternalName
   externalName: placeholder
