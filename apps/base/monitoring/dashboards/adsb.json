@@ -233,7 +233,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "readsb_local_noise{job=\"ultrafeeder\"}",
+          "expr": "readsb_stats_local_noise{job=\"ultrafeeder\"}",
           "hide": false,
           "legendFormat": "__auto",
           "range": true,
@@ -780,7 +780,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "max(readsb_messages{job=\"ultrafeeder\"})",
+          "expr": "max(readsb_stats_messages{job=\"ultrafeeder\"})",
           "legendFormat": "Messages Received",
           "range": true,
           "refId": "A"
@@ -791,7 +791,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "readsb_local_strong_signals{job=\"ultrafeeder\"}",
+          "expr": "readsb_stats_local_strong_signals{job=\"ultrafeeder\"}",
           "hide": false,
           "legendFormat": "Messages > 3dbFS",
           "range": true,
