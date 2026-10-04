@@ -1694,7 +1694,7 @@
               "showLineNumbers": false,
               "showMiniMap": false
             },
-            "content": "\n\n<iframe src=\"https://adsb.tail649c4.ts.net/graphs1090\" title=\"Stats\" style=\"width:100%; height:100%; padding:0; margin:0; border:none;\"></iframe>",
+            "content": "\n\n<iframe src=\"https://nixcosmo.tail649c4.ts.net/graphs1090\" title=\"Stats\" style=\"width:100%; height:100%; padding:0; margin:0; border:none;\"></iframe>",
             "mode": "html"
           },
           "pluginVersion": "9.5.2",
@@ -1719,7 +1719,7 @@
               "showLineNumbers": false,
               "showMiniMap": false
             },
-            "content": "\n\n<iframe src=\"https://adsb.tail649c4.ts.net/?heatmap&realheat&hideSidebar&hideButtons&centerReceiver&zoom=7\" title=\"Heat Map\" style=\"width:100%; height:100%; padding:0; margin:0; border:none;\"></iframe>",
+            "content": "\n\n<iframe src=\"https://nixcosmo.tail649c4.ts.net/?heatmap&realheat&hideSidebar&hideButtons&centerReceiver&zoom=7\" title=\"Heat Map\" style=\"width:100%; height:100%; padding:0; margin:0; border:none;\"></iframe>",
             "mode": "html"
           },
           "pluginVersion": "9.5.2",
