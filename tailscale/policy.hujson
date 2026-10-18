@@ -17,6 +17,13 @@
 			"users":  ["root"],
 		},
 
+		{
+			"action": "accept",
+			"src":    ["tag:muse"],
+			"dst":    ["tag:cloud-edge"],
+			"users":  ["root"],
+		},
+
 		// The deploy workflow. `accept`, not `check`: a check wants a human at a
 		// browser and would hang the runner until the job times out.
 		{
@@ -58,11 +65,24 @@
 		},
 	],
 
+	"hosts": {
+		"morpheus": "100.73.219.120",
+		"hhbox":    "100.92.78.17",
+		"nixcosmo": "100.86.236.21",
+		"chronos":  "100.109.167.97",
+	},
+
 	"grants": [
 		{
 			"src": ["autogroup:admin"],
 			"dst": ["*"],
 			"ip":  ["*"],
+		},
+		// muse is tagged so it falls outside autogroup:admin; this is all it gets.
+		{
+			"src": ["tag:muse"],
+			"dst": ["morpheus", "hhbox", "nixcosmo", "tag:cloud-edge"],
+			"ip":  ["tcp:22"],
 		},
 
 		{
@@ -128,6 +148,15 @@
 				"tailscale.com/cap/kubernetes": [{"impersonate": {"groups": ["system:masters"]}}],
 			},
 		},
+		// Read-only: the group is bound to `view` in apps/base/tailscale-operator/.
+		{
+			"src": ["tag:muse"],
+			"dst": ["tag:k8s-operator"],
+			"ip":  ["tcp:443"],
+			"app": {
+				"tailscale.com/cap/kubernetes": [{"impersonate": {"groups": ["tailnet:muse"]}}],
+			},
+		},
 	],
 
 	"tagOwners": {
@@ -143,6 +172,8 @@
 		"tag:k8s-router": ["tag:k8s-operator"],
 
 		"tag:cloud-edge": [],
+
+		"tag:muse": [],
 
 		// GitHub Actions, joining ephemerally with a tailnet-lock-signed auth key.
 		"tag:ci": [],
@@ -217,6 +248,24 @@
 				"tag:cloud-edge:443",
 			],
 		},
+		{
+			// muse gets SSH to four hosts and the operator's API proxy, nothing else.
+			"src":    "tag:muse",
+			"proto":  "tcp",
+			"accept": ["morpheus:22", "hhbox:22", "nixcosmo:22", "tag:cloud-edge:22", "tag:k8s-operator:443"],
+			"deny": [
+				"chronos:22",
+				"morpheus:32400",
+				"${cluster_vip}:6443",
+				"tag:cloud-edge:443",
+			],
+		},
+		{
+			// Admin devices still reach everything, SSH included.
+			"src":    "100.125.243.107",
+			"proto":  "tcp",
+			"accept": ["morpheus:22", "chronos:22", "morpheus:32400"],
+		},
 	],
 
 	// autogroup:self is user-owned devices only; a tagged node has no owner.
@@ -228,6 +277,11 @@
 		},
 		{
 			"src":    "tag:ci",
+			"dst":    ["tag:cloud-edge"],
+			"accept": ["root"],
+		},
+		{
+			"src":    "tag:muse",
 			"dst":    ["tag:cloud-edge"],
 			"accept": ["root"],
 		},

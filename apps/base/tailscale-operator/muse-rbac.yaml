@@ -1,0 +1,13 @@
+# The group muse is impersonated as by the API server proxy; see tailscale/policy.hujson.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tailnet-muse-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: tailnet:muse
