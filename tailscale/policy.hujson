@@ -11,15 +11,8 @@
 		},
 
 		{
-			"action": "accept",
+			"action": "check",
 			"src":    ["autogroup:admin"],
-			"dst":    ["tag:cloud-edge"],
-			"users":  ["root"],
-		},
-
-		{
-			"action": "accept",
-			"src":    ["tag:muse"],
 			"dst":    ["tag:cloud-edge"],
 			"users":  ["root"],
 		},
@@ -81,7 +74,7 @@
 		// muse is tagged so it falls outside autogroup:admin; this is all it gets.
 		{
 			"src": ["tag:muse"],
-			"dst": ["morpheus", "hhbox", "nixcosmo", "tag:cloud-edge"],
+			"dst": ["morpheus", "hhbox", "nixcosmo"],
 			"ip":  ["tcp:22"],
 		},
 
@@ -249,12 +242,13 @@
 			],
 		},
 		{
-			// muse gets SSH to four hosts and the operator's API proxy, nothing else.
+			// muse gets SSH to three hosts and the operator's API proxy, nothing else.
 			"src":    "tag:muse",
 			"proto":  "tcp",
-			"accept": ["morpheus:22", "hhbox:22", "nixcosmo:22", "tag:cloud-edge:22", "tag:k8s-operator:443"],
+			"accept": ["morpheus:22", "hhbox:22", "nixcosmo:22", "tag:k8s-operator:443"],
 			"deny": [
 				"chronos:22",
+				"tag:cloud-edge:22",
 				"morpheus:32400",
 				"${cluster_vip}:6443",
 				"tag:cloud-edge:443",
@@ -281,9 +275,9 @@
 			"accept": ["root"],
 		},
 		{
-			"src":    "tag:muse",
-			"dst":    ["tag:cloud-edge"],
-			"accept": ["root"],
+			"src":  "tag:muse",
+			"dst":  ["tag:cloud-edge"],
+			"deny": ["root", "autogroup:nonroot"],
 		},
 	],
 }
