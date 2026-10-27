@@ -28,6 +28,9 @@ in
     extraSetFlags = flags;
   };
 
+  # Refuses SSH -L/-R (TCP and unix socket) and agent forwarding, whatever the policy grants.
+  systemd.services.tailscaled.environment.TS_SSH_DISABLE_FORWARDING = "1";
+
   networking.firewall.extraForwardRules = ''
     iifname "tailscale0" accept
   '';
