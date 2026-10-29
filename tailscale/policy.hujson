@@ -25,17 +25,6 @@
 			"dst":    ["tag:cloud-edge"],
 			"users":  ["root"],
 		},
-
-		// Muse agent. `accept`, not `check`, for the same reason as above:
-		// a check would hang a non-interactive login. Tagged nodes fall
-		// outside autogroup:member, so muse needs its own rule. Nonroot
-		// only, no root access.
-		{
-			"action": "accept",
-			"src":    ["tag:muse"],
-			"dst":    ["morpheus", "hhbox", "nixcosmo"],
-			"users":  ["autogroup:nonroot"],
-		},
 	],
 
 	"nodeAttrs": [
