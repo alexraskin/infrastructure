@@ -25,6 +25,28 @@
 			"dst":    ["tag:cloud-edge"],
 			"users":  ["root"],
 		},
+
+		// Muse agent over Tailscale SSH. `accept`, not `check`: a tag source
+		// has no human identity to re-verify, and a check would hang a
+		// non-interactive login. Destination must be a tag, not a host
+		// alias — host aliases are rejected by ACL validation in ssh rules.
+		// Nonroot only, no root access.
+		{
+			"action": "accept",
+			"src":    ["tag:muse"],
+			"dst":    ["tag:server"],
+			"users":  ["autogroup:nonroot"],
+		},
+
+		// Admin access to the same tagged hosts. Tagging a host removes
+		// its user identity, so autogroup:self no longer matches it; this
+		// preserves admin Tailscale SSH to those hosts.
+		{
+			"action": "check",
+			"src":    ["autogroup:admin"],
+			"dst":    ["tag:server"],
+			"users":  ["autogroup:nonroot", "root"],
+		},
 	],
 
 	"nodeAttrs": [
@@ -165,6 +187,8 @@
 		"tag:k8s-router": ["tag:k8s-operator"],
 
 		"tag:cloud-edge": [],
+
+		"tag:server": [],
 
 		"tag:muse": [],
 
