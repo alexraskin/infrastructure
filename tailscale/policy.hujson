@@ -133,6 +133,18 @@
 			"dst": ["100.109.167.97"],
 			"ip":  ["tcp:443"],
 		},
+
+		// NFS for Plex on morpheus. Morpheus is tag:server; tagging it
+		// removed the autogroup:admin coverage it had as a user-owned
+		// device, so without this grant it cannot reconnect to
+		// chronos:2049 and its hard NFS mounts block indefinitely.
+		// tcp:2049 only: NFSv4 carries mount and data on one port.
+		// chronos back to morpheus is covered by autogroup:admin above.
+		{
+			"src": ["tag:server"],
+			"dst": ["chronos"],
+			"ip":  ["tcp:2049"],
+		},
 		// Prometheus scrapes the ADS-B feeder through apps/base/monitoring/egress.yaml.
 		{
 			"src": ["tag:k8s"],
@@ -245,6 +257,17 @@
 				"${cluster_vip}:6443",
 				"tag:cloud-edge:22",
 				"100.109.167.97:5001",
+			],
+		},
+		{
+			// The tagged servers reach only the NFS export on chronos.
+			"src":    "tag:server",
+			"proto":  "tcp",
+			"accept": ["chronos:2049"],
+			"deny": [
+				"chronos:22",
+				"chronos:445",
+				"chronos:5001",
 			],
 		},
 		{
