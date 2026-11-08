@@ -340,6 +340,14 @@ spec:
           group: "Apps"
           url: "http://10.0.200.87:32400/identity"
           interval: 60s
+          # Plex is stopped for about 10 minutes by plex-backup.timer on
+          # morpheus (03:00 America/Denver, day-of-month 1/4). Gatus
+          # maintenance windows only support weekdays, so this runs daily;
+          # failure-threshold 15 covers a backup that overruns the window.
+          maintenance-windows:
+            - start: "02:55"
+              duration: 25m
+              timezone: "America/Denver"
           ui: *hide-details
           conditions:
             - "[STATUS] == 200"
@@ -347,3 +355,4 @@ spec:
             - "[RESPONSE_TIME] < 2000"
           alerts:
             - type: discord
+              failure-threshold: 15
