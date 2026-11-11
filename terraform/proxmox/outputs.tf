@@ -35,7 +35,7 @@ output "talos_image" {
     schematic_id = talos_image_factory_schematic.this.id
     extensions   = local.cluster.extensions
     installer    = local.install_image
-    iso          = proxmox_virtual_environment_download_file.talos_iso.id
+    iso          = proxmox_download_file.talos_iso.id
   }
 }
 
@@ -78,9 +78,9 @@ output "pve_exporter" {
   value = {
     host       = split("/", var.pve_bridge_address)[0]
     user       = proxmox_virtual_environment_user.metrics_exporter.user_id
-    token_name = proxmox_virtual_environment_user_token.metrics_exporter.token_name
+    token_name = proxmox_user_token.metrics_exporter.token_name
     # The provider returns "<user>!<token>=<secret>"; the exporter wants the secret alone.
-    token_value = try(split("=", proxmox_virtual_environment_user_token.metrics_exporter.value)[1], null)
+    token_value = try(split("=", proxmox_user_token.metrics_exporter.value)[1], null)
   }
   sensitive = true
 }

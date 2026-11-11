@@ -27,19 +27,20 @@ No modules.
 
 | Name | Type |
 |------|------|
+| [proxmox_acl.metrics_exporter](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acl) | resource |
 | [proxmox_acme_certificate.host](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acme_certificate) | resource |
 | [proxmox_acme_dns_plugin.cloudflare](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acme_dns_plugin) | resource |
 | [proxmox_apt_standard_repository.no_subscription](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/apt_standard_repository) | resource |
 | [proxmox_backup_job.cluster](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/backup_job) | resource |
+| [proxmox_download_file.debian_lxc](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/download_file) | resource |
+| [proxmox_download_file.talos_iso](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/download_file) | resource |
 | [proxmox_network_linux_bridge.vmbr0](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/network_linux_bridge) | resource |
 | [proxmox_storage_directory.local](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/storage_directory) | resource |
 | [proxmox_storage_lvmthin.local_lvm](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/storage_lvmthin) | resource |
 | [proxmox_storage_nfs.nas](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/storage_nfs) | resource |
+| [proxmox_user_token.metrics_exporter](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/user_token) | resource |
 | [proxmox_virtual_environment_container.nfs](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_container) | resource |
-| [proxmox_virtual_environment_download_file.debian_lxc](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_download_file) | resource |
-| [proxmox_virtual_environment_download_file.talos_iso](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_download_file) | resource |
 | [proxmox_virtual_environment_user.metrics_exporter](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_user) | resource |
-| [proxmox_virtual_environment_user_token.metrics_exporter](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_user_token) | resource |
 | [proxmox_virtual_environment_vm.node](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_vm) | resource |
 | [talos_cluster_kubeconfig.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/cluster_kubeconfig) | resource |
 | [talos_image_factory_schematic.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/image_factory_schematic) | resource |

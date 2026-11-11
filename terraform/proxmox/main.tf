@@ -58,7 +58,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   cdrom {
-    file_id = proxmox_virtual_environment_download_file.talos_iso.id
+    file_id = proxmox_download_file.talos_iso.id
   }
 
   boot_order = ["scsi0", "ide3"]
@@ -77,7 +77,7 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   lifecycle {
     replace_triggered_by = [
-      proxmox_virtual_environment_download_file.talos_iso.id,
+      proxmox_download_file.talos_iso.id,
     ]
   }
 }

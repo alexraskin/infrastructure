@@ -6,7 +6,7 @@ locals {
   cluster_subnet = "${cidrhost("${local.cluster.gateway}/${local.cluster.prefix}", 0)}/${local.cluster.prefix}"
 }
 
-resource "proxmox_virtual_environment_download_file" "debian_lxc" {
+resource "proxmox_download_file" "debian_lxc" {
   content_type = "vztmpl"
   datastore_id = var.image_datastore
   node_name    = var.pve_node
@@ -72,7 +72,7 @@ resource "proxmox_virtual_environment_container" "nfs" {
   }
 
   operating_system {
-    template_file_id = proxmox_virtual_environment_download_file.debian_lxc.id
+    template_file_id = proxmox_download_file.debian_lxc.id
     type             = "debian"
   }
 
@@ -95,4 +95,9 @@ resource "proxmox_virtual_environment_container" "nfs" {
       features,
     ]
   }
+}
+
+moved {
+  from = proxmox_virtual_environment_download_file.debian_lxc
+  to   = proxmox_download_file.debian_lxc
 }

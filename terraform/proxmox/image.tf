@@ -15,7 +15,7 @@ data "talos_image_factory_urls" "this" {
   architecture  = "amd64"
 }
 
-resource "proxmox_virtual_environment_download_file" "talos_iso" {
+resource "proxmox_download_file" "talos_iso" {
   content_type = "iso"
   datastore_id = var.image_datastore
   node_name    = var.pve_node
@@ -24,4 +24,9 @@ resource "proxmox_virtual_environment_download_file" "talos_iso" {
   file_name = "talos-${local.cluster.talos_version}-${substr(talos_image_factory_schematic.this.id, 0, 8)}.iso"
 
   overwrite = false
+}
+
+moved {
+  from = proxmox_virtual_environment_download_file.talos_iso
+  to   = proxmox_download_file.talos_iso
 }
