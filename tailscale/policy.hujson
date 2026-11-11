@@ -133,6 +133,11 @@
 			"dst": ["100.109.167.97"],
 			"ip":  ["tcp:443"],
 		},
+		{
+			"src": ["tag:k8s"],
+			"dst": ["hhbox"],
+			"ip":  ["tcp:22"],
+		},
 
 		// NFS for Plex on morpheus. Morpheus is tag:server; tagging it
 		// removed the autogroup:admin coverage it had as a user-owned
@@ -251,7 +256,7 @@
 			// The operator's proxies reach only what gatus probes.
 			"src":    "tag:k8s",
 			"proto":  "tcp",
-			"accept": ["tag:cloud-edge:443", "100.109.167.97:443", "100.86.236.21:9273", "100.86.236.21:9274"],
+			"accept": ["tag:cloud-edge:443", "100.109.167.97:443", "100.86.236.21:9273", "100.86.236.21:9274", "hhbox:22"],
 			"deny": [
 				"100.73.219.120:32400",
 				"${cluster_vip}:6443",

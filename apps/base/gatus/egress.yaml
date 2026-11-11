@@ -19,3 +19,14 @@ metadata:
 spec:
   type: ExternalName
   externalName: placeholder
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hhbox-egress
+  namespace: gatus
+  annotations:
+    tailscale.com/tailnet-ip: "100.92.78.17"
+spec:
+  type: ExternalName
+  externalName: placeholder

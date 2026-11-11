@@ -255,6 +255,15 @@ spec:
           alerts:
             - type: discord
 
+        - name: "hhbox"
+          group: "Hosts"
+          url: "tcp://hhbox-egress.gatus.svc.cluster.local:22"
+          interval: 60s
+          ui: *hide-details
+          conditions: ["[CONNECTED] == true"]
+          alerts:
+            - type: discord
+
         # Shares Prometheus' egress proxy in monitoring/ rather than a second one.
         - name: "adsb (ultrafeeder)"
           group: "ADS-B"
