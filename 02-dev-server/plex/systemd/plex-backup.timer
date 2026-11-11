@@ -1,0 +1,10 @@
+[Unit]
+Description=Plex Backup Timer
+Requires=plex-backup.service
+
+[Timer]
+OnCalendar=*-*-1/4 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

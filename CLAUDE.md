@@ -26,7 +26,7 @@ Flux deploys everything in `apps/`.
 | `scripts/` | `tf.sh` (every root's terraform), preflight, the NFS and nix helpers |
 | `docs/` | runbooks (PVE 8→9, CNPG backups, the R2→OCI state move, the SOPS layout, the WAF) |
 | `secrets/` | gitignored — `talosconfig`, `age.key` (both identities), `kubeconfig` fodder |
-| `01-pve/plex/` | a docker-compose stack, not deployed anywhere right now — Plex runs on the workstation, and Docker is deliberately off the PVE host |
+| `02-dev-server/plex/` | a docker-compose stack, not deployed anywhere right now — Plex runs on the workstation, and Docker is deliberately off the PVE host |
 
 ## Commands
 

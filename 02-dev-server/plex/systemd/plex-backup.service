@@ -1,0 +1,15 @@
+[Unit]
+Description=Plex Backup Service
+After=docker.service mnt-plex_backup.mount
+Requires=docker.service mnt-plex_backup.mount
+
+[Service]
+Type=oneshot
+EnvironmentFile=__REPO_DIR__/.env
+ExecStart=__REPO_DIR__/bin/plex_backup.sh
+User=root
+StandardOutput=append:/mnt/plex_backup/backup.log
+StandardError=append:/mnt/plex_backup/backup.log
+
+[Install]
+WantedBy=multi-user.target
