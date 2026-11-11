@@ -38,6 +38,9 @@ resource "proxmox_virtual_environment_vm" "node" {
     discard      = "on"
     ssd          = true
     iothread     = true
+    # Control plane disks hold etcd: unsafe keeps its fsync off the
+    # slow flush path of the single host NVMe (applied live 2026-11-08; writeback tried first, did not stop the stalls).
+    cache = each.value.role == "controlplane" ? "unsafe" : "none"
   }
 
   dynamic "disk" {
