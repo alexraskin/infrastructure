@@ -9,6 +9,8 @@ BACKUP_DIR="${BACKUP_DIR:-/mnt/plex_backup}"
 PLEX_CONTAINER="${PLEX_CONTAINER:-plex}"
 PLEX_DATA_PATH="${PLEX_DATA_PATH:-/var/lib/plexmediaserver}"
 DISCORD_WEBHOOK_URL="${DISCORD_WEBHOOK_URL:-}"
+PLEX_SERVER="${PLEX_SERVER:-http://localhost:32400}"
+PLEX_TOKEN="${PLEX_TOKEN:-}"
 
 log_msg() {
     echo "$(date '+%Y-%b-%d at %H:%M:%S') :: $1" | tee -a "$LOG_FILE"

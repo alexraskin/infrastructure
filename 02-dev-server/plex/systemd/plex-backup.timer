@@ -3,7 +3,7 @@ Description=Plex Backup Timer
 Requires=plex-backup.service
 
 [Timer]
-OnCalendar=*-*-1/4 03:00:00
+OnCalendar=*-*-1/4 22:00:00 America/Denver
 Persistent=true
 
 [Install]

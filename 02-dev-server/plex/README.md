@@ -7,10 +7,10 @@ Everything needed to run and maintain a Plex Media Server on a fresh Debian/Ubun
 | Component | Purpose |
 |---|---|
 | `docker-compose.yaml` | Plex container + Prometheus exporter |
-| `bin/plex_backup.sh` | Stops Plex, tars config (excluding cache) to NFS, restarts Plex |
+| `bin/plex_backup.sh` | Waits for active Plex sessions to end, stops Plex, tars config (excluding cache) to NFS, restarts Plex |
 | `bin/cleanup_plex_backups.sh` | Rotates backups, keeps the latest N |
 | `bin/restore_plex_backup.sh` | Interactive restore from any backup |
-| `systemd/plex-backup.*` | Timer + service for 03:00 backup, every 4th day |
+| `systemd/plex-backup.*` | Timer + service for 22:00 America/Denver backup (06:00 Berlin), every 4th day |
 | `systemd/plex-cleanup.*` | Timer + service for 04:00 cleanup, every 4th day |
 
 Discord webhook notifications on every backup/cleanup success or failure.

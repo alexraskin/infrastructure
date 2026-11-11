@@ -40,7 +40,7 @@ sudo systemctl daemon-reload
 
 ### Backup flow (`bin/plex_backup.sh`)
 
-Verifies `BACKUP_DIR` is a live mountpoint → `docker stop plex` → `tar cz --exclude=Cache` of `Plex Media Server` dir → `docker start plex`. An `EXIT` trap guarantees Plex restarts even on failure. Backups named `buplex-<date>.tar.gz`.
+Verifies `BACKUP_DIR` is a live mountpoint → waits for active Plex sessions to end (`wait_for_plex_idle`: polls `/status/sessions` every 5 minutes, up to 120 minutes, then proceeds anyway; proceeds with a warning if the check cannot run) → `docker stop plex` → `tar cz --exclude=Cache` of `Plex Media Server` dir → `docker start plex`. An `EXIT` trap guarantees Plex restarts even on failure. Backups named `buplex-<date>.tar.gz`.
 
 ### Cleanup (`bin/cleanup_plex_backups.sh`)
 
@@ -56,4 +56,4 @@ All runtime config is in `.env` (gitignored; see `.env.example`). Both the scrip
 
 ## Schedule
 
-Backup and cleanup run on systemd timers (`OnCalendar`, `Persistent=true`) — cleanup offset one hour after backup so it follows each run. Change cadence by editing both `systemd/plex-backup.timer` and `systemd/plex-cleanup.timer`, then re-applying (see above).
+Backup and cleanup run on systemd timers (`OnCalendar`, `Persistent=true`) on the same day-of-month 1/4 cadence. Backup runs at 22:00 `America/Denver` (06:00 Berlin, chosen so it does not stop Plex during German viewing hours; the timezone is explicit in the unit because the host local time is US/Arizona). The session wait can push the actual stop up to 2 hours later. Cleanup runs at 04:00 host local time and does not stop Plex, so its time does not affect viewers. Change cadence by editing both `systemd/plex-backup.timer` and `systemd/plex-cleanup.timer`, then re-applying (see above). Note: with `Persistent=true`, restarting a timer whose new schedule has a slot in the past fires a catch-up run immediately.
