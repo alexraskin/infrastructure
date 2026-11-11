@@ -341,11 +341,13 @@ spec:
           url: "http://10.0.200.87:32400/identity"
           interval: 60s
           # Plex is stopped for about 10 minutes by plex-backup.timer on
-          # morpheus (03:00 America/Denver, day-of-month 1/4). Gatus
-          # maintenance windows only support weekdays, so this runs daily;
-          # failure-threshold 15 covers a backup that overruns the window.
+          # morpheus (22:00 America/Denver, day-of-month 1/4). The backup
+          # waits for active Plex sessions to end first, so the stop can
+          # start later than 22:00. Gatus maintenance windows only support
+          # weekdays, so this runs daily; failure-threshold 15 covers a
+          # backup that overruns the window or is deferred by sessions.
           maintenance-windows:
-            - start: "02:55"
+            - start: "21:55"
               duration: 25m
               timezone: "America/Denver"
           ui: *hide-details
