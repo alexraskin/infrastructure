@@ -163,7 +163,7 @@
 		// tailscale_service resource cannot write.
 		{
 			"src": ["autogroup:member"],
-			"dst": ["svc:status", "svc:grafana", "svc:hubble", "svc:alexraskin-staging"],
+			"dst": ["svc:status", "svc:grafana", "svc:hubble"],
 			"ip":  ["tcp:443"],
 		},
 
@@ -228,9 +228,6 @@
 			"svc:grafana": ["tag:k8s"],
 			"svc:hubble":  ["tag:k8s"],
 			"svc:loki":    ["tag:k8s"],
-
-			// apps/base/alexraskin-com-staging/ingress.yaml
-			"svc:alexraskin-staging": ["tag:k8s"],
 		},
 	},
 

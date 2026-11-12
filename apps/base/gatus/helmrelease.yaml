@@ -326,16 +326,6 @@ spec:
             - "[STATUS] == 200"
           alerts: *rollout-alert
 
-        - name: "alexraskin.com (origin)"
-          group: "Apps"
-          url: "http://alexraskin-com.web.svc.cluster.local/ping"
-          interval: 60s
-          ui: *hide-details
-          conditions:
-            - "[STATUS] == 200"
-            - "[RESPONSE_TIME] < 2000"
-          alerts: *rollout-alert
-
         - name: "lastfm-now-playing (origin)"
           group: "Apps"
           url: "http://lastfm-now-playing.lastfm.svc.cluster.local/ping"

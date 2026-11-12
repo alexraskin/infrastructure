@@ -9,14 +9,6 @@ zones = {
 
 ingress = [
   {
-    hostname = "alexraskin.com"
-    service  = "http://alexraskin-com.web.svc.cluster.local:80"
-  },
-  {
-    hostname = "www.alexraskin.com"
-    service  = "http://alexraskin-com.web.svc.cluster.local:80"
-  },
-  {
     hostname = "lastfm.alexraskin.com"
     service  = "http://lastfm-now-playing.lastfm.svc.cluster.local:80"
   },
