@@ -58,6 +58,12 @@ variable "waf_extra_hosts" {
   default     = []
 }
 
+variable "waf_mcp_hosts" {
+  description = "Hostnames whose /mcp path skips every custom WAF rule, so MCP clients (no browser, no challenge) get through."
+  type        = list(string)
+  default     = ["pager.alexraskin.com", "tree.alexraskin.com"]
+}
+
 variable "waf_blocked_paths" {
   description = "Path substrings that get a 403. Matched against lower(path); the Free plan has no regex."
   type        = list(string)

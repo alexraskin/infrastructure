@@ -20,6 +20,16 @@ locals {
     length(var.waf_blocked_user_agents) > 0 ? "(${local.waf_scraper_agents})" : "",
   ]))
 
+  # Skip rules only skip what comes after them, so this one goes first.
+  waf_mcp_rule = {
+    ref               = "allow_mcp"
+    description       = "allow mcp"
+    action            = "skip"
+    expression        = join(" or ", [for h in var.waf_mcp_hosts : "(http.host eq ${jsonencode(h)} and http.request.uri.path eq \"/mcp\")"])
+    action_parameters = { ruleset = "current" }
+    enabled           = true
+  }
+
   waf_adopted_rules = [
     {
       ref               = "verified_bots"
@@ -27,16 +37,18 @@ locals {
       action            = "managed_challenge"
       expression        = "(cf.client.bot)"
       action_parameters = null
+      enabled           = false
     },
   ]
 
-  waf_custom_rules = concat(local.waf_adopted_rules, [
+  waf_custom_rules = concat(length(var.waf_mcp_hosts) > 0 ? [local.waf_mcp_rule] : [], local.waf_adopted_rules, [
     {
       ref               = "block_junk"
       description       = "Probe paths, and scrapers that ignore robots.txt"
       action            = "block"
       expression        = local.waf_junk_expression
       action_parameters = null
+      enabled           = true
     },
     {
       ref               = "read_only_hosts"
@@ -44,6 +56,7 @@ locals {
       action            = "block"
       expression        = local.waf_write_methods
       action_parameters = null
+      enabled           = true
     },
     {
       ref               = "no_user_agent"
@@ -51,6 +64,7 @@ locals {
       action            = "managed_challenge"
       expression        = "(http.user_agent eq \"\") and not cf.client.bot"
       action_parameters = null
+      enabled           = true
     },
   ])
 }
