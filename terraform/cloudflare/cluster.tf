@@ -1,16 +1,10 @@
 data "terraform_remote_state" "proxmox" {
-  backend = "oci"
+  backend = "s3"
 
   config = {
-    auth             = "APIKey"
-    bucket           = "infrastructure-terraform-state"
-    key              = "talos-proxmox/terraform.tfstate"
-    namespace        = var.backend_namespace
-    region           = var.backend_region
-    tenancy_ocid     = var.backend_tenancy_ocid
-    user_ocid        = var.backend_user_ocid
-    fingerprint      = var.backend_fingerprint
-    private_key_path = var.backend_private_key_path
+    bucket = "alexraskin-tfstate"
+    key    = "infrastructure/proxmox/terraform.tfstate"
+    region = "us-east-1"
   }
 }
 

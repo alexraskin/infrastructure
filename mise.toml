@@ -18,6 +18,7 @@ KUBECONFIG = "{{config_root}}/kubeconfig"
 TALOSCONFIG = "{{config_root}}/secrets/talosconfig"
 CILIUM_VERSION = "1.20.0"
 
+# The OCI provider in the oracle root, not state: that is in S3 now.
 OCI_SDK_DEFAULT_RETRY_ENABLED = "true"
 
 [tasks.preflight]
@@ -29,7 +30,7 @@ description = "regenerate the README of every terraform root (CI checks these ar
 shell = "bash -c"
 run = """
 set -euo pipefail
-for d in $(scripts/tf.sh roots); do
+for d in $(scripts/tf.sh roots) modules/github-oidc-role; do
   terraform-docs -c .pre-commit-config.tfdocs.yml "$d"
 done
 """
@@ -52,40 +53,20 @@ exit $rc
 # Every root goes through scripts/tf.sh.
 
 [tasks."global:init"]
-description = "terraform init for the state-bucket root"
+description = "terraform init for the CI-roles root"
 run = "scripts/tf.sh global init"
 
 [tasks."global:plan"]
-description = "Plan the state bucket and the terraform-ci user"
+description = "Plan the GitHub OIDC roles CI assumes for state access"
 run = "scripts/tf.sh global plan"
 
 [tasks."global:apply"]
-description = "Apply the state bucket and the terraform-ci user"
+description = "Apply the GitHub OIDC roles CI assumes for state access"
 run = "scripts/tf.sh global apply"
 
-[tasks."global:backend"]
-description = "Print the bucket, namespace and region every backend block resolves against"
-shell = "bash -c"
-run = """
-set -euo pipefail
-echo "bucket:    $(scripts/tf.sh global output -raw bucket)"
-echo "namespace: $(scripts/tf.sh global output -raw namespace)"
-echo "region:    $(scripts/tf.sh global output -raw region)"
-"""
-
-[tasks."global:ci-creds"]
-description = "Print the terraform-ci credentials, in the shape secrets.sops.yaml wants"
-shell = "bash -c"
-run = """
-set -euo pipefail
-echo "backend_tenancy_ocid: $(scripts/tf.sh global output -raw tenancy_ocid)"
-echo "backend_user_ocid: $(scripts/tf.sh global output -raw ci_user_ocid)"
-echo "backend_fingerprint: $(scripts/tf.sh global output -raw ci_fingerprint)"
-echo "backend_namespace: $(scripts/tf.sh global output -raw namespace)"
-echo "backend_region: $(scripts/tf.sh global output -raw region)"
-echo "backend_private_key: |"
-scripts/tf.sh global output -raw ci_private_key | sed 's/^/  /'
-"""
+[tasks."global:roles"]
+description = "Print the AWS_ROLE_ARN each GitHub environment wants"
+run = "scripts/tf.sh global output -json ci_role_arns"
 
 [tasks."proxmox:init"]
 description = "terraform init, re-resolving providers"

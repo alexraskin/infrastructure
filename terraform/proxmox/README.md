@@ -14,10 +14,10 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_proxmox"></a> [proxmox](#provider\_proxmox) | 0.111.1 |
+| <a name="provider_proxmox"></a> [proxmox](#provider\_proxmox) | 0.122.0 |
 | <a name="provider_sops"></a> [sops](#provider\_sops) | 1.4.1 |
-| <a name="provider_talos"></a> [talos](#provider\_talos) | 0.11.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
+| <a name="provider_talos"></a> [talos](#provider\_talos) | 0.12.0 |
+| <a name="provider_time"></a> [time](#provider\_time) | 0.14.2 |
 
 ## Modules
 

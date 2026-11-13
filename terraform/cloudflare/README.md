@@ -15,7 +15,7 @@ they are shaped around, and why a grey-cloud record is outside them.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_cloudflare"></a> [cloudflare](#provider\_cloudflare) | 5.23.0 |
+| <a name="provider_cloudflare"></a> [cloudflare](#provider\_cloudflare) | 5.29.0 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
@@ -40,12 +40,6 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | Cloudflare account ID that owns the tunnel | `string` | n/a | yes |
-| <a name="input_backend_fingerprint"></a> [backend\_fingerprint](#input\_backend\_fingerprint) | Fingerprint of that user's API signing key | `string` | n/a | yes |
-| <a name="input_backend_namespace"></a> [backend\_namespace](#input\_backend\_namespace) | Object Storage namespace holding the state bucket | `string` | n/a | yes |
-| <a name="input_backend_private_key_path"></a> [backend\_private\_key\_path](#input\_backend\_private\_key\_path) | Where scripts/tf.sh decrypted that signing key | `string` | n/a | yes |
-| <a name="input_backend_region"></a> [backend\_region](#input\_backend\_region) | Region the state bucket lives in | `string` | n/a | yes |
-| <a name="input_backend_tenancy_ocid"></a> [backend\_tenancy\_ocid](#input\_backend\_tenancy\_ocid) | Tenancy the state credentials belong to | `string` | n/a | yes |
-| <a name="input_backend_user_ocid"></a> [backend\_user\_ocid](#input\_backend\_user\_ocid) | User the state credentials belong to | `string` | n/a | yes |
 | <a name="input_catch_all_service"></a> [catch\_all\_service](#input\_catch\_all\_service) | What the tunnel answers with for a hostname no rule matched. | `string` | `"http_status:404"` | no |
 | <a name="input_cluster_dns_records"></a> [cluster\_dns\_records](#input\_cluster\_dns\_records) | n/a | <pre>map(object({<br/>    zone    = string<br/>    name    = string<br/>    source  = string<br/>    ttl     = optional(number, 1)<br/>    comment = optional(string, "terraform: cluster address")<br/>  }))</pre> | `{}` | no |
 | <a name="input_ingress"></a> [ingress](#input\_ingress) | n/a | <pre>list(object({<br/>    hostname = string<br/>    service  = string<br/>    path     = optional(string)<br/>  }))</pre> | n/a | yes |
@@ -55,6 +49,7 @@ No modules.
 | <a name="input_waf_blocked_user_agents"></a> [waf\_blocked\_user\_agents](#input\_waf\_blocked\_user\_agents) | User-Agent substrings that get a 403. Matched against lower(user\_agent). | `list(string)` | <pre>[<br/>  "ahrefsbot",<br/>  "amazonbot",<br/>  "bytespider",<br/>  "ccbot",<br/>  "dataforseobot",<br/>  "dotbot",<br/>  "gptbot",<br/>  "imagesiftbot",<br/>  "mj12bot",<br/>  "petalbot",<br/>  "semrushbot"<br/>]</pre> | no |
 | <a name="input_waf_enabled"></a> [waf\_enabled](#input\_waf\_enabled) | Whether to manage the WAF rulesets of every zone in var.zones. | `bool` | `true` | no |
 | <a name="input_waf_extra_hosts"></a> [waf\_extra\_hosts](#input\_waf\_extra\_hosts) | Hostnames the read-only rule covers beyond the tunnel's own. Only a proxied hostname ever reaches the WAF. | `list(string)` | `[]` | no |
+| <a name="input_waf_mcp_hosts"></a> [waf\_mcp\_hosts](#input\_waf\_mcp\_hosts) | Hostnames whose /mcp path skips every custom WAF rule, so MCP clients (no browser, no challenge) get through. | `list(string)` | <pre>[<br/>  "pager.alexraskin.com",<br/>  "tree.alexraskin.com"<br/>]</pre> | no |
 | <a name="input_waf_rate_limit"></a> [waf\_rate\_limit](#input\_waf\_rate\_limit) | Per-IP flood control. The Free plan fixes the period and the mitigation timeout at 10s, allows one rule, and takes no action other than block. | <pre>object({<br/>    enabled             = optional(bool, true)<br/>    requests_per_period = optional(number, 100)<br/>    action              = optional(string, "block")<br/>  })</pre> | `{}` | no |
 | <a name="input_zones"></a> [zones](#input\_zones) | Zone name -> zone ID. Every ingress hostname must fall under one of these. | `map(string)` | n/a | yes |
 
