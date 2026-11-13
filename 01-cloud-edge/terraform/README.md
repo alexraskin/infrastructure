@@ -12,7 +12,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_cloudflare"></a> [cloudflare](#provider\_cloudflare) | 5.29.0 |
+| <a name="provider_cloudflare"></a> [cloudflare](#provider\_cloudflare) | 5.23.0 |
 | <a name="provider_oci"></a> [oci](#provider\_oci) | 6.37.0 |
 | <a name="provider_sops"></a> [sops](#provider\_sops) | 1.4.1 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |

@@ -10,7 +10,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_tailscale"></a> [tailscale](#provider\_tailscale) | 0.29.3 |
+| <a name="provider_tailscale"></a> [tailscale](#provider\_tailscale) | 0.29.2 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
