@@ -19,3 +19,16 @@ provider "aws" {
     }
   }
 }
+
+# Identity Center lives in us-west-2.
+provider "aws" {
+  alias  = "sso"
+  region = "us-west-2"
+
+  default_tags {
+    tags = {
+      ManagedBy = "terraform"
+      Project   = "infrastructure"
+    }
+  }
+}

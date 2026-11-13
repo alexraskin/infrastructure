@@ -10,6 +10,7 @@ locals {
   secrets = {
     global = {
       budget_email = "Where the account budget alerts go"
+      sso_email    = "Email on the Identity Center user"
     }
     oci = {
       tenancy_ocid     = "OCI tenancy, for the oracle and edge roots"

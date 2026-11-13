@@ -14,7 +14,7 @@ Flux deploys everything in `apps/`.
 
 | path | owns |
 | --- | --- |
-| `00-global/` | the AWS roles CI assumes over GitHub OIDC, one per GitHub environment, and the SSM parameters every root reads its secrets from |
+| `00-global/` | the AWS roles CI assumes over GitHub OIDC, one per GitHub environment, the SSM parameters every root reads its secrets from, and IAM Identity Center (us-west-2) |
 | `modules/` | `github-oidc-role` — the role shape `00-global` stamps out per CI environment; `ssm-params` — one group of SecureStrings |
 | `terraform/proxmox/` | the nine VMs, the cluster, **and** the PVE host itself (ACME cert, storages, management bridge, nightly vzdump, the NFS LXC) |
 | `terraform/cloudflare/` | tunnel + DNS |
