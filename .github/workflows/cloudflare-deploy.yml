@@ -47,9 +47,9 @@ jobs:
           terraform_wrapper: false
 
       - name: Write tfvars
-        run: printf '%s\n' "$CI_TFVARS" > ci.auto.tfvars
-        env:
-          CI_TFVARS: ${{ secrets.CLOUDFLARE_TFVARS }}
+        run: |
+          aws ssm get-parameter --name /infrastructure/cloudflare/tfvars --with-decryption \
+            --query Parameter.Value --output text > ci.auto.tfvars
 
       - name: Terraform Init
         run: ${{ github.workspace }}/scripts/tf.sh cloudflare init
@@ -65,5 +65,5 @@ jobs:
           grep -E "^(Plan:|No changes\.)" plan.txt | tail -n 1
 
           if grep -qE "^Plan: .*[1-9][0-9]* to destroy" plan.txt; then
-            echo "::warning::this plan destroys resources — check CLOUDFLARE_TFVARS is current"
+            echo "::warning::this plan destroys resources — check /infrastructure/cloudflare/tfvars in SSM is current"
           fi

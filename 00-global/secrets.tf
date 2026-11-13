@@ -28,6 +28,7 @@ locals {
     }
     cloudflare = {
       api_token = "Zone/DNS/Edit + Zone/Zone/Read, for the cloudflare and edge roots"
+      tfvars    = "terraform/cloudflare/terraform.tfvars, verbatim"
     }
     tailscale = {
       oauth_client_id     = "Tailscale OAuth client, local runs only (CI federates over OIDC)"
