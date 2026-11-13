@@ -4,9 +4,9 @@
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6 |
 | <a name="requirement_cloudflare"></a> [cloudflare](#requirement\_cloudflare) | ~> 5 |
 | <a name="requirement_proxmox"></a> [proxmox](#requirement\_proxmox) | ~> 0.111 |
-| <a name="requirement_sops"></a> [sops](#requirement\_sops) | ~> 1.4 |
 | <a name="requirement_talos"></a> [talos](#requirement\_talos) | ~> 0.9 |
 | <a name="requirement_time"></a> [time](#requirement\_time) | ~> 0.12 |
 
@@ -14,8 +14,8 @@
 
 | Name | Version |
 |------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.73.0 |
 | <a name="provider_proxmox"></a> [proxmox](#provider\_proxmox) | 0.111.1 |
-| <a name="provider_sops"></a> [sops](#provider\_sops) | 1.4.1 |
 | <a name="provider_talos"></a> [talos](#provider\_talos) | 0.11.0 |
 | <a name="provider_time"></a> [time](#provider\_time) | 0.14.1 |
 
@@ -48,7 +48,7 @@ No modules.
 | [talos_machine_configuration_apply.node](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/machine_configuration_apply) | resource |
 | [talos_machine_secrets.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/machine_secrets) | resource |
 | [time_sleep.install](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
-| [sops_file.admin](https://registry.terraform.io/providers/carlpett/sops/latest/docs/data-sources/file) | data source |
+| [aws_ssm_parameter.pve_api_token](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) | data source |
 | [talos_client_configuration.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/data-sources/client_configuration) | data source |
 | [talos_image_factory_urls.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/data-sources/image_factory_urls) | data source |
 | [talos_machine_configuration.node](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/data-sources/machine_configuration) | data source |

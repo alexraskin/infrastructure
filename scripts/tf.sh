@@ -9,8 +9,8 @@
 #
 # State is in S3 (alexraskin-tfstate, under infrastructure/), and the backend
 # takes its credentials from the environment: `aws sso login` locally, an OIDC
-# role in CI. Only the cloudflare and tailscale providers need a secret handed
-# to them here; every other root reads sops/ through the sops provider.
+# role in CI. Secrets are SSM parameters too: the cloudflare and tailscale
+# providers get theirs handed over here, every other root reads them itself.
 
 set -euo pipefail
 
@@ -41,51 +41,23 @@ dir=$(root_dir "$root") || {
   exit 1
 }
 
-# ------------------------------------------------------------- decryption ---
+# ---------------------------------------------------------------- secrets ---
 
-secrets=
-load_secrets() {
-  [ -z "$secrets" ] || return 0
-  local f why
-  why=$(mktemp)
-  # The admin file first: it is the local source of truth, and it is the one CI
-  # cannot open, so CI falls through to the file its key does decrypt.
-  for f in sops/admin.sops.yaml sops/terraform.sops.yaml; do
-    if [ ! -s "$repo/$f" ]; then
-      echo "$f: not there" >> "$why"
-      continue
-    fi
-    secrets=$(sops --decrypt --output-type json "$repo/$f" 2>>"$why") && break
-    secrets=
-  done
-
-  [ -n "$secrets" ] || {
-    echo "no decryptable secrets file — see docs/terraform-sops.md" >&2
-    sed 's/^/  /' "$why" >&2
-    echo "  SOPS_AGE_KEY_FILE=${SOPS_AGE_KEY_FILE:-unset}" >&2
-    rm -f "$why"
-    exit 1
-  }
-  rm -f "$why"
-}
-
+# SecureStrings under /infrastructure/, owned by 00-global.
 secret() {
-  load_secrets
-  jq -re --arg k "$1" '.[$k] // empty' <<<"$secrets" || {
-    echo "the secrets file has no $1" >&2
-    return 1
-  }
+  aws ssm get-parameter --region us-east-1 --with-decryption \
+    --name "/infrastructure/$1" --query Parameter.Value --output text
 }
 
-# Both providers read the environment, so there is nothing for the sops provider
-# to do in their roots. CI brings its own Tailscale OIDC credentials.
+# Both providers read the environment, so their tokens are exported here.
+# CI brings its own Tailscale OIDC credentials.
 if [ "$root" = cloudflare ] && [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-  CLOUDFLARE_API_TOKEN=$(secret cloudflare_api_token)
+  CLOUDFLARE_API_TOKEN=$(secret cloudflare/api_token)
   export CLOUDFLARE_API_TOKEN
 fi
 if [ "$root" = tailscale ] && [ -z "${TAILSCALE_OAUTH_CLIENT_ID:-}" ]; then
-  TAILSCALE_OAUTH_CLIENT_ID=$(secret tailscale_oauth_client_id)
-  TAILSCALE_OAUTH_CLIENT_SECRET=$(secret tailscale_oauth_client_secret)
+  TAILSCALE_OAUTH_CLIENT_ID=$(secret tailscale/oauth_client_id)
+  TAILSCALE_OAUTH_CLIENT_SECRET=$(secret tailscale/oauth_client_secret)
   export TAILSCALE_OAUTH_CLIENT_ID TAILSCALE_OAUTH_CLIENT_SECRET
 fi
 

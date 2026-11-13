@@ -1,5 +1,5 @@
 data "oci_identity_availability_domains" "ads" {
-  compartment_id = local.admin["oci_tenancy_ocid"]
+  compartment_id = local.oci["tenancy_ocid"]
 }
 
 locals {
@@ -11,7 +11,7 @@ locals {
 }
 
 data "oci_core_images" "ubuntu" {
-  compartment_id           = local.admin["oci_compartment_ocid"]
+  compartment_id           = local.oci["compartment_ocid"]
   operating_system         = "Canonical Ubuntu"
   operating_system_version = "22.04"
   shape                    = local.instance.shape
@@ -20,7 +20,7 @@ data "oci_core_images" "ubuntu" {
 }
 
 resource "oci_core_instance" "edge" {
-  compartment_id      = local.admin["oci_compartment_ocid"]
+  compartment_id      = local.oci["compartment_ocid"]
   availability_domain = local.availability_domain
   display_name        = local.instance.hostname
   shape               = local.instance.shape
@@ -49,7 +49,7 @@ resource "oci_core_instance" "edge" {
   }
 
   metadata = {
-    ssh_authorized_keys = local.admin["ssh_public_key"]
+    ssh_authorized_keys = data.aws_ssm_parameter.ssh_public_key.value
 
     user_data = base64encode(<<-EOF
       #!/bin/bash

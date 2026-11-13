@@ -19,20 +19,19 @@ project, since an account holds one per URL.
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6 |
-| <a name="requirement_sops"></a> [sops](#requirement\_sops) | ~> 1.4 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | 6.73.0 |
-| <a name="provider_sops"></a> [sops](#provider\_sops) | 1.4.1 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_ci_role"></a> [ci\_role](#module\_ci\_role) | ../modules/github-oidc-role | n/a |
+| <a name="module_secrets"></a> [secrets](#module\_secrets) | ../modules/ssm-params | n/a |
 
 ## Resources
 
@@ -40,7 +39,6 @@ project, since an account holds one per URL.
 |------|------|
 | [aws_budgets_budget.monthly](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/budgets_budget) | resource |
 | [aws_iam_openid_connect_provider.github](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_openid_connect_provider) | data source |
-| [sops_file.admin](https://registry.terraform.io/providers/carlpett/sops/latest/docs/data-sources/file) | data source |
 
 ## Inputs
 

@@ -1,6 +1,6 @@
 output "endpoint_url" {
   description = "S3-compatible endpoint — goes in cluster.yaml as barmanObjectStore.endpointURL"
-  value       = "https://${data.oci_objectstorage_namespace.this.namespace}.compat.objectstorage.${local.admin["oci_region"]}.oraclecloud.com"
+  value       = "https://${data.oci_objectstorage_namespace.this.namespace}.compat.objectstorage.${local.oci["region"]}.oraclecloud.com"
   sensitive   = true
 }
 
@@ -11,7 +11,7 @@ output "destination_path" {
 
 output "region" {
   description = "The `region` key of the cnpg-backup-oci Secret"
-  value       = local.admin["oci_region"]
+  value       = local.oci["region"]
   sensitive   = true
 }
 

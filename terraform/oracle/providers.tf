@@ -10,9 +10,9 @@ terraform {
   }
 
   required_providers {
-    sops = {
-      source  = "carlpett/sops"
-      version = "~> 1.4"
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6"
     }
     oci = {
       source  = "oracle/oci"
@@ -21,18 +21,28 @@ terraform {
   }
 }
 
-data "sops_file" "admin" {
-  source_file = "${path.module}/../../sops/admin.sops.yaml"
+# Secrets come from SSM, put there by 00-global. Same SSO session as the backend.
+provider "aws" {
+  region = "us-east-1"
+}
+
+data "aws_ssm_parameters_by_path" "oci" {
+  path            = "/infrastructure/oci"
+  with_decryption = true
 }
 
 locals {
-  admin = data.sops_file.admin.data
+  oci = zipmap([for n in data.aws_ssm_parameters_by_path.oci.names : basename(n)], data.aws_ssm_parameters_by_path.oci.values)
+}
+
+data "aws_ssm_parameter" "backup_user_email" {
+  name = "/infrastructure/oracle/backup_user_email"
 }
 
 provider "oci" {
-  tenancy_ocid = local.admin["oci_tenancy_ocid"]
-  user_ocid    = local.admin["oci_user_ocid"]
-  fingerprint  = local.admin["oci_fingerprint"]
-  private_key  = local.admin["oci_private_key"]
-  region       = local.admin["oci_region"]
+  tenancy_ocid = local.oci["tenancy_ocid"]
+  user_ocid    = local.oci["user_ocid"]
+  fingerprint  = local.oci["fingerprint"]
+  private_key  = local.oci["private_key"]
+  region       = local.oci["region"]
 }

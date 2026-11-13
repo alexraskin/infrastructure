@@ -27,7 +27,9 @@ No modules.
 | Name | Type |
 |------|------|
 | [aws_iam_role.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy.ssm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
+| [aws_iam_policy_document.ssm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.trust](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 
@@ -40,8 +42,9 @@ No modules.
 | <a name="input_oidc_provider_arn"></a> [oidc\_provider\_arn](#input\_oidc\_provider\_arn) | ARN of the token.actions.githubusercontent.com provider in this account | `string` | n/a | yes |
 | <a name="input_read_state_keys"></a> [read\_state\_keys](#input\_read\_state\_keys) | Other roots' state objects, read through terraform\_remote\_state | `list(string)` | `[]` | no |
 | <a name="input_repository"></a> [repository](#input\_repository) | owner/repo the workflow runs in | `string` | n/a | yes |
+| <a name="input_ssm_parameter_arns"></a> [ssm\_parameter\_arns](#input\_ssm\_parameter\_arns) | SSM parameters (and paths, for GetParametersByPath) the role reads | `list(string)` | `[]` | no |
 | <a name="input_state_bucket"></a> [state\_bucket](#input\_state\_bucket) | S3 bucket holding the Terraform state | `string` | n/a | yes |
-| <a name="input_state_key"></a> [state\_key](#input\_state\_key) | State object the role reads, writes and locks | `string` | n/a | yes |
+| <a name="input_state_key"></a> [state\_key](#input\_state\_key) | State object the role reads, writes and locks; null for a job that runs no Terraform | `string` | `null` | no |
 
 ## Outputs
 

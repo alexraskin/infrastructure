@@ -29,6 +29,8 @@ resource "aws_iam_role" "this" {
 }
 
 data "aws_iam_policy_document" "state" {
+  count = var.state_key == null ? 0 : 1
+
   statement {
     sid       = "ListStateBucket"
     actions   = ["s3:ListBucket"]
@@ -68,7 +70,28 @@ data "aws_iam_policy_document" "state" {
 }
 
 resource "aws_iam_role_policy" "state" {
+  count = var.state_key == null ? 0 : 1
+
   name   = "terraform-state"
   role   = aws_iam_role.this.id
-  policy = data.aws_iam_policy_document.state.json
+  policy = data.aws_iam_policy_document.state[0].json
+}
+
+# SecureStrings under aws/ssm: that key's policy already lets the account
+# decrypt through SSM, so no kms statement is needed.
+data "aws_iam_policy_document" "ssm" {
+  count = length(var.ssm_parameter_arns) > 0 ? 1 : 0
+
+  statement {
+    actions   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+    resources = var.ssm_parameter_arns
+  }
+}
+
+resource "aws_iam_role_policy" "ssm" {
+  count = length(var.ssm_parameter_arns) > 0 ? 1 : 0
+
+  name   = "ssm-parameters"
+  role   = aws_iam_role.this.id
+  policy = data.aws_iam_policy_document.ssm[0].json
 }

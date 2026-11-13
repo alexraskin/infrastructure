@@ -29,7 +29,6 @@ jobs:
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
-      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
     steps:
       - name: Checkout Code
@@ -51,11 +50,6 @@ jobs:
         run: printf '%s\n' "$CI_TFVARS" > ci.auto.tfvars
         env:
           CI_TFVARS: ${{ secrets.CLOUDFLARE_TFVARS }}
-
-      - name: Setup sops
-        uses: nhedger/setup-sops@18e52f363488ed469d2e1855e542a1c651743bba # v3.0.0
-        with:
-          version: 3.13.3
 
       - name: Terraform Init
         run: ${{ github.workspace }}/scripts/tf.sh cloudflare init

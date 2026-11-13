@@ -10,9 +10,9 @@ terraform {
   }
 
   required_providers {
-    sops = {
-      source  = "carlpett/sops"
-      version = "~> 1.4"
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6"
     }
     proxmox = {
       source  = "bpg/proxmox"
@@ -33,13 +33,18 @@ terraform {
   }
 }
 
-data "sops_file" "admin" {
-  source_file = "${path.module}/../../sops/admin.sops.yaml"
+# Secrets come from SSM, put there by 00-global. Same SSO session as the backend.
+provider "aws" {
+  region = "us-east-1"
+}
+
+data "aws_ssm_parameter" "pve_api_token" {
+  name = "/infrastructure/proxmox/pve_api_token"
 }
 
 provider "proxmox" {
   endpoint  = var.pve_endpoint
-  api_token = data.sops_file.admin.data["pve_api_token"]
+  api_token = data.aws_ssm_parameter.pve_api_token.value
   insecure  = var.pve_insecure
 
   ssh {

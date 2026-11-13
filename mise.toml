@@ -30,7 +30,7 @@ description = "regenerate the README of every terraform root (CI checks these ar
 shell = "bash -c"
 run = """
 set -euo pipefail
-for d in $(scripts/tf.sh roots) modules/github-oidc-role; do
+for d in $(scripts/tf.sh roots) modules/github-oidc-role modules/ssm-params; do
   terraform-docs -c .pre-commit-config.tfdocs.yml "$d"
 done
 """

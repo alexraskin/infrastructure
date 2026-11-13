@@ -14,8 +14,8 @@ Flux deploys everything in `apps/`.
 
 | path | owns |
 | --- | --- |
-| `00-global/` | the AWS roles CI assumes over GitHub OIDC for state access, one per GitHub environment |
-| `modules/` | `github-oidc-role` — the role shape `00-global` stamps out per CI root |
+| `00-global/` | the AWS roles CI assumes over GitHub OIDC, one per GitHub environment, and the SSM parameters every root reads its secrets from |
+| `modules/` | `github-oidc-role` — the role shape `00-global` stamps out per CI environment; `ssm-params` — one group of SecureStrings |
 | `terraform/proxmox/` | the nine VMs, the cluster, **and** the PVE host itself (ACME cert, storages, management bridge, nightly vzdump, the NFS LXC) |
 | `terraform/cloudflare/` | tunnel + DNS |
 | `terraform/oracle/` | the CNPG backup bucket (with the edge box, all that is left in OCI) |
@@ -70,7 +70,7 @@ the list both read.
 
 **Every terraform command goes through `scripts/tf.sh`** — `tf.sh <root> plan`,
 and the mise tasks are one-liners over it. It hands the cloudflare and tailscale
-providers their secrets and initialises the backend the first time. The
+providers their secrets (from SSM) and initialises the backend the first time. The
 roots are named there once: `global proxmox cloudflare oracle tailscale edge`,
 and `tf.sh roots` prints the directories CI and the lint tasks iterate.
 
@@ -167,14 +167,17 @@ VIP, subnet and PVE host address are declared once, through an `s3`
 
 ### Terraform's own secrets
 
-Two SOPS files, encrypted in git: `sops/terraform.sops.yaml` (the Cloudflare
-token, the Tailscale OAuth pair and CI auth key, `edge.json`) and
-`sops/admin.sops.yaml` (the OCI API key that can destroy things, the Proxmox
-token). CI is given an age key that opens only the first, so it cannot read the
-admin file, `apps/`, or the edge. Providers read them through `data "sops_file"`,
-except cloudflare and tailscale, which take theirs from the environment `tf.sh`
-sets.
-`docs/terraform-sops.md` covers setup and rotation.
+SSM Parameter Store, SecureString under the free `aws/ssm` key, at
+`/infrastructure/<group>/<name>`: `oci`, `oracle`, `proxmox`, `global`,
+`cloudflare`, `tailscale`, `edge`. `00-global/secrets.tf` owns the names via
+`modules/ssm-params`; the values are never in git or Terraform config — set or
+rotate one with `aws ssm put-parameter --overwrite --type SecureString`. Roots
+read them with `aws_ssm_parameter` data sources on the same SSO session as the
+backend; cloudflare and tailscale take theirs from the environment `tf.sh` sets.
+
+CI reads only its own environment's group (`ssm_parameter_arns` on its role):
+`cloudflare` gets `cloudflare/`, `edge` gets `edge/`, `tailscale` none (OIDC).
+No age key is in CI any more.
 
 ## Conventions
 

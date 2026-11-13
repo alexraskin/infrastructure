@@ -6,10 +6,12 @@ data "aws_iam_openid_connect_provider" "github" {
 locals {
   proxmox_state = "infrastructure/proxmox/terraform.tfstate"
 
-  # One role per root CI runs Terraform in, keyed by its GitHub environment.
+  # One role per GitHub environment. Terraform roots get their own state;
+  # edge runs no Terraform, so it gets none.
   ci_roots = {
-    cloudflare = { read_state_keys = [local.proxmox_state] }
-    tailscale  = { read_state_keys = [local.proxmox_state] }
+    cloudflare = { state = true, read_state_keys = [local.proxmox_state], secrets = ["cloudflare"] }
+    tailscale  = { state = true, read_state_keys = [local.proxmox_state], secrets = [] }
+    edge       = { state = false, read_state_keys = [], secrets = ["edge"] }
   }
 }
 
@@ -22,6 +24,8 @@ module "ci_role" {
   repository        = var.repository
   environment       = each.key
   state_bucket      = var.state_bucket
-  state_key         = "infrastructure/${each.key}/terraform.tfstate"
+  state_key         = each.value.state ? "infrastructure/${each.key}/terraform.tfstate" : null
   read_state_keys   = each.value.read_state_keys
+
+  ssm_parameter_arns = flatten([for g in each.value.secrets : module.secrets[g].read_arns])
 }

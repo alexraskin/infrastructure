@@ -1,21 +1,21 @@
 data "oci_identity_compartment" "this" {
-  id = local.admin["oci_compartment_ocid"]
+  id = local.oci["compartment_ocid"]
 }
 
 locals {
   policy_scope = (
-    local.admin["oci_compartment_ocid"] == local.admin["oci_tenancy_ocid"]
+    local.oci["compartment_ocid"] == local.oci["tenancy_ocid"]
     ? "in tenancy"
     : "in compartment ${data.oci_identity_compartment.this.name}"
   )
 }
 
 resource "oci_identity_user" "cnpg_backup" {
-  compartment_id = local.admin["oci_tenancy_ocid"]
+  compartment_id = local.oci["tenancy_ocid"]
   name           = "cnpg-backup"
   description    = "CloudNativePG backups — managed by Terraform"
 
-  email = local.admin["backup_user_email"]
+  email = data.aws_ssm_parameter.backup_user_email.value
 
   freeform_tags = {
     managed-by = "terraform"
@@ -23,7 +23,7 @@ resource "oci_identity_user" "cnpg_backup" {
 }
 
 resource "oci_identity_group" "cnpg_backup" {
-  compartment_id = local.admin["oci_tenancy_ocid"]
+  compartment_id = local.oci["tenancy_ocid"]
   name           = "cnpg-backup"
   description    = "Write access to the CloudNativePG backup bucket only"
 
@@ -38,7 +38,7 @@ resource "oci_identity_user_group_membership" "cnpg_backup" {
 }
 
 resource "oci_identity_policy" "cnpg_backup" {
-  compartment_id = local.admin["oci_tenancy_ocid"]
+  compartment_id = local.oci["tenancy_ocid"]
   name           = "cnpg-backup"
   description    = "CloudNativePG backups — managed by Terraform"
 

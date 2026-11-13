@@ -15,9 +15,9 @@ tfvar() { sed -n "s/^$1 *= *\"\\([^\"]*\\)\".*/\\1/p" "$tfvars" | head -1; }
 [ -f "$tfvars" ] || { echo "missing $tfvars"; exit 1; }
 
 endpoint=$(tfvar pve_endpoint); endpoint=${endpoint%/}
-# The token lives in sops/admin.sops.yaml with everything else secret.
-token=$(sops --decrypt --output-type json "$repo/sops/admin.sops.yaml" | jq -r .pve_api_token) || {
-  echo "could not decrypt sops/admin.sops.yaml — see docs/terraform-sops.md" >&2
+token=$(aws ssm get-parameter --region us-east-1 --with-decryption \
+  --name /infrastructure/proxmox/pve_api_token --query Parameter.Value --output text) || {
+  echo "could not read /infrastructure/proxmox/pve_api_token — aws sso login?" >&2
   exit 1
 }
 node=$(tfvar pve_node)

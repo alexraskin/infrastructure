@@ -12,7 +12,7 @@ resource "aws_budgets_budget" "monthly" {
       comparison_operator        = "GREATER_THAN"
       threshold                  = 100
       threshold_type             = "PERCENTAGE"
-      subscriber_email_addresses = [data.sops_file.admin.data["budget_email"]]
+      subscriber_email_addresses = [module.secrets["global"].values["budget_email"]]
     }
   }
 }

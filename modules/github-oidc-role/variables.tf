@@ -24,12 +24,19 @@ variable "state_bucket" {
 }
 
 variable "state_key" {
-  description = "State object the role reads, writes and locks"
+  description = "State object the role reads, writes and locks; null for a job that runs no Terraform"
   type        = string
+  default     = null
 }
 
 variable "read_state_keys" {
   description = "Other roots' state objects, read through terraform_remote_state"
+  type        = list(string)
+  default     = []
+}
+
+variable "ssm_parameter_arns" {
+  description = "SSM parameters (and paths, for GetParametersByPath) the role reads"
   type        = list(string)
   default     = []
 }

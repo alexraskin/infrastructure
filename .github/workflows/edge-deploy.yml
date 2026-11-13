@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: edge
@@ -28,26 +29,23 @@ jobs:
     environment: edge
     timeout-minutes: 45
 
-    env:
-      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup sops
-        uses: nhedger/setup-sops@18e52f363488ed469d2e1855e542a1c651743bba # v3.0.0
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          version: 3.13.3
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
 
-      - name: Decrypt what the runner needs
+      - name: Fetch what the runner needs
         run: |
-          sops --decrypt --output-type json sops/terraform.sops.yaml > "$RUNNER_TEMP/ci.json"
-          jq -er .edge_json "$RUNNER_TEMP/ci.json" > 01-cloud-edge/edge.json
-          key=$(jq -er .tailscale_ci_authkey "$RUNNER_TEMP/ci.json")
+          get() { aws ssm get-parameter --with-decryption --name "/infrastructure/edge/$1" --query Parameter.Value --output text; }
+          get edge_json > 01-cloud-edge/edge.json
+          key=$(get tailscale_ci_authkey)
           echo "::add-mask::$key"
           echo "TS_AUTHKEY=$key" >> "$GITHUB_ENV"
-          rm -f "$RUNNER_TEMP/ci.json"
       - name: Join the tailnet
         uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
         with:

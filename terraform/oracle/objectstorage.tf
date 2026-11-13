@@ -1,9 +1,9 @@
 data "oci_objectstorage_namespace" "this" {
-  compartment_id = local.admin["oci_compartment_ocid"]
+  compartment_id = local.oci["compartment_ocid"]
 }
 
 resource "oci_objectstorage_bucket" "cnpg" {
-  compartment_id = local.admin["oci_compartment_ocid"]
+  compartment_id = local.oci["compartment_ocid"]
   namespace      = data.oci_objectstorage_namespace.this.namespace
   name           = var.bucket_name
 
