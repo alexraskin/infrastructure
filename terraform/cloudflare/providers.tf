@@ -1,9 +1,12 @@
 terraform {
   required_version = ">= 1.12"
 
-  backend "oci" {
-    bucket = "infrastructure-terraform-state"
-    key    = "cloudflare-k3s/terraform.tfstate"
+  backend "s3" {
+    bucket       = "alexraskin-tfstate"
+    key          = "infrastructure/cloudflare/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 
   required_providers {

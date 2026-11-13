@@ -3,9 +3,10 @@
 
 provider "registry.terraform.io/bpg/proxmox" {
   version     = "0.111.1"
-  constraints = "~> 0.66"
+  constraints = "~> 0.111"
   hashes = [
     "h1:ML2D3UUZTM99yrll/EBXj7wBYMb8xmQgomqFNybEoxY=",
+    "h1:jcqEv/zW+heFIPq5xwXxgS9EuBmbjIM1MriwQjx75WE=",
     "zh:18fb7c31a08dde6bffa1a4d4a211e604d6d17eec7092fd59331b3db3c6f3742c",
     "zh:1cd60761538289d4dd2a1086b3ae62a7b0bdd4b1a2f824e9a44e243413168dba",
     "zh:2eb76f6fc8299b6820ff678c8252332cc3366e226b5ae2e61748fd2449c1ed92",
@@ -28,6 +29,7 @@ provider "registry.terraform.io/carlpett/sops" {
   constraints = "~> 1.4"
   hashes = [
     "h1:HyIxpskyTiLdJhGFJYzCk45IsG7zMe3K+y7em3k23BE=",
+    "h1:nTX8t1aP800EVoUFK9p7/IfSihRN3CAgTiawINe2CLY=",
     "zh:4df8dea170a4cd926ca6ef0b9fa6fd1d8c1fa9bc9e78333d544a74c24e269cf9",
     "zh:5cf661333ec5d5cce3b7c0fc399052cf8f8c50f6cb0a50f5aec2f91d83685e1e",
     "zh:680616383404bc836a2d740a0dfae4691c18c8616f346e8fa795a1d790a2d888",
@@ -43,6 +45,7 @@ provider "registry.terraform.io/cloudflare/cloudflare" {
   constraints = "~> 5.0"
   hashes = [
     "h1:C6JU7d5XoRQnksREiFD3hTgGRQ18ciV7ynKvpvGIteA=",
+    "h1:Sixlatj4vbZGhJ9r7I5c0l4gWp5Bej0aNR3akDt7wig=",
     "zh:3492a18e8753c2734bb253b70b46c8ec66151198b5221dc7772dab76778a2c06",
     "zh:698ca2b12417c7477744e5410796f4fa0311f7882e1a6c790581795182b3905c",
     "zh:b21e7da03e7529469f042eb5b11d08b084d255ab794bfeec80f6d8a9e8a91df6",
@@ -60,6 +63,7 @@ provider "registry.terraform.io/hashicorp/time" {
   constraints = "~> 0.12"
   hashes = [
     "h1:GJig5pIwiKDsiF73KLs7vWvDs76/x6DeNSxKrfqlA40=",
+    "h1:r93SxP++6gUlwCHDQ5OkRmcU8B0yv6ZA9nF0Dh6NJmA=",
     "zh:0837ca5b057e5cff94dff7de2fcccafb4abaa33c45de193fe2853e684818a267",
     "zh:15a122f72d9e0f34fc5384cc7ec089319641fee5c319748a3aa02fc42f459969",
     "zh:342fb83093a280ea7ee0654feae1f5867c62eb8eebc1ab46f9a7ab0b4c878a62",
@@ -80,6 +84,7 @@ provider "registry.terraform.io/siderolabs/talos" {
   version     = "0.11.0"
   constraints = "~> 0.9"
   hashes = [
+    "h1:1NC84ojUrL+G3aSLMl4Khh83HnJYuxsYNKK7zg2C/dI=",
     "h1:dBKhGGL1o8WSJdn+fZaZxiTFEkk0x9JNZLsOW+emNNo=",
     "zh:0fa82a384b25a58b65523e0ea4768fa1212b1f5cfc0c9379d31162454fedcc9d",
     "zh:12e0f007b86240b6d06d497fcc5a2092056683a7bb2dac56571d9f0cab0d99a6",

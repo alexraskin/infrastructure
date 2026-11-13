@@ -6,6 +6,7 @@ provider "registry.terraform.io/carlpett/sops" {
   constraints = "~> 1.4"
   hashes = [
     "h1:HyIxpskyTiLdJhGFJYzCk45IsG7zMe3K+y7em3k23BE=",
+    "h1:nTX8t1aP800EVoUFK9p7/IfSihRN3CAgTiawINe2CLY=",
     "zh:4df8dea170a4cd926ca6ef0b9fa6fd1d8c1fa9bc9e78333d544a74c24e269cf9",
     "zh:5cf661333ec5d5cce3b7c0fc399052cf8f8c50f6cb0a50f5aec2f91d83685e1e",
     "zh:680616383404bc836a2d740a0dfae4691c18c8616f346e8fa795a1d790a2d888",
@@ -21,6 +22,7 @@ provider "registry.terraform.io/cloudflare/cloudflare" {
   constraints = "~> 5.0"
   hashes = [
     "h1:C6JU7d5XoRQnksREiFD3hTgGRQ18ciV7ynKvpvGIteA=",
+    "h1:Sixlatj4vbZGhJ9r7I5c0l4gWp5Bej0aNR3akDt7wig=",
     "zh:3492a18e8753c2734bb253b70b46c8ec66151198b5221dc7772dab76778a2c06",
     "zh:698ca2b12417c7477744e5410796f4fa0311f7882e1a6c790581795182b3905c",
     "zh:b21e7da03e7529469f042eb5b11d08b084d255ab794bfeec80f6d8a9e8a91df6",
@@ -37,6 +39,7 @@ provider "registry.terraform.io/oracle/oci" {
   version     = "6.37.0"
   constraints = "~> 6.0"
   hashes = [
+    "h1:S3gkcr6ZMGmrU0SQencNQ+j2L2DkOgi+InVKAVOWZWI=",
     "h1:cqMAlvIaV+TgJc2QJ/pYGylWjGRxQUH+UqMvySpXq9c=",
     "zh:2b1ba7863e162f3f2e5929c6a43db6b0d44bb24032bf7d1b4fe27c36e39d512f",
     "zh:2d2ccd7eaab45c0b35a52b7dd6e315a38a9e32d72827003194786dbae8004240",

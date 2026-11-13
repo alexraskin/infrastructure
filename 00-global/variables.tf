@@ -1,11 +1,17 @@
-variable "bucket_name" {
-  description = "Object Storage bucket holding the Terraform state of every root"
+variable "region" {
+  description = "Region the state bucket lives in"
   type        = string
-  default     = "infrastructure-terraform-state"
+  default     = "us-east-1"
+}
 
-  validation {
-    # The name is repeated in each backend block, which takes no variables.
-    condition     = can(regex("^[a-zA-Z0-9._-]{1,256}$", var.bucket_name))
-    error_message = "bucket_name must be 1-256 chars of [a-zA-Z0-9._-]."
-  }
+variable "state_bucket" {
+  description = "S3 bucket holding every root's state, under infrastructure/"
+  type        = string
+  default     = "alexraskin-tfstate"
+}
+
+variable "repository" {
+  description = "GitHub repository whose workflows assume the CI roles"
+  type        = string
+  default     = "alexraskin/infrastructure"
 }
