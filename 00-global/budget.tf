@@ -1,11 +1,3 @@
-data "aws_caller_identity" "this" {}
-
-# Adopted from the old OCI global state; drop once applied.
-import {
-  to = aws_budgets_budget.monthly
-  id = "${data.aws_caller_identity.this.account_id}:monthly-cost"
-}
-
 resource "aws_budgets_budget" "monthly" {
   name         = "monthly-cost"
   budget_type  = "COST"
