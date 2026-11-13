@@ -326,15 +326,6 @@ spec:
             - "[STATUS] == 200"
           alerts: *rollout-alert
 
-        - name: "lastfm-now-playing (origin)"
-          group: "Apps"
-          url: "http://lastfm-now-playing.lastfm.svc.cluster.local/ping"
-          interval: 60s
-          ui: *hide-details
-          conditions:
-            - "[STATUS] == 200"
-          alerts: *rollout-alert
-
         - name: "Plex"
           group: "Apps"
           url: "http://10.0.200.87:32400/identity"

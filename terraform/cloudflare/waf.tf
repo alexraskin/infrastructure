@@ -41,6 +41,16 @@ locals {
     },
   ]
 
+  waf_read_only_rule = {
+    ref               = "read_only_hosts"
+    description       = "The tunnel serves static sites — nothing behind it takes a write"
+    action            = "block"
+    expression        = local.waf_write_methods
+    action_parameters = null
+    enabled           = true
+  }
+
+  # `http.host in {}` doesn't parse, so with no hosts the rule is left out.
   waf_custom_rules = concat(length(var.waf_mcp_hosts) > 0 ? [local.waf_mcp_rule] : [], local.waf_adopted_rules, [
     {
       ref               = "block_junk"
@@ -50,14 +60,7 @@ locals {
       action_parameters = null
       enabled           = true
     },
-    {
-      ref               = "read_only_hosts"
-      description       = "The tunnel serves static sites — nothing behind it takes a write"
-      action            = "block"
-      expression        = local.waf_write_methods
-      action_parameters = null
-      enabled           = true
-    },
+    ], length(local.waf_hosts) > 0 ? [local.waf_read_only_rule] : [], [
     {
       ref               = "no_user_agent"
       description       = "Challenge requests with no User-Agent that are not a verified crawler"

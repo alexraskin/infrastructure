@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: lastfm-api-key
-  namespace: lastfm
-type: Opaque
-stringData:
-  api-key: PASTE_LASTFM_API_KEY_HERE
