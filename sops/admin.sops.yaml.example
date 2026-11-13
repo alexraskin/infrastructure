@@ -17,5 +17,8 @@ oci_private_key: |
 # Primary email the Identity Domains tenancy demands on a new user.
 backup_user_email: you@example.com
 
+# Where the AWS account-wide budget alerts go (00-global/budget.tf).
+budget_email: you@example.com
+
 # The Proxmox API token, out of terraform/proxmox/terraform.tfvars.
 pve_api_token: terraform@pve!tf=00000000-0000-0000-0000-000000000000
