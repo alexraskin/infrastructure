@@ -6,9 +6,9 @@ root's, read through `terraform_remote_state`).
 
 State for every root lives in the `alexraskin-tfstate` S3 bucket (us-east-1)
 under `infrastructure/<root>/terraform.tfstate`, locked with S3's native
-lockfile. Neither the bucket nor the GitHub OIDC provider is managed here: the
-bucket was made by hand, and the provider belongs to the alexraskin.com
-project, since an account holds one per URL.
+lockfile. The bucket was made by hand and isn't managed here. The account's
+GitHub OIDC provider (one per URL) is managed here; other repos' deploy roles
+read it as a data source.
 
 `mise run global:roles` prints the `AWS_ROLE_ARN` each environment wants.
 
@@ -39,6 +39,7 @@ project, since an account holds one per URL.
 | Name | Type |
 |------|------|
 | [aws_budgets_budget.monthly](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/budgets_budget) | resource |
+| [aws_iam_openid_connect_provider.github](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_openid_connect_provider) | resource |
 | [aws_identitystore_group.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_group) | resource |
 | [aws_identitystore_group_membership.alex_admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_group_membership) | resource |
 | [aws_identitystore_user.alex](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_user) | resource |
@@ -46,7 +47,6 @@ project, since an account holds one per URL.
 | [aws_ssoadmin_managed_policy_attachment.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssoadmin_managed_policy_attachment) | resource |
 | [aws_ssoadmin_permission_set.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssoadmin_permission_set) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
-| [aws_iam_openid_connect_provider.github](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_openid_connect_provider) | data source |
 | [aws_ssoadmin_instances.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssoadmin_instances) | data source |
 
 ## Inputs
