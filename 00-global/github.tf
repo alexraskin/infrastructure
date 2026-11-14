@@ -1,6 +1,7 @@
-# Owned by the alexraskin.com project: an account has one provider per URL.
-data "aws_iam_openid_connect_provider" "github" {
-  url = "https://token.actions.githubusercontent.com"
+# An account has one provider per URL; every repo's deploy roles trust this one.
+resource "aws_iam_openid_connect_provider" "github" {
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
 }
 
 locals {
@@ -20,7 +21,7 @@ module "ci_role" {
   for_each = local.ci_roots
 
   name              = "github-infrastructure-${each.key}"
-  oidc_provider_arn = data.aws_iam_openid_connect_provider.github.arn
+  oidc_provider_arn = aws_iam_openid_connect_provider.github.arn
   repository        = var.repository
   environment       = each.key
   state_bucket      = var.state_bucket
