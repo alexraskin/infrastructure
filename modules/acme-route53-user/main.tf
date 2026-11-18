@@ -1,0 +1,53 @@
+# Keys are created out of band (`aws iam create-access-key`), never by Terraform.
+resource "aws_iam_user" "this" {
+  name = var.name
+}
+
+locals {
+  challenge_names = distinct([for d in var.domains : "_acme-challenge.${trimprefix(d, "*.")}"])
+}
+
+data "aws_iam_policy_document" "this" {
+  statement {
+    sid = "Find"
+    actions = [
+      "route53:GetChange",
+      "route53:ListHostedZones",
+      "route53:ListHostedZonesByName",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "Read"
+    actions   = ["route53:ListResourceRecordSets"]
+    resources = ["arn:aws:route53:::hostedzone/${var.zone_id}"]
+  }
+
+  statement {
+    sid       = "WriteOwnChallenges"
+    actions   = ["route53:ChangeResourceRecordSets"]
+    resources = ["arn:aws:route53:::hostedzone/${var.zone_id}"]
+    condition {
+      test     = "ForAllValues:StringEquals"
+      variable = "route53:ChangeResourceRecordSetsNormalizedRecordNames"
+      values   = local.challenge_names
+    }
+    condition {
+      test     = "ForAllValues:StringEquals"
+      variable = "route53:ChangeResourceRecordSetsRecordTypes"
+      values   = ["TXT"]
+    }
+    condition {
+      test     = "Null"
+      variable = "route53:ChangeResourceRecordSetsNormalizedRecordNames"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_iam_user_policy" "this" {
+  name   = "acme-dns-01"
+  user   = aws_iam_user.this.name
+  policy = data.aws_iam_policy_document.this.json
+}

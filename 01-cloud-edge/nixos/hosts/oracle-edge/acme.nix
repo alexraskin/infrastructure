@@ -11,8 +11,8 @@
 
     certs = lib.genAttrs edge.certNames (name: {
       domain = if builtins.elem name edge.wildcards then "*.${name}" else name;
-      dnsProvider = "cloudflare";
-      environmentFile = config.sops.templates."cloudflare-credentials".path;
+      dnsProvider = "route53";
+      environmentFile = config.sops.templates."route53-credentials".path;
 
       group = "haproxy";
       reloadServices = [ "haproxy.service" ];

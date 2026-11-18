@@ -15,3 +15,9 @@ variable "repository" {
   type        = string
   default     = "alexraskin/infrastructure"
 }
+
+variable "domain" {
+  description = "The hosted zone this root owns"
+  type        = string
+  default     = "alexraskin.com"
+}

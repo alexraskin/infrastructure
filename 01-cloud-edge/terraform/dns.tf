@@ -1,9 +1,3 @@
-data "cloudflare_zone" "this" {
-  filter = {
-    name = local.edge.zone
-  }
-}
-
 locals {
   wildcards = try(local.edge.wildcards, [])
 
@@ -12,33 +6,31 @@ locals {
     site.domain => join(".", slice(split(".", site.domain), 1, length(split(".", site.domain))))
   }
 
-  # Sites a wildcard already answers for need no record of their own.
   standalone_sites = {
     for site in local.edge.sites : site.domain => site
     if !contains(local.wildcards, local.site_parents[site.domain])
   }
 }
 
-resource "cloudflare_dns_record" "wildcard" {
-  for_each = toset(local.wildcards)
-
-  zone_id = data.cloudflare_zone.this.id
-  name    = "*.${each.key}"
-  type    = "A"
-  content = oci_core_instance.edge.public_ip
-  ttl     = 300
-  proxied = false
-  comment = "terraform: oci edge (wildcard)"
+data "aws_route53_zone" "this" {
+  name = local.edge.zone
 }
 
-resource "cloudflare_dns_record" "site" {
-  for_each = local.standalone_sites
+module "dns" {
+  source = "../../modules/route53-records"
 
-  zone_id = data.cloudflare_zone.this.id
-  name    = each.key
-  type    = "A"
-  content = oci_core_instance.edge.public_ip
-  ttl     = 300
-  proxied = false
-  comment = "terraform: oci edge"
+  zone_id = data.aws_route53_zone.this.zone_id
+
+  records = merge(
+    { for w in local.wildcards : "*.${w}" => { name = "*.${w}", type = "A", records = [oci_core_instance.edge.public_ip] } },
+    { for d, _ in local.standalone_sites : d => { name = d, type = "A", records = [oci_core_instance.edge.public_ip] } },
+  )
+}
+
+module "acme_user" {
+  source = "../../modules/acme-route53-user"
+
+  name    = "acme-edge"
+  zone_id = data.aws_route53_zone.this.zone_id
+  domains = concat([for w in local.wildcards : "*.${w}"], keys(local.standalone_sites))
 }

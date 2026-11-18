@@ -10,10 +10,6 @@ terraform {
       source  = "oracle/oci"
       version = "~> 6"
     }
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 5"
-    }
   }
 }
 
@@ -31,10 +27,6 @@ locals {
   oci = zipmap([for n in data.aws_ssm_parameters_by_path.oci.names : basename(n)], data.aws_ssm_parameters_by_path.oci.values)
 }
 
-data "aws_ssm_parameter" "cloudflare_api_token" {
-  name = "/infrastructure/cloudflare/api_token"
-}
-
 data "aws_ssm_parameter" "ssh_public_key" {
   name = "/infrastructure/edge/ssh_public_key"
 }
@@ -45,8 +37,4 @@ provider "oci" {
   fingerprint  = local.oci["fingerprint"]
   private_key  = local.oci["private_key"]
   region       = local.oci["region"]
-}
-
-provider "cloudflare" {
-  api_token = data.aws_ssm_parameter.cloudflare_api_token.value
 }

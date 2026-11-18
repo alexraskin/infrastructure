@@ -32,6 +32,7 @@ read it as a data source.
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_ci_role"></a> [ci\_role](#module\_ci\_role) | ../modules/github-oidc-role | n/a |
+| <a name="module_dns"></a> [dns](#module\_dns) | ../modules/route53-records | n/a |
 | <a name="module_secrets"></a> [secrets](#module\_secrets) | ../modules/ssm-params | n/a |
 
 ## Resources
@@ -43,6 +44,8 @@ read it as a data source.
 | [aws_identitystore_group.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_group) | resource |
 | [aws_identitystore_group_membership.alex_admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_group_membership) | resource |
 | [aws_identitystore_user.alex](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_user) | resource |
+| [aws_route53_zone.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_zone) | resource |
+| [aws_route53domains_registered_domain.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53domains_registered_domain) | resource |
 | [aws_ssoadmin_account_assignment.alex_admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssoadmin_account_assignment) | resource |
 | [aws_ssoadmin_managed_policy_attachment.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssoadmin_managed_policy_attachment) | resource |
 | [aws_ssoadmin_permission_set.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssoadmin_permission_set) | resource |
@@ -53,6 +56,7 @@ read it as a data source.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_domain"></a> [domain](#input\_domain) | The hosted zone this root owns | `string` | `"alexraskin.com"` | no |
 | <a name="input_region"></a> [region](#input\_region) | Region the state bucket lives in | `string` | `"us-east-1"` | no |
 | <a name="input_repository"></a> [repository](#input\_repository) | GitHub repository whose workflows assume the CI roles | `string` | `"alexraskin/infrastructure"` | no |
 | <a name="input_state_bucket"></a> [state\_bucket](#input\_state\_bucket) | S3 bucket holding every root's state, under infrastructure/ | `string` | `"alexraskin-tfstate"` | no |
@@ -62,4 +66,5 @@ read it as a data source.
 | Name | Description |
 |------|-------------|
 | <a name="output_ci_role_arns"></a> [ci\_role\_arns](#output\_ci\_role\_arns) | AWS\_ROLE\_ARN for each GitHub environment |
+| <a name="output_name_servers"></a> [name\_servers](#output\_name\_servers) | Set these at the registrar to cut the domain over to Route 53 |
 <!-- END_TF_DOCS -->

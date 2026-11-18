@@ -18,10 +18,6 @@ terraform {
       source  = "bpg/proxmox"
       version = "~> 0.111"
     }
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 5"
-    }
     talos = {
       source  = "siderolabs/talos"
       version = "~> 0.9"

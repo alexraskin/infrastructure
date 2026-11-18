@@ -14,10 +14,9 @@ Flux deploys everything in `apps/`.
 
 | path | owns |
 | --- | --- |
-| `00-global/` | the AWS roles CI assumes over GitHub OIDC, one per GitHub environment, the SSM parameters every root reads its secrets from, and IAM Identity Center (us-west-2) |
-| `modules/` | `github-oidc-role` — the role shape `00-global` stamps out per CI environment; `ssm-params` — one group of SecureStrings |
+| `00-global/` | the AWS roles CI assumes over GitHub OIDC, one per GitHub environment, the SSM parameters every root reads its secrets from, IAM Identity Center (us-west-2), and the `alexraskin.com` registration, its Route 53 zone and the zone-wide records (Fastmail, CAA) |
+| `modules/` | `github-oidc-role` — the role shape `00-global` stamps out per CI environment; `ssm-params` — one group of SecureStrings; `route53-records` — record sets in the zone; `acme-route53-user` — an IAM user that may only answer its own DNS-01 challenges (PVE, edge), called by `00-global`, `proxmox` (cluster names) and `edge` (edge names); the site and photography repos write their own |
 | `terraform/proxmox/` | the nine VMs, the cluster, **and** the PVE host itself (ACME cert, storages, management bridge, nightly vzdump, the NFS LXC) |
-| `terraform/cloudflare/` | tunnel + DNS |
 | `terraform/oracle/` | the CNPG backup bucket (with the edge box, all that is left in OCI) |
 | `tailscale/` | the tailnet policy file |
 | `01-cloud-edge/` | the NixOS edge box — its own flake, mise config and Terraform root |
@@ -25,7 +24,7 @@ Flux deploys everything in `apps/`.
 | `apps/clusters/talos/` | the Flux Kustomizations that point at `apps/base/` |
 | `talos/cilium-values.yaml` | CNI values, applied outside Flux |
 | `scripts/` | `tf.sh` (every root's terraform), preflight, the NFS and nix helpers |
-| `docs/` | runbooks (PVE 8→9, CNPG backups, the R2→OCI state move, the SOPS layout, the WAF) |
+| `docs/` | runbooks (PVE 8→9, CNPG backups, the R2→OCI state move, the SOPS layout) |
 | `secrets/` | gitignored — `talosconfig`, `age.key` (both identities), `kubeconfig` fodder |
 | `02-dev-server/plex/` | a docker-compose stack, not deployed anywhere right now — Plex runs on the workstation, and Docker is deliberately off the PVE host |
 
@@ -44,7 +43,6 @@ mise run health|status   # talosctl health; kubectl get nodes + kube-system
 mise run upgrade         # talosctl upgrade every node to the pinned talos_version
 mise run upgrade-k8s     # kubernetes version, separately
 mise run bootstrap       # proxmox:apply -> talosconfig -> kubeconfig -> cilium -> status
-mise run cloudflare:plan|cloudflare:apply   # tunnel + DNS (CI does this on main)
 mise run tailscale:plan|tailscale:apply|tailscale:status   # tailnet policy (CI too)
 mise run oracle:plan|oracle:apply|oracle:creds  # the CNPG backup bucket
 mise run global:plan|global:apply     # 00-global — the CI roles
@@ -69,9 +67,9 @@ plan`, then `mise run health` and `mise run status`. `mise run tflint` and
 the list both read.
 
 **Every terraform command goes through `scripts/tf.sh`** — `tf.sh <root> plan`,
-and the mise tasks are one-liners over it. It hands the cloudflare and tailscale
-providers their secrets (from SSM) and initialises the backend the first time. The
-roots are named there once: `global proxmox cloudflare oracle tailscale edge`,
+and the mise tasks are one-liners over it. It hands the tailscale
+provider its secrets (from SSM) and initialises the backend the first time. The
+roots are named there once: `global proxmox oracle tailscale edge`,
 and `tf.sh roots` prints the directories CI and the lint tasks iterate.
 
 ## Source of truth
@@ -140,15 +138,15 @@ Kustomization in `apps/clusters/talos/apps.yaml`.
 
 ### Terraform state
 
-Six roots, all on the `s3` backend in the `alexraskin-tfstate` bucket
+Five roots, all on the `s3` backend in the `alexraskin-tfstate` bucket
 (us-east-1), one object per root at `infrastructure/<root>/terraform.tfstate`,
 locked with S3's native lockfile (`use_lockfile`). The backend blocks are
 complete — nothing secret in them — and authenticate as whatever AWS identity
 the environment holds: `aws sso login` locally.
 
 **CI never sees long-lived AWS credentials.** It assumes a role over GitHub
-OIDC. `00-global/` creates one per GitHub environment (`cloudflare`,
-`tailscale`) with `modules/github-oidc-role`, trusted only for that
+OIDC. `00-global/` creates one per GitHub environment (`tailscale`,
+`edge`) with `modules/github-oidc-role`, trusted only for that
 environment's subject, and allowed read/write/lock on its own state object and
 read on the Proxmox one. Each environment carries its role in an `AWS_ROLE_ARN`
 variable. A new CI root is an entry in `local.ci_roots`, then the variable.
@@ -161,22 +159,22 @@ to the alexraskin.com project, since an account has one per URL.
 machine secrets and the client CA live in the bucket. Treat it as a secret
 store, and keep `secrets/talosconfig` as the copy that matters.
 
-**`terraform/cloudflare/` and `tailscale/` read the Proxmox root's state** so the
-VIP, subnet and PVE host address are declared once, through an `s3`
+**`tailscale/` reads the Proxmox root's state** so the VIP, subnet and PVE host
+address are declared once, through an `s3`
 `terraform_remote_state` using the same ambient credentials.
 
 ### Terraform's own secrets
 
 SSM Parameter Store, SecureString under the free `aws/ssm` key, at
 `/infrastructure/<group>/<name>`: `oci`, `oracle`, `proxmox`, `global`,
-`cloudflare`, `tailscale`, `edge`. `00-global/secrets.tf` owns the names via
+`tailscale`, `edge`. `00-global/secrets.tf` owns the names via
 `modules/ssm-params`; the values are never in git or Terraform config — set or
 rotate one with `aws ssm put-parameter --overwrite --type SecureString`. Roots
 read them with `aws_ssm_parameter` data sources on the same SSO session as the
-backend; cloudflare and tailscale take theirs from the environment `tf.sh` sets.
+backend; tailscale takes its from the environment `tf.sh` sets.
 
 CI reads only its own environment's group (`ssm_parameter_arns` on its role):
-`cloudflare` gets `cloudflare/`, `edge` gets `edge/`, `tailscale` none (OIDC).
+`edge` gets `edge/`, `tailscale` none (OIDC).
 No age key is in CI any more.
 
 ## Conventions

@@ -5,7 +5,6 @@
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.12 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6 |
-| <a name="requirement_cloudflare"></a> [cloudflare](#requirement\_cloudflare) | ~> 5 |
 | <a name="requirement_proxmox"></a> [proxmox](#requirement\_proxmox) | ~> 0.111 |
 | <a name="requirement_talos"></a> [talos](#requirement\_talos) | ~> 0.9 |
 | <a name="requirement_time"></a> [time](#requirement\_time) | ~> 0.12 |
@@ -21,7 +20,10 @@
 
 ## Modules
 
-No modules.
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_acme_user"></a> [acme\_user](#module\_acme\_user) | ../../modules/acme-route53-user | n/a |
+| <a name="module_dns"></a> [dns](#module\_dns) | ../../modules/route53-records | n/a |
 
 ## Resources
 
@@ -29,7 +31,7 @@ No modules.
 |------|------|
 | [proxmox_acl.metrics_exporter](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acl) | resource |
 | [proxmox_acme_certificate.host](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acme_certificate) | resource |
-| [proxmox_acme_dns_plugin.cloudflare](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acme_dns_plugin) | resource |
+| [proxmox_acme_dns_plugin.route53](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/acme_dns_plugin) | resource |
 | [proxmox_apt_standard_repository.no_subscription](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/apt_standard_repository) | resource |
 | [proxmox_backup_job.cluster](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/backup_job) | resource |
 | [proxmox_download_file.debian_lxc](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/download_file) | resource |
@@ -48,6 +50,7 @@ No modules.
 | [talos_machine_configuration_apply.node](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/machine_configuration_apply) | resource |
 | [talos_machine_secrets.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/resources/machine_secrets) | resource |
 | [time_sleep.install](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
+| [aws_route53_zone.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) | data source |
 | [aws_ssm_parameter.pve_api_token](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) | data source |
 | [talos_client_configuration.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/data-sources/client_configuration) | data source |
 | [talos_image_factory_urls.this](https://registry.terraform.io/providers/siderolabs/talos/latest/docs/data-sources/image_factory_urls) | data source |
@@ -58,7 +61,7 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_acme_account"></a> [acme\_account](#input\_acme\_account) | Name of the ACME account on the host that orders the certificate | `string` | `"default"` | no |
-| <a name="input_acme_dns_plugin_data"></a> [acme\_dns\_plugin\_data](#input\_acme\_dns\_plugin\_data) | Credentials for the acme.sh DNS plugin (CF\_Account\_ID, CF\_Email, CF\_Token) | `map(string)` | n/a | yes |
+| <a name="input_acme_dns_plugin_data"></a> [acme\_dns\_plugin\_data](#input\_acme\_dns\_plugin\_data) | acme.sh dns\_aws credentials (AWS\_ACCESS\_KEY\_ID, AWS\_SECRET\_ACCESS\_KEY), the key of module.acme\_user | `map(string)` | n/a | yes |
 | <a name="input_backup_enabled"></a> [backup\_enabled](#input\_backup\_enabled) | Whether the backup job runs on schedule | `bool` | `true` | no |
 | <a name="input_backup_retention"></a> [backup\_retention](#input\_backup\_retention) | Job-level prune policy, overriding the storage's own prune-backups | `map(string)` | <pre>{<br/>  "keep-daily": "7",<br/>  "keep-monthly": "3",<br/>  "keep-weekly": "4"<br/>}</pre> | no |
 | <a name="input_backup_schedule"></a> [backup\_schedule](#input\_backup\_schedule) | systemd calendar event for the backup job, in the PVE host's local timezone | `string` | `"*-*-* 02:30"` | no |
