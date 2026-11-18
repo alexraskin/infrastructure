@@ -47,6 +47,8 @@ data "aws_iam_policy_document" "this" {
 }
 
 # CIS (Trivy AWS-0143): permissions go on a group, never on the user.
+# AWS-0123 (MFA) can't apply: the only member is a key-only machine user.
+#trivy:ignore:AWS-0123
 resource "aws_iam_group" "this" {
   name = var.name
 }
