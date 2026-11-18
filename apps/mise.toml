@@ -45,7 +45,7 @@ echo "secret/sops-age is in place"
 """
 
 [tasks.sops-encrypt]
-description = "Encrypt a secret file in place: mise run sops-encrypt base/cloudflared/token.sops.yaml"
+description = "Encrypt a secret file in place: mise run sops-encrypt base/loki/r2.sops.yaml"
 shell = "bash -c"
 usage = 'arg "<file>"'
 run = """
@@ -56,7 +56,7 @@ echo "encrypted $usage_file — safe to commit"
 """
 
 [tasks.sops-edit]
-description = "Edit an encrypted secret: mise run sops-edit base/cloudflared/token.sops.yaml"
+description = "Edit an encrypted secret: mise run sops-edit base/loki/r2.sops.yaml"
 shell = "bash -c"
 usage = 'arg "<file>"'
 run = """

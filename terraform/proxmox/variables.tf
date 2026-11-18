@@ -167,7 +167,7 @@ variable "acme_account" {
 }
 
 variable "acme_dns_plugin_data" {
-  description = "Credentials for the acme.sh DNS plugin (CF_Account_ID, CF_Email, CF_Token)"
+  description = "acme.sh dns_aws credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY), the key of module.acme_user"
   type        = map(string)
   sensitive   = true
 }

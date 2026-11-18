@@ -62,8 +62,9 @@ tags are rewritten into git by image-automation rather than by me.
 
 ## Getting traffic in and out
 
-No port is open to the internet. Public traffic arrives through an **outbound**
-cloudflared tunnel, so the firewall has nothing to forward.
+No port is open to the internet. Public traffic lands on the Oracle edge box,
+which reaches back over the tailnet, so the home firewall has nothing to forward.
+DNS is Route 53.
 
 Nothing on the tailnet is a node, either — Talos has no systemd to run
 `tailscaled` in. Instead the Tailscale operator runs *in* the cluster: a
@@ -75,10 +76,7 @@ flowchart TB
     USER["Public visitor"]
     ADMIN["Me, off-LAN"]
 
-    subgraph cf["Cloudflare"]
-        DNS["CNAMEs -> tunnel"]
-        TUN["Tunnel ingress rules<br/>hostname -> Service DNS"]
-    end
+    DNS["Route 53"]
 
     subgraph ts["Tailnet"]
         SR["Connector<br/>subnet router, in-cluster"]
@@ -91,7 +89,6 @@ flowchart TB
             ETCD["kube-apiserver + etcd"]
         end
         subgraph ag["workers - 3 Talos VMs"]
-            CFD["cloudflared"]
             APPS["apps"]
             MON["kube-prometheus-stack"]
             LOG["Loki + Alloy"]
@@ -105,10 +102,7 @@ flowchart TB
     R2L[("R2 bucket<br/>loki chunks")]
     EDGE["Oracle edge<br/>HAProxy, NixOS"]
 
-    USER --> DNS --> TUN
-    TUN -. "outbound tunnel" .- CFD
-    CFD --> APPS
-    USER --> EDGE
+    USER --> DNS --> EDGE
 
     ADMIN -- kubectl --> SR --> VIP --> ETCD
     ADMIN -- https --> TSD --> MON
@@ -126,9 +120,8 @@ HAProxy, in `01-cloud-edge/`.
 ## Layout
 
 ```text
-00-global/             the Object Storage bucket every root's state lives in
+00-global/             CI roles, SSM secrets, Identity Center, the domain and its Route 53 zone
 terraform/proxmox/     the nine VMs, the machine configs, the bootstrap
-terraform/cloudflare/  the tunnel, its ingress rules, the DNS records
 terraform/oracle/      Object Storage — where Postgres backups land
 tailscale/             the tailnet policy file, as code
 talos/                 Cilium's values, installed outside Flux on purpose
@@ -136,7 +129,7 @@ apps/                  everything Flux deploys
 01-cloud-edge/         the public Oracle edge, NixOS
 ```
 
-Every command is a `mise` task. State for all six Terraform roots lives in one
+Every command is a `mise` task. State for all five Terraform roots lives in one
 Oracle Object Storage bucket, on the `oci` backend, which locks. Secrets in `apps/` are SOPS-encrypted to a single age key that also
 decrypts the edge; nothing else in the tree is sensitive.
 

@@ -5,12 +5,12 @@
 #   scripts/tf.sh <root> init                   re-resolve providers
 #   scripts/tf.sh roots                         the dirs CI and the lint tasks read
 #
-# Roots: global proxmox cloudflare oracle tailscale edge
+# Roots: global proxmox oracle tailscale edge
 #
 # State is in S3 (alexraskin-tfstate, under infrastructure/), and the backend
 # takes its credentials from the environment: `aws sso login` locally, an OIDC
-# role in CI. Secrets are SSM parameters too: the cloudflare and tailscale
-# providers get theirs handed over here, every other root reads them itself.
+# role in CI. Secrets are SSM parameters too: the tailscale
+# provider gets its handed over here, every other root reads them itself.
 
 set -euo pipefail
 
@@ -20,7 +20,6 @@ root_dir() {
   case $1 in
   global) echo 00-global ;;
   proxmox) echo terraform/proxmox ;;
-  cloudflare) echo terraform/cloudflare ;;
   oracle) echo terraform/oracle ;;
   tailscale) echo tailscale ;;
   edge) echo 01-cloud-edge/terraform ;;
@@ -29,15 +28,15 @@ root_dir() {
 }
 
 if [ "${1:-}" = roots ]; then
-  for r in global edge tailscale cloudflare oracle proxmox; do root_dir "$r"; done | sort
+  for r in global edge tailscale oracle proxmox; do root_dir "$r"; done | sort
   exit 0
 fi
 
-root=${1:?usage: tf.sh <root> <terraform args ...>   (roots: global proxmox cloudflare oracle tailscale edge)}
+root=${1:?usage: tf.sh <root> <terraform args ...>   (roots: global proxmox oracle tailscale edge)}
 shift
 dir=$(root_dir "$root") || {
   echo "unknown root: $root" >&2
-  echo "  one of: global proxmox cloudflare oracle tailscale edge" >&2
+  echo "  one of: global proxmox oracle tailscale edge" >&2
   exit 1
 }
 
@@ -49,12 +48,8 @@ secret() {
     --name "/infrastructure/$1" --query Parameter.Value --output text
 }
 
-# Both providers read the environment, so their tokens are exported here.
+# The provider reads the environment, so its credentials are exported here.
 # CI brings its own Tailscale OIDC credentials.
-if [ "$root" = cloudflare ] && [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-  CLOUDFLARE_API_TOKEN=$(secret cloudflare/api_token)
-  export CLOUDFLARE_API_TOKEN
-fi
 if [ "$root" = tailscale ] && [ -z "${TAILSCALE_OAUTH_CLIENT_ID:-}" ]; then
   TAILSCALE_OAUTH_CLIENT_ID=$(secret tailscale/oauth_client_id)
   TAILSCALE_OAUTH_CLIENT_SECRET=$(secret tailscale/oauth_client_secret)
