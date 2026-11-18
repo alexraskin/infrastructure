@@ -15,7 +15,7 @@ Flux deploys everything in `apps/`.
 | path | owns |
 | --- | --- |
 | `00-global/` | the AWS roles CI assumes over GitHub OIDC, one per GitHub environment, the SSM parameters every root reads its secrets from, IAM Identity Center (us-west-2), and the `alexraskin.com` registration, its Route 53 zone and the zone-wide records (Fastmail, CAA) |
-| `modules/` | `github-oidc-role` — the role shape `00-global` stamps out per CI environment; `ssm-params` — one group of SecureStrings; `route53-records` — record sets in the zone; `acme-route53-user` — an IAM user that may only answer its own DNS-01 challenges (PVE, edge), called by `00-global`, `proxmox` (cluster names) and `edge` (edge names); the site and photography repos write their own |
+| `modules/` | `github-oidc-role` — the role shape `00-global` stamps out per CI environment; `ssm-params` — one group of SecureStrings; `route53-records` — record sets in the zone, plus its DNSSEC signing for the root that owns it; `acme-route53-user` — an IAM user that may only answer its own DNS-01 challenges (PVE, edge), called by `00-global`, `proxmox` (cluster names) and `edge` (edge names); the site and photography repos write their own |
 | `terraform/proxmox/` | the nine VMs, the cluster, **and** the PVE host itself (ACME cert, storages, management bridge, nightly vzdump, the NFS LXC) |
 | `terraform/oracle/` | the CNPG backup bucket (with the edge box, all that is left in OCI) |
 | `tailscale/` | the tailnet policy file |

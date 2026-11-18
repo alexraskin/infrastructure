@@ -21,3 +21,12 @@ variable "records" {
     error_message = "Each record needs exactly one of records or alias."
   }
 }
+
+variable "dnssec" {
+  description = "Sign the zone (the root that owns it sets this once). publish_ds adds the registry DS record: only after the zone has been signed for its max TTL, 48h for the apex NS."
+  type = object({
+    domain     = string
+    publish_ds = optional(bool, false)
+  })
+  default = null
+}
