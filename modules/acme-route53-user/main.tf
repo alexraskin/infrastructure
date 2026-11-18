@@ -46,8 +46,18 @@ data "aws_iam_policy_document" "this" {
   }
 }
 
-resource "aws_iam_user_policy" "this" {
+# CIS (Trivy AWS-0143): permissions go on a group, never on the user.
+resource "aws_iam_group" "this" {
+  name = var.name
+}
+
+resource "aws_iam_group_policy" "this" {
   name   = "acme-dns-01"
-  user   = aws_iam_user.this.name
+  group  = aws_iam_group.this.name
   policy = data.aws_iam_policy_document.this.json
+}
+
+resource "aws_iam_user_group_membership" "this" {
+  user   = aws_iam_user.this.name
+  groups = [aws_iam_group.this.name]
 }

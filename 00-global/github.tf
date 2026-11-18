@@ -10,8 +10,8 @@ locals {
   # One role per GitHub environment. Terraform roots get their own state;
   # edge runs no Terraform, so it gets none.
   ci_roots = {
-    tailscale  = { state = true, read_state_keys = [local.proxmox_state], secrets = [] }
-    edge       = { state = false, read_state_keys = [], secrets = ["edge"] }
+    tailscale = { state = true, read_state_keys = [local.proxmox_state], secrets = [] }
+    edge      = { state = false, read_state_keys = [], secrets = ["edge"] }
   }
 }
 
