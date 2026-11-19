@@ -48,5 +48,4 @@ No modules.
 | Name | Description |
 |------|-------------|
 | <a name="output_ds_record"></a> [ds\_record](#output\_ds\_record) | The zone's DS record, when dnssec is set |
-| <a name="output_fqdns"></a> [fqdns](#output\_fqdns) | Key => FQDN |
 <!-- END_TF_DOCS -->

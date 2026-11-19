@@ -9,8 +9,10 @@ module "secrets" {
 locals {
   secrets = {
     global = {
-      budget_email = "Where the account budget alerts go"
-      sso_email    = "Email on the Identity Center user"
+      budget_email        = "Where the account budget alerts go"
+      sso_email           = "Email on the Identity Center user"
+      discord_webhook_url = "Discord webhook CloudTrail alerts post to"
+      contact_phone       = "Phone on the account's alternate contacts, +1-555-555-5555 form"
     }
     oci = {
       tenancy_ocid     = "OCI tenancy, for the oracle and edge roots"

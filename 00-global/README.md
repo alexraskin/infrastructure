@@ -32,6 +32,7 @@ read it as a data source.
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_ci_role"></a> [ci\_role](#module\_ci\_role) | ../modules/github-oidc-role | n/a |
+| <a name="module_cloudtrail"></a> [cloudtrail](#module\_cloudtrail) | ../modules/cloudtrail | n/a |
 | <a name="module_dns"></a> [dns](#module\_dns) | ../modules/route53-records | n/a |
 | <a name="module_secrets"></a> [secrets](#module\_secrets) | ../modules/ssm-params | n/a |
 
@@ -39,13 +40,19 @@ read it as a data source.
 
 | Name | Type |
 |------|------|
+| [aws_accessanalyzer_analyzer.account](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/accessanalyzer_analyzer) | resource |
+| [aws_account_alternate_contact.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/account_alternate_contact) | resource |
 | [aws_budgets_budget.monthly](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/budgets_budget) | resource |
+| [aws_ce_anomaly_monitor.services](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ce_anomaly_monitor) | resource |
+| [aws_ce_anomaly_subscription.daily](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ce_anomaly_subscription) | resource |
+| [aws_ebs_encryption_by_default.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ebs_encryption_by_default) | resource |
 | [aws_iam_openid_connect_provider.github](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_openid_connect_provider) | resource |
 | [aws_identitystore_group.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_group) | resource |
 | [aws_identitystore_group_membership.alex_admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_group_membership) | resource |
 | [aws_identitystore_user.alex](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/identitystore_user) | resource |
 | [aws_route53_zone.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_zone) | resource |
 | [aws_route53domains_registered_domain.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53domains_registered_domain) | resource |
+| [aws_s3_account_public_access_block.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_account_public_access_block) | resource |
 | [aws_ssoadmin_account_assignment.alex_admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssoadmin_account_assignment) | resource |
 | [aws_ssoadmin_managed_policy_attachment.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssoadmin_managed_policy_attachment) | resource |
 | [aws_ssoadmin_permission_set.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssoadmin_permission_set) | resource |
