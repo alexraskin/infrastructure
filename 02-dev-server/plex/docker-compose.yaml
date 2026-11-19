@@ -17,8 +17,6 @@ services:
         target: /media
         read_only: true
     restart: always
-    labels:
-      didar.enabled: "true"
   prom-plex-exporter:
     container_name: prom-plex-exporter
     image: ghcr.io/jsclayton/prometheus-plex-exporter
@@ -28,5 +26,3 @@ services:
       PLEX_SERVER: ${PLEX_SERVER}
       PLEX_TOKEN: ${PLEX_TOKEN}
     restart: always
-    labels:
-      didar.enabled: "true"
