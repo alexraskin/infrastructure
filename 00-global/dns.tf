@@ -16,6 +16,7 @@ module "dns" {
   source = "../modules/route53-records"
 
   zone_id = aws_route53_zone.this.zone_id
+  dnssec  = { domain = var.domain, publish_ds = var.dnssec_publish_ds }
 
   records = {
     mx          = { name = local.d, type = "MX", ttl = 3600, records = local.fastmail_mx }

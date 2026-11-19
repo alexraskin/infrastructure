@@ -56,6 +56,7 @@ read it as a data source.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_dnssec_publish_ds"></a> [dnssec\_publish\_ds](#input\_dnssec\_publish\_ds) | Publish the DS record at the registry (modules/route53-records). Only after the zone has been signed for 48h. | `bool` | `false` | no |
 | <a name="input_domain"></a> [domain](#input\_domain) | The hosted zone this root owns | `string` | `"alexraskin.com"` | no |
 | <a name="input_region"></a> [region](#input\_region) | Region the state bucket lives in | `string` | `"us-east-1"` | no |
 | <a name="input_repository"></a> [repository](#input\_repository) | GitHub repository whose workflows assume the CI roles | `string` | `"alexraskin/infrastructure"` | no |
@@ -66,5 +67,6 @@ read it as a data source.
 | Name | Description |
 |------|-------------|
 | <a name="output_ci_role_arns"></a> [ci\_role\_arns](#output\_ci\_role\_arns) | AWS\_ROLE\_ARN for each GitHub environment |
+| <a name="output_dnssec_ds_record"></a> [dnssec\_ds\_record](#output\_dnssec\_ds\_record) | The DS record the registry should carry once dnssec\_publish\_ds is on |
 | <a name="output_name_servers"></a> [name\_servers](#output\_name\_servers) | Set these at the registrar to cut the domain over to Route 53 |
 <!-- END_TF_DOCS -->

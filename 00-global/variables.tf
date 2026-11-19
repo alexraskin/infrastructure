@@ -21,3 +21,9 @@ variable "domain" {
   type        = string
   default     = "alexraskin.com"
 }
+
+variable "dnssec_publish_ds" {
+  description = "Publish the DS record at the registry (modules/route53-records). Only after the zone has been signed for 48h."
+  type        = bool
+  default     = false
+}
