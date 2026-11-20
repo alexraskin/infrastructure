@@ -1,0 +1,78 @@
+name: "Edge: update"
+
+on:
+  schedule:
+    - cron: "0 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+  id-token: write
+
+concurrency:
+  group: edge-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: "flake.lock"
+    runs-on: ubuntu-latest
+    environment: edge
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Fetch edge.json
+        run: |
+          aws ssm get-parameter --with-decryption --name /infrastructure/edge/edge_json \
+            --query Parameter.Value --output text > 01-cloud-edge/edge.json
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31.11.5
+
+      - name: Update inputs
+        id: update
+        working-directory: 01-cloud-edge
+        run: |
+          nix flake update --flake "path:$PWD"
+          if git diff --quiet flake.lock; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Eval only: catches removed/renamed options before anything merges.
+      - name: Evaluate the system
+        if: steps.update.outputs.changed == 'true'
+        working-directory: 01-cloud-edge
+        run: |
+          host=$(jq -r .instance.hostname edge.json)
+          nix eval --raw "path:$PWD#nixosConfigurations.$host.config.system.build.toplevel.drvPath" > /dev/null
+
+      # A GITHUB_TOKEN merge fires no push event, so the deploy is dispatched explicitly.
+      - name: Open, merge and deploy
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="edge-update/$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -m "edge: update flake.lock" 01-cloud-edge/flake.lock
+          git push -u origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "edge: update flake.lock" \
+            --body "Scheduled \`nix flake update\`; the system evaluated. Merged and deployed by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
+          gh pr merge "$branch" --squash --delete-branch
+          gh workflow run edge-deploy.yml --ref main -f apply=true

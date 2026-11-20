@@ -81,5 +81,24 @@ for cert in $certs; do
     echo "  acme-$cert failed — check: journalctl -u acme-$cert.service" >&2
 done
 
+if edge_ssh "$ip" '
+  for f in kernel initrd kernel-modules; do
+    [ "$(readlink -f /run/booted-system/$f)" = "$(readlink -f /run/current-system/$f)" ] || exit 0
+  done
+  exit 1
+'; then
+  echo "==> $ip: kernel changed — rebooting"
+  edge_ssh "$ip" 'systemctl reboot' || true
+  sleep 30
+  deadline=$((SECONDS + 600))
+  until ssh "${ssh_opts[@]}" -o ConnectTimeout=5 "root@$ip" true 2>/dev/null; do
+    if [ $SECONDS -ge $deadline ]; then
+      echo "$ip did not come back within 10 minutes of the reboot" >&2
+      exit 1
+    fi
+    sleep 5
+  done
+fi
+
 echo "==> $ip: done"
 edge_ssh "$ip" 'tailscale status --peers=false 2>/dev/null || true'
