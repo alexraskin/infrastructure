@@ -115,6 +115,11 @@ spec:
               - targets: ["adsb-egress.monitoring.svc.cluster.local:9273"]
                 labels:
                   instance: adsb-telegraf
+          - job_name: node-exporter
+            static_configs:
+              - targets: ["edge-egress.monitoring.svc.cluster.local:9100"]
+                labels:
+                  instance: cloud-edge
 
         resources:
           requests:

@@ -8,3 +8,14 @@ metadata:
 spec:
   type: ExternalName
   externalName: placeholder
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edge-egress
+  namespace: monitoring
+  annotations:
+    tailscale.com/tailnet-ip: "100.79.150.123"
+spec:
+  type: ExternalName
+  externalName: placeholder

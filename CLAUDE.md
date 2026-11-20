@@ -18,7 +18,7 @@ Flux deploys everything in `apps/`.
 | `modules/` | `github-oidc-role` — the role shape `00-global` stamps out per CI environment; `ssm-params` — one group of SecureStrings; `route53-records` — record sets in the zone, plus its DNSSEC signing for the root that owns it; `cloudtrail` — one free-tier management-events trail and its bucket; `acme-route53-user` — an IAM user that may only answer its own DNS-01 challenges (PVE, edge), called by `00-global`, `proxmox` (cluster names) and `edge` (edge names); the site and photography repos write their own |
 | `terraform/proxmox/` | the nine VMs, the cluster, **and** the PVE host itself (ACME cert, storages, management bridge, nightly vzdump, the NFS LXC) |
 | `terraform/oracle/` | the CNPG backup bucket (with the edge box, all that is left in OCI) |
-| `tailscale/` | the tailnet policy file |
+| `terraform/tailscale/` | the tailnet policy file |
 | `01-cloud-edge/` | the NixOS edge box — its own flake, mise config and Terraform root |
 | `apps/base/` | one directory per workload, deployed by Flux |
 | `apps/clusters/talos/` | the Flux Kustomizations that point at `apps/base/` |
@@ -159,7 +159,7 @@ to the alexraskin.com project, since an account has one per URL.
 machine secrets and the client CA live in the bucket. Treat it as a secret
 store, and keep `secrets/talosconfig` as the copy that matters.
 
-**`tailscale/` reads the Proxmox root's state** so the VIP, subnet and PVE host
+**`terraform/tailscale/` reads the Proxmox root's state** so the VIP, subnet and PVE host
 address are declared once, through an `s3`
 `terraform_remote_state` using the same ambient credentials.
 
