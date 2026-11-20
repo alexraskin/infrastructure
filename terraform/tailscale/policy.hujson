@@ -26,13 +26,20 @@
 			"users":  ["root"],
 		},
 
-		// Root on the edge from morpheus. SSH src can't be a host alias, and
-		// morpheus is tagged, so it carries its own tag; tagged = `accept`.
+		// SSH from morpheus: root on the edge, nonroot on the servers. SSH src
+		// can't be a host alias, and morpheus is tagged, so it carries its own
+		// tag; tagged = `accept`.
 		{
 			"action": "accept",
-			"src":    ["tag:edge-admin"],
+			"src":    ["tag:ssh-admin"],
 			"dst":    ["tag:cloud-edge"],
 			"users":  ["root"],
+		},
+		{
+			"action": "accept",
+			"src":    ["tag:ssh-admin"],
+			"dst":    ["tag:server"],
+			"users":  ["autogroup:nonroot"],
 		},
 
 		// Muse agent over Tailscale SSH. `accept`, not `check`: a tag source
@@ -183,8 +190,8 @@
 			"ip":  ["tcp:22"],
 		},
 		{
-			"src": ["tag:edge-admin"],
-			"dst": ["tag:cloud-edge"],
+			"src": ["tag:ssh-admin"],
+			"dst": ["tag:cloud-edge", "hhbox", "nixcosmo"],
 			"ip":  ["tcp:22"],
 		},
 		{
@@ -223,10 +230,8 @@
 
 		"tag:muse": [],
 
-		// morpheus, alongside tag:server: SSH to the edge.
-		"tag:edge-admin": [],
+		"tag:ssh-admin": [],
 
-		// GitHub Actions, joining ephemerally with a tailnet-lock-signed auth key.
 		"tag:ci": [],
 	},
 
@@ -238,8 +243,6 @@
 		// Without this the edge advertises 0.0.0.0/0 and waits for a human.
 		"exitNode": ["tag:cloud-edge"],
 
-		// Every ingress ProxyGroup replica advertises these on startup, and each
-		// one would otherwise sit pending in the admin console.
 		"services": {
 			"svc:status":  ["tag:k8s"],
 			"svc:grafana": ["tag:k8s"],
@@ -248,10 +251,8 @@
 		},
 	},
 
-	// Evaluated by the API at `terraform plan`, so a widened grant fails the PR.
 	"tests": [
 		{
-			// The edge reaches its one backend and Loki, nothing else.
 			"src":   "tag:cloud-edge",
 			"proto": "tcp",
 			"accept": [
@@ -262,12 +263,10 @@
 				"100.73.219.120:22",
 				"${cluster_vip}:6443",
 				"${node["talos-cp-1"]}:22",
-				// tag:k8s-loki is split out so this stays denied.
 				"tag:k8s:443",
 			],
 		},
 		{
-			// The operator's proxies reach only what gatus probes.
 			"src":    "tag:k8s",
 			"proto":  "tcp",
 			"accept": ["tag:cloud-edge:443", "tag:cloud-edge:9100", "100.109.167.97:443", "100.86.236.21:9273", "100.86.236.21:9274", "hhbox:22"],
@@ -279,7 +278,6 @@
 			],
 		},
 		{
-			// The tagged servers reach only the NFS export on chronos.
 			"src":    "tag:server",
 			"proto":  "tcp",
 			"accept": ["chronos:2049"],
@@ -290,13 +288,11 @@
 			],
 		},
 		{
-			// The subnet router advertises the route; it does not get to use it.
 			"src":   "tag:k8s-router",
 			"proto": "tcp",
 			"deny":  ["100.73.219.120:32400", "tag:cloud-edge:22"],
 		},
 		{
-			// CI reaches the edge over SSH and nothing else on this tailnet.
 			"src":    "tag:ci",
 			"proto":  "tcp",
 			"accept": ["tag:cloud-edge:22"],
@@ -308,13 +304,12 @@
 			],
 		},
 		{
-			"src":    "tag:edge-admin",
+			"src":    "tag:ssh-admin",
 			"proto":  "tcp",
-			"accept": ["tag:cloud-edge:22"],
-			"deny":   ["tag:cloud-edge:443", "${cluster_vip}:6443"],
+			"accept": ["tag:cloud-edge:22", "hhbox:22", "nixcosmo:22"],
+			"deny":   ["tag:cloud-edge:443", "${cluster_vip}:6443", "chronos:22"],
 		},
 		{
-			// muse gets SSH to three hosts and the operator's API proxy, nothing else.
 			"src":    "tag:muse",
 			"proto":  "tcp",
 			"accept": ["morpheus:22", "hhbox:22", "nixcosmo:22", "tag:k8s-operator:443"],
@@ -334,7 +329,6 @@
 		},
 	],
 
-	// autogroup:self is user-owned devices only; a tagged node has no owner.
 	"sshTests": [
 		{
 			"src":  "tag:cloud-edge",
@@ -347,7 +341,7 @@
 			"accept": ["root"],
 		},
 		{
-			"src":    "tag:edge-admin",
+			"src":    "tag:ssh-admin",
 			"dst":    ["tag:cloud-edge"],
 			"accept": ["root"],
 		},
