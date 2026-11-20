@@ -13,6 +13,7 @@
     ./acme.nix
     ./haproxy.nix
     ./logging.nix
+    ./metrics.nix
   ];
 
   boot.loader = {

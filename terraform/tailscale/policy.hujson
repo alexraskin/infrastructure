@@ -126,7 +126,7 @@
 		{
 			"src": ["tag:k8s"],
 			"dst": ["tag:cloud-edge"],
-			"ip":  ["tcp:443"],
+			"ip":  ["tcp:443", "tcp:9100"], // 9100: Prometheus, via apps/base/monitoring/egress.yaml
 		},
 		{
 			"src": ["tag:k8s"],
@@ -253,7 +253,7 @@
 			// The operator's proxies reach only what gatus probes.
 			"src":    "tag:k8s",
 			"proto":  "tcp",
-			"accept": ["tag:cloud-edge:443", "100.109.167.97:443", "100.86.236.21:9273", "100.86.236.21:9274", "hhbox:22"],
+			"accept": ["tag:cloud-edge:443", "tag:cloud-edge:9100", "100.109.167.97:443", "100.86.236.21:9273", "100.86.236.21:9274", "hhbox:22"],
 			"deny": [
 				"100.73.219.120:32400",
 				"${cluster_vip}:6443",
