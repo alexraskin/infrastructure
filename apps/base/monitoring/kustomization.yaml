@@ -20,6 +20,10 @@ configMapGenerator:
     namespace: monitoring
     files:
       - adsb.json=dashboards/adsb.json
+  - name: grafana-dashboard-cloud-edge
+    namespace: monitoring
+    files:
+      - cloud-edge.json=dashboards/cloud-edge.json
 
 generatorOptions:
   disableNameSuffixHash: true
