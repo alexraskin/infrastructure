@@ -7,15 +7,6 @@ set -euo pipefail
 host=$(edge_host)
 ip=$(edge_addr "${1:-}")
 
-# CI has no master key and must not: the box keeps the one it was installed
-# with. Locally this refreshes it, which is what makes a rebuild survive a
-# rotated key.
-if [ -s "$repo/secrets/age.key" ]; then
-  "$edge/scripts/push-age-key.sh" "$ip"
-else
-  echo "==> no local age key — leaving /var/lib/sops-nix/key.txt as it is"
-fi
-
 echo "==> $ip: copying the flake -> /etc/nixos-edge"
 tar -C "$edge" -cf - flake.nix flake.lock edge.json nixos \
   | edge_ssh "$ip" '
@@ -33,7 +24,7 @@ echo "==> $ip: nixos-rebuild switch (building on the box)"
 edge_ssh "$ip" "
   set -eu
   systemctl reset-failed edge-rebuild.service 2>/dev/null || true
-  systemd-run --no-block --unit=edge-rebuild \
+  systemd-run --no-block --unit=edge-rebuild --setenv=PATH=/run/wrappers/bin:/run/current-system/sw/bin \
     --property=Type=oneshot --property=RemainAfterExit=yes \
     nixos-rebuild switch --flake 'path:/etc/nixos-edge#$host'
 "

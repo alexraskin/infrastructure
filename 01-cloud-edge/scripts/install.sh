@@ -34,22 +34,16 @@ extra="$repo/secrets/.extra-files"
 rm -rf "$extra"
 trap 'rm -rf "$extra"' EXIT
 
-host="$repo/secrets/edge-host-ed25519"
-[ -s "$host" ] || {
+host_key="$repo/secrets/edge-host-ed25519"
+[ -s "$host_key" ] || {
   echo "missing secrets/edge-host-ed25519 — restore it from 1Password" >&2
   echo "  it is the box's /etc/ssh/ssh_host_ed25519_key, and the second" >&2
   echo "  recipient in 01-cloud-edge/.sops.yaml is derived from it" >&2
   exit 1
 }
 install -d -m 0755 "$extra/etc/ssh"
-install -m 0600 "$host" "$extra/etc/ssh/ssh_host_ed25519_key"
-install -m 0644 "$host.pub" "$extra/etc/ssh/ssh_host_ed25519_key.pub"
-
-key="$repo/secrets/age.key"
-if [ -s "$key" ]; then
-  install -d -m 0755 "$extra/var/lib/sops-nix"
-  install -m 0400 "$key" "$extra/var/lib/sops-nix/key.txt"
-fi
+install -m 0600 "$host_key" "$extra/etc/ssh/ssh_host_ed25519_key"
+install -m 0644 "$host_key.pub" "$extra/etc/ssh/ssh_host_ed25519_key.pub"
 
 # nix.sh mounts ~/.ssh read-only; nixos-anywhere needs to write there.
 "$repo/scripts/nix.sh" "
