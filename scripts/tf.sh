@@ -21,7 +21,7 @@ root_dir() {
   global) echo 00-global ;;
   proxmox) echo terraform/proxmox ;;
   oracle) echo terraform/oracle ;;
-  tailscale) echo tailscale ;;
+  tailscale) echo terraform/tailscale ;;
   edge) echo 01-cloud-edge/terraform ;;
   *) return 1 ;;
   esac

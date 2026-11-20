@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "tailscale/**"
+      - "terraform/tailscale/**"
       - ".github/workflows/tailscale-deploy.yml"
   workflow_dispatch:
     inputs:
@@ -30,7 +30,7 @@ jobs:
     environment: tailscale
     defaults:
       run:
-        working-directory: ./tailscale
+        working-directory: ./terraform/tailscale
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"

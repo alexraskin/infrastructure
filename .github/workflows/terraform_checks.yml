@@ -7,7 +7,6 @@ on:
     paths:
       - "00-global/**"
       - "01-cloud-edge/terraform/**"
-      - "tailscale/**"
       - "terraform/**"
       - "modules/**"
       - ".tflint.hcl"
@@ -18,7 +17,6 @@ on:
     paths:
       - "00-global/**"
       - "01-cloud-edge/terraform/**"
-      - "tailscale/**"
       - "terraform/**"
       - "modules/**"
       - ".tflint.hcl"

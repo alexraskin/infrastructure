@@ -1,4 +1,4 @@
-# The group muse is impersonated as by the API server proxy; see tailscale/policy.hujson.
+# The group muse is impersonated as by the API server proxy; see terraform/tailscale/policy.hujson.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
