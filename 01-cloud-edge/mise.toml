@@ -52,10 +52,6 @@ description = "Print the decrypted secrets"
 shell = "bash -c"
 run = "exec sops --decrypt nixos/hosts/oracle-edge/secrets.sops.yaml"
 
-[tasks."push-age-key"]
-description = "The age key sops-nix decrypts the box's secrets with"
-run = "scripts/push-age-key.sh"
-
 [tasks.deploy]
 description = "Push this flake and nixos-rebuild switch (builds on the box)"
 run = "scripts/deploy.sh"
