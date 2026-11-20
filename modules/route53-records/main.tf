@@ -35,6 +35,10 @@ resource "aws_kms_key" "dnssec" {
   key_usage                = "SIGN_VERIFY"
   deletion_window_in_days  = 30
   policy                   = data.aws_iam_policy_document.dnssec_kms[0].json
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 data "aws_iam_policy_document" "dnssec_kms" {

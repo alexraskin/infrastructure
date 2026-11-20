@@ -63,7 +63,7 @@ read it as a data source.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_dnssec_publish_ds"></a> [dnssec\_publish\_ds](#input\_dnssec\_publish\_ds) | Publish the DS record at the registry (modules/route53-records). Only after the zone has been signed for 48h. | `bool` | `false` | no |
+| <a name="input_dnssec_publish_ds"></a> [dnssec\_publish\_ds](#input\_dnssec\_publish\_ds) | Publish the DS record at the registry (modules/route53-records). Only after the zone has been signed for 48h. | `bool` | `true` | no |
 | <a name="input_domain"></a> [domain](#input\_domain) | The hosted zone this root owns | `string` | `"alexraskin.com"` | no |
 | <a name="input_region"></a> [region](#input\_region) | Region the state bucket lives in | `string` | `"us-east-1"` | no |
 | <a name="input_repository"></a> [repository](#input\_repository) | GitHub repository whose workflows assume the CI roles | `string` | `"alexraskin/infrastructure"` | no |
