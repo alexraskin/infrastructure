@@ -152,7 +152,7 @@
 		{
 			"src": ["tag:k8s"],
 			"dst": ["hhbox"],
-			"ip":  ["tcp:22"],
+			"ip":  ["tcp:22", "tcp:9100"], // 9100: Prometheus, via apps/base/monitoring/egress.yaml
 		},
 
 		// NFS for Plex on morpheus. Morpheus is tag:server; tagging it
@@ -166,11 +166,11 @@
 			"dst": ["chronos"],
 			"ip":  ["tcp:2049"],
 		},
-		// Prometheus scrapes the ADS-B feeder through apps/base/monitoring/egress.yaml.
+		// Prometheus scrapes nixcosmo (node exporter + ADS-B feeder) through apps/base/monitoring/egress.yaml.
 		{
 			"src": ["tag:k8s"],
 			"dst": ["100.86.236.21"],
-			"ip":  ["tcp:9273-9274"],
+			"ip":  ["tcp:9100", "tcp:9273-9274"],
 		},
 
 		// Reached by Service name rather than by whichever proxy replica is up.
@@ -269,7 +269,7 @@
 		{
 			"src":    "tag:k8s",
 			"proto":  "tcp",
-			"accept": ["tag:cloud-edge:443", "tag:cloud-edge:9100", "100.109.167.97:443", "100.86.236.21:9273", "100.86.236.21:9274", "hhbox:22"],
+			"accept": ["tag:cloud-edge:443", "tag:cloud-edge:9100", "100.109.167.97:443", "100.86.236.21:9100", "100.86.236.21:9273", "100.86.236.21:9274", "hhbox:22", "hhbox:9100"],
 			"deny": [
 				"100.73.219.120:32400",
 				"${cluster_vip}:6443",
