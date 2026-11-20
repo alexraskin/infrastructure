@@ -40,6 +40,10 @@ resource "oci_core_instance" "edge" {
     is_pv_encryption_in_transit_enabled = true
   }
 
+  instance_options {
+    are_legacy_imds_endpoints_disabled = true
+  }
+
   create_vnic_details {
     subnet_id                 = oci_core_subnet.public.id
     display_name              = "${local.instance.hostname}-vnic"

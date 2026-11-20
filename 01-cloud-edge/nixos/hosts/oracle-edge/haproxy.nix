@@ -31,12 +31,15 @@ in
       global
         log /dev/log local0 info
         maxconn 2000
+        ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
 
       defaults
         log global
         mode http
         option httplog
         option dontlognull
+        timeout http-request 10s
+        timeout http-keep-alive 10s
         timeout connect 5s
         timeout client  5m
         timeout server  5m
@@ -45,6 +48,9 @@ in
       frontend https_in
         bind :443 ssl ${certs} alpn h2,http/1.1
         option forwardfor
+        stick-table type ip size 100k expire 1m store http_req_rate(10s)
+        http-request track-sc0 src
+        http-request deny deny_status 429 if { sc_http_req_rate(0) gt 300 }
         http-request set-header X-Real-IP %[src]
         http-request set-header X-Forwarded-Proto https
         http-request set-header X-Forwarded-Port 443
