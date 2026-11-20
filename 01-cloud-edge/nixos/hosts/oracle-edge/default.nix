@@ -34,10 +34,7 @@
 
     firewall = {
       enable = true;
-      allowedTCPPorts = [
-        22
-        443
-      ];
+      allowedTCPPorts = [ 443 ];
       allowedUDPPorts = [ 41641 ];
       trustedInterfaces = [ "tailscale0" ];
 
@@ -54,18 +51,22 @@
     };
   };
 
+  # Reached over tailscale0 only; eth0 never opens 22.
   services.openssh = {
     enable = true;
+    openFirewall = false;
     settings = {
       PermitRootLogin = "prohibit-password";
       PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
     };
   };
 
-  services.fail2ban.enable = true;
+  users.mutableUsers = false;
 
   nix = {
     settings = {
+      allowed-users = [ "root" ];
       experimental-features = [
         "nix-command"
         "flakes"

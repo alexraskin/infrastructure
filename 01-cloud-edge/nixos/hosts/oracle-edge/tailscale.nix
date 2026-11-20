@@ -31,7 +31,9 @@ in
   # Refuses SSH -L/-R (TCP and unix socket) and agent forwarding, whatever the policy grants.
   systemd.services.tailscaled.environment.TS_SSH_DISABLE_FORWARDING = "1";
 
+  # Exit-node traffic gets the internet, not IMDS or the VCN.
   networking.firewall.extraForwardRules = ''
+    iifname "tailscale0" oifname "eth0" ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10 } drop
     iifname "tailscale0" accept
   '';
 
