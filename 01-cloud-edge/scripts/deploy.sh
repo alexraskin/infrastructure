@@ -24,6 +24,8 @@ tar -C "$edge" -cf - flake.nix flake.lock edge.json nixos \
       tar -C /etc/nixos-edge -xf -
     '
 
+before=$(edge_ssh "$ip" 'readlink /run/current-system')
+
 echo "==> $ip: nixos-rebuild switch (building on the box)"
 # Detached, because this session is served by tailscaled: a switch that touches
 # the tailscale unit kills its own connection mid-activation. The unit outlives
@@ -63,8 +65,14 @@ edge_ssh "$ip" '
   systemctl reset-failed edge-rebuild.service 2>/dev/null || true
   [ "$state" = active ]
 ' || {
-  echo "nixos-rebuild failed on $ip" >&2
-  exit 1
+  # Switched but a unit failed (status 4, e.g. dbus-broker can't reload across
+  # a release): reboot onto it, then judge by what's failed after boot.
+  [ "$(edge_ssh "$ip" 'readlink /run/current-system')" != "$before" ] || {
+    echo "nixos-rebuild failed on $ip" >&2
+    exit 1
+  }
+  echo "==> $ip: switched, but activation reported failures — will reboot" >&2
+  reboot=1
 }
 
 echo "==> $ip: acme"
@@ -81,13 +89,13 @@ for cert in $certs; do
     echo "  acme-$cert failed — check: journalctl -u acme-$cert.service" >&2
 done
 
-if edge_ssh "$ip" '
+if [ -n "${reboot:-}" ] || edge_ssh "$ip" '
   for f in kernel initrd kernel-modules; do
     [ "$(readlink -f /run/booted-system/$f)" = "$(readlink -f /run/current-system/$f)" ] || exit 0
   done
   exit 1
 '; then
-  echo "==> $ip: kernel changed — rebooting"
+  echo "==> $ip: rebooting"
   edge_ssh "$ip" 'systemctl reboot' || true
   sleep 30
   deadline=$((SECONDS + 600))
@@ -98,6 +106,12 @@ if edge_ssh "$ip" '
     fi
     sleep 5
   done
+  failed=$(edge_ssh "$ip" 'systemctl --failed --no-legend --plain')
+  [ -z "$failed" ] || {
+    echo "units failed after the reboot on $ip:" >&2
+    echo "$failed" >&2
+    exit 1
+  }
 fi
 
 echo "==> $ip: done"
