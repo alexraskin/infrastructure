@@ -33,7 +33,7 @@ echo "==> $ip: nixos-rebuild switch (building on the box)"
 edge_ssh "$ip" "
   set -eu
   systemctl reset-failed edge-rebuild.service 2>/dev/null || true
-  systemd-run --no-block --unit=edge-rebuild \
+  systemd-run --no-block --unit=edge-rebuild --setenv=PATH=/run/wrappers/bin:/run/current-system/sw/bin \
     --property=Type=oneshot --property=RemainAfterExit=yes \
     nixos-rebuild switch --flake 'path:/etc/nixos-edge#$host'
 "
