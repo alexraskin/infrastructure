@@ -26,6 +26,15 @@
 			"users":  ["root"],
 		},
 
+		// Root on the edge from morpheus. SSH src can't be a host alias, and
+		// morpheus is tagged, so it carries its own tag; tagged = `accept`.
+		{
+			"action": "accept",
+			"src":    ["tag:edge-admin"],
+			"dst":    ["tag:cloud-edge"],
+			"users":  ["root"],
+		},
+
 		// Muse agent over Tailscale SSH. `accept`, not `check`: a tag source
 		// has no human identity to re-verify, and a check would hang a
 		// non-interactive login. Destination must be a tag, not a host
@@ -174,6 +183,11 @@
 			"ip":  ["tcp:22"],
 		},
 		{
+			"src": ["tag:edge-admin"],
+			"dst": ["tag:cloud-edge"],
+			"ip":  ["tcp:22"],
+		},
+		{
 			"src": ["autogroup:admin"],
 			"dst": ["tag:k8s-operator"],
 			"app": {
@@ -208,6 +222,9 @@
 		"tag:server": [],
 
 		"tag:muse": [],
+
+		// morpheus, alongside tag:server: SSH to the edge.
+		"tag:edge-admin": [],
 
 		// GitHub Actions, joining ephemerally with a tailnet-lock-signed auth key.
 		"tag:ci": [],
@@ -291,6 +308,12 @@
 			],
 		},
 		{
+			"src":    "tag:edge-admin",
+			"proto":  "tcp",
+			"accept": ["tag:cloud-edge:22"],
+			"deny":   ["tag:cloud-edge:443", "${cluster_vip}:6443"],
+		},
+		{
 			// muse gets SSH to three hosts and the operator's API proxy, nothing else.
 			"src":    "tag:muse",
 			"proto":  "tcp",
@@ -320,6 +343,11 @@
 		},
 		{
 			"src":    "tag:ci",
+			"dst":    ["tag:cloud-edge"],
+			"accept": ["root"],
+		},
+		{
+			"src":    "tag:edge-admin",
 			"dst":    ["tag:cloud-edge"],
 			"accept": ["root"],
 		},
