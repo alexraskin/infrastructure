@@ -126,6 +126,9 @@ spec:
               - targets: ["hhbox-egress.monitoring.svc.cluster.local:9100"]
                 labels:
                   instance: hhbox
+              - targets: ["morpheus-egress.monitoring.svc.cluster.local:9100"]
+                labels:
+                  instance: morpheus
 
         resources:
           requests:
