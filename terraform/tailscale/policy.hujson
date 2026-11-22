@@ -155,6 +155,12 @@
 			"ip":  ["tcp:22", "tcp:9100"], // 9100: Prometheus, via apps/base/monitoring/egress.yaml
 		},
 
+		{
+			"src": ["tag:k8s"],
+			"dst": ["morpheus"],
+			"ip":  ["tcp:9100"], // Prometheus, via apps/base/monitoring/egress.yaml
+		},
+
 		// NFS for Plex on morpheus. Morpheus is tag:server; tagging it
 		// removed the autogroup:admin coverage it had as a user-owned
 		// device, so without this grant it cannot reconnect to
@@ -269,7 +275,7 @@
 		{
 			"src":    "tag:k8s",
 			"proto":  "tcp",
-			"accept": ["tag:cloud-edge:443", "tag:cloud-edge:9100", "100.109.167.97:443", "100.86.236.21:9100", "100.86.236.21:9273", "100.86.236.21:9274", "hhbox:22", "hhbox:9100"],
+			"accept": ["tag:cloud-edge:443", "tag:cloud-edge:9100", "100.109.167.97:443", "100.86.236.21:9100", "100.86.236.21:9273", "100.86.236.21:9274", "hhbox:22", "hhbox:9100", "morpheus:9100"],
 			"deny": [
 				"100.73.219.120:32400",
 				"${cluster_vip}:6443",

@@ -30,3 +30,14 @@ metadata:
 spec:
   type: ExternalName
   externalName: placeholder
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: morpheus-egress
+  namespace: monitoring
+  annotations:
+    tailscale.com/tailnet-ip: "100.73.219.120"
+spec:
+  type: ExternalName
+  externalName: placeholder

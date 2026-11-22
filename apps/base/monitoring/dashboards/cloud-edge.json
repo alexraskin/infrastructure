@@ -47,10 +47,10 @@
           "uid": "prometheus"
         },
         "query": {
-          "query": "label_values(node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\"}, device)",
+          "query": "label_values(node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\", operstate=\"up\"}, device)",
           "refId": "uplink"
         },
-        "definition": "label_values(node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\"}, device)",
+        "definition": "label_values(node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\", operstate=\"up\"}, device)",
         "refresh": 1,
         "sort": 1,
         "hide": 2
