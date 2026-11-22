@@ -26,10 +26,10 @@
           "uid": "prometheus"
         },
         "query": {
-          "query": "label_values(up{job=\"node-exporter\"}, instance)",
+          "query": "label_values(up{job=\"node-exporter\", service=\"\"}, instance)",
           "refId": "node"
         },
-        "definition": "label_values(up{job=\"node-exporter\"}, instance)",
+        "definition": "label_values(up{job=\"node-exporter\", service=\"\"}, instance)",
         "refresh": 1,
         "sort": 1,
         "current": {
@@ -37,23 +37,6 @@
           "value": "cloud-edge"
         },
         "hide": 0
-      },
-      {
-        "name": "uplink",
-        "label": "Uplink",
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "query": {
-          "query": "label_values(node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\", operstate=\"up\"}, device)",
-          "refId": "uplink"
-        },
-        "definition": "label_values(node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\", operstate=\"up\"}, device)",
-        "refresh": 1,
-        "sort": 1,
-        "hide": 2
       }
     ]
   },
@@ -387,7 +370,7 @@
       },
       "targets": [
         {
-          "expr": "increase(node_network_transmit_bytes_total{instance=\"$node\",device=\"$uplink\"}[$__range])",
+          "expr": "sum(increase(node_network_transmit_bytes_total{instance=\"$node\"}[$__range]) and on(device) node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\", operstate=\"up\"})",
           "legendFormat": "",
           "refId": "A"
         }
@@ -430,7 +413,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "$uplink throughput (internet)",
+      "title": "Uplink throughput (internet)",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -443,13 +426,13 @@
       },
       "targets": [
         {
-          "expr": "rate(node_network_transmit_bytes_total{instance=\"$node\",device=\"$uplink\"}[$__rate_interval]) * 8",
-          "legendFormat": "egress",
+          "expr": "rate(node_network_transmit_bytes_total{instance=\"$node\"}[$__rate_interval]) * 8 and on(device) node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\", operstate=\"up\"}",
+          "legendFormat": "{{device}} egress",
           "refId": "A"
         },
         {
-          "expr": "-rate(node_network_receive_bytes_total{instance=\"$node\",device=\"$uplink\"}[$__rate_interval]) * 8",
-          "legendFormat": "ingress",
+          "expr": "-(rate(node_network_receive_bytes_total{instance=\"$node\"}[$__rate_interval]) * 8 and on(device) node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*\", operstate=\"up\"})",
+          "legendFormat": "{{device}} ingress",
           "refId": "B"
         }
       ],
@@ -738,17 +721,17 @@
       },
       "targets": [
         {
-          "expr": "rate(node_network_receive_drop_total{instance=\"$node\",device=~\"$uplink|tailscale0\"}[$__rate_interval])",
+          "expr": "rate(node_network_receive_drop_total{instance=\"$node\"}[$__rate_interval]) and on(device) node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*|tailscale0\", operstate=~\"up|unknown\"}",
           "legendFormat": "{{device}} rx drop",
           "refId": "A"
         },
         {
-          "expr": "rate(node_network_transmit_drop_total{instance=\"$node\",device=~\"$uplink|tailscale0\"}[$__rate_interval])",
+          "expr": "rate(node_network_transmit_drop_total{instance=\"$node\"}[$__rate_interval]) and on(device) node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*|tailscale0\", operstate=~\"up|unknown\"}",
           "legendFormat": "{{device}} tx drop",
           "refId": "B"
         },
         {
-          "expr": "rate(node_network_receive_errs_total{instance=\"$node\",device=~\"$uplink|tailscale0\"}[$__rate_interval])",
+          "expr": "rate(node_network_receive_errs_total{instance=\"$node\"}[$__rate_interval]) and on(device) node_network_info{instance=\"$node\", device=~\"(eth|en|wl).*|tailscale0\", operstate=~\"up|unknown\"}",
           "legendFormat": "{{device}} rx err",
           "refId": "C"
         }
