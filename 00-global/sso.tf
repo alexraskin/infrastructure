@@ -46,7 +46,7 @@ resource "aws_ssoadmin_permission_set" "admin" {
   provider         = aws.sso
   instance_arn     = local.sso_instance_arn
   name             = "AdministratorAccess"
-  session_duration = "PT1H"
+  session_duration = "PT12H"
 }
 
 resource "aws_ssoadmin_managed_policy_attachment" "admin" {
