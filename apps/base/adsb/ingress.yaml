@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tar1090
+  namespace: adsb
+  annotations:
+    tailscale.com/proxy-group: ingress
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: ultrafeeder
+      port:
+        name: http
+  tls:
+    - hosts:
+        - adsb

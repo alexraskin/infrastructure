@@ -30,7 +30,7 @@ variable "nfs" {
 }
 
 variable "nodes" {
-  description = "Node name -> role, address, VM ID and size. data_disk is the db nodes' second disk."
+  description = "Node name -> role, address, VM ID and size. data_disk is the db nodes' second disk; usb is a host USB device (vendor:product) passed through to the VM."
   type = map(object({
     role      = string
     ip        = string
@@ -39,6 +39,7 @@ variable "nodes" {
     memory    = number
     disk      = number
     data_disk = optional(number)
+    usb       = optional(string)
   }))
 
   validation {

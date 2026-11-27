@@ -57,6 +57,15 @@ resource "proxmox_virtual_environment_vm" "node" {
     }
   }
 
+  # Mapped, not usb.host: PVE only lets root@pam (not an API token) pass a raw host device.
+  dynamic "usb" {
+    for_each = each.value.usb == null ? [] : [proxmox_hardware_mapping_usb.node[each.key].name]
+
+    content {
+      mapping = usb.value
+    }
+  }
+
   cdrom {
     file_id = proxmox_download_file.talos_iso.id
   }

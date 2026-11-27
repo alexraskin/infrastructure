@@ -289,3 +289,25 @@ spec:
     - name: monitoring
   wait: true
   timeout: 3m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: adsb
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/base/adsb
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  dependsOn:
+    - name: local-path
+    - name: tailscale-ingress
+  wait: true
+  timeout: 5m

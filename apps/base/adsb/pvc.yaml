@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adsb-data
+  namespace: adsb
+spec:
+  storageClassName: local-path
+  volumeName: local-path-adsb
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi

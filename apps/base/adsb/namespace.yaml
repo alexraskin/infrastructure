@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: adsb
+  labels:
+    # readsb needs the raw USB device; Talos enforces baseline by default.
+    pod-security.kubernetes.io/enforce: privileged

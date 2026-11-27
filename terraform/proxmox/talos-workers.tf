@@ -1,5 +1,5 @@
 locals {
-  pv_volumes = ["prometheus", "loki"]
+  pv_volumes = ["prometheus", "loki", "adsb"]
 
   pv_volume_patches = [
     for volume in local.pv_volumes : yamlencode({

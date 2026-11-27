@@ -185,7 +185,7 @@
 		// tailscale_service resource cannot write.
 		{
 			"src": ["autogroup:member"],
-			"dst": ["svc:status", "svc:grafana", "svc:hubble"],
+			"dst": ["svc:status", "svc:grafana", "svc:hubble", "svc:adsb"],
 			"ip":  ["tcp:443"],
 		},
 
@@ -254,6 +254,7 @@
 			"svc:grafana": ["tag:k8s"],
 			"svc:hubble":  ["tag:k8s"],
 			"svc:loki":    ["tag:k8s"],
+			"svc:adsb":    ["tag:k8s"],
 		},
 	},
 
