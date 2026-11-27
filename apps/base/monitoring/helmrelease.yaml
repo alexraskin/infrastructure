@@ -120,9 +120,6 @@ spec:
               - targets: ["edge-egress.monitoring.svc.cluster.local:9100"]
                 labels:
                   instance: cloud-edge
-              - targets: ["adsb-egress.monitoring.svc.cluster.local:9100"]
-                labels:
-                  instance: nixcosmo
               - targets: ["hhbox-egress.monitoring.svc.cluster.local:9100"]
                 labels:
                   instance: hhbox
