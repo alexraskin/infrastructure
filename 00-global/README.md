@@ -24,8 +24,8 @@ read it as a data source.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.73.0 |
-| <a name="provider_aws.sso"></a> [aws.sso](#provider\_aws.sso) | 6.73.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.74.0 |
+| <a name="provider_aws.sso"></a> [aws.sso](#provider\_aws.sso) | 6.74.0 |
 
 ## Modules
 

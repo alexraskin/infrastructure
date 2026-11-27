@@ -36,6 +36,7 @@
 | [proxmox_backup_job.cluster](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/backup_job) | resource |
 | [proxmox_download_file.debian_lxc](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/download_file) | resource |
 | [proxmox_download_file.talos_iso](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/download_file) | resource |
+| [proxmox_hardware_mapping_usb.node](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/hardware_mapping_usb) | resource |
 | [proxmox_network_linux_bridge.vmbr0](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/network_linux_bridge) | resource |
 | [proxmox_storage_directory.local](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/storage_directory) | resource |
 | [proxmox_storage_lvmthin.local_lvm](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/storage_lvmthin) | resource |
@@ -73,7 +74,7 @@
 | <a name="input_nas_server"></a> [nas\_server](#input\_nas\_server) | NFS server backing the backups and iso storages | `string` | n/a | yes |
 | <a name="input_network_bridge"></a> [network\_bridge](#input\_network\_bridge) | Proxmox bridge to attach VMs to | `string` | `"vmbr0"` | no |
 | <a name="input_nfs"></a> [nfs](#input\_nfs) | The NFS server LXC: identity, sizing and what it exports. Sizes are GB. | <pre>object({<br/>    name        = string<br/>    vmid        = number<br/>    ip          = string<br/>    cores       = number<br/>    memory      = number<br/>    root_disk   = number<br/>    data_disk   = number<br/>    export_path = string<br/>  })</pre> | n/a | yes |
-| <a name="input_nodes"></a> [nodes](#input\_nodes) | Node name -> role, address, VM ID and size. data\_disk is the db nodes' second disk. | <pre>map(object({<br/>    role      = string<br/>    ip        = string<br/>    vmid      = number<br/>    cores     = number<br/>    memory    = number<br/>    disk      = number<br/>    data_disk = optional(number)<br/>  }))</pre> | n/a | yes |
+| <a name="input_nodes"></a> [nodes](#input\_nodes) | Node name -> role, address, VM ID and size. data\_disk is the db nodes' second disk; usb is a host USB device (vendor:product) passed through to the VM. | <pre>map(object({<br/>    role      = string<br/>    ip        = string<br/>    vmid      = number<br/>    cores     = number<br/>    memory    = number<br/>    disk      = number<br/>    data_disk = optional(number)<br/>    usb       = optional(string)<br/>  }))</pre> | n/a | yes |
 | <a name="input_pve_bridge_address"></a> [pve\_bridge\_address](#input\_pve\_bridge\_address) | The PVE host's own address on the management bridge, CIDR form | `string` | n/a | yes |
 | <a name="input_pve_bridge_gateway"></a> [pve\_bridge\_gateway](#input\_pve\_bridge\_gateway) | Default gateway on the management bridge | `string` | n/a | yes |
 | <a name="input_pve_bridge_port"></a> [pve\_bridge\_port](#input\_pve\_bridge\_port) | Physical NIC enslaved to the management bridge | `string` | n/a | yes |
