@@ -1,0 +1,47 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: ultrafeeder
+  namespace: flux-system
+spec:
+  image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder
+  interval: 72h
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: ultrafeeder
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: ultrafeeder
+  filterTags:
+    pattern: '^telegraf-build-(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: fr24feed
+  namespace: flux-system
+spec:
+  image: ghcr.io/sdr-enthusiasts/docker-flightradar24
+  interval: 72h
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: fr24feed
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: fr24feed
+  filterTags:
+    pattern: '^latest-build-(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc
