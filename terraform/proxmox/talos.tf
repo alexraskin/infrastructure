@@ -59,6 +59,11 @@ locals {
 
 resource "talos_machine_secrets" "this" {
   talos_version = local.cluster.talos_version
+
+  # A version bump regenerates the cluster PKI; it must stay as first generated.
+  lifecycle {
+    ignore_changes = [talos_version]
+  }
 }
 
 data "talos_machine_configuration" "node" {

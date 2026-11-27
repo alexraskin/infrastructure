@@ -24,6 +24,10 @@ resource "proxmox_download_file" "talos_iso" {
   file_name = "talos-${local.cluster.talos_version}-${substr(talos_image_factory_schematic.this.id, 0, 8)}.iso"
 
   overwrite = false
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 moved {

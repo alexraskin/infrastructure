@@ -75,9 +75,6 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   serial_device {}
 
-  lifecycle {
-    replace_triggered_by = [
-      proxmox_download_file.talos_iso.id,
-    ]
-  }
+  # Talos upgrades in place (mise run upgrade); a new ISO only swaps the CD-ROM media.
+  reboot_after_update = false
 }
